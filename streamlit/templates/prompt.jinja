@@ -1,0 +1,230 @@
+{# ====== Section: Macros ====== #}
+{%-macro check_and_display(lesson, key, display_name) -%}
+{{ display_name }}:
+{% if lesson[key] -%}
+{{ lesson[key] }}
+{% else -%}
+Missing data
+{%- endif %}
+(End of {{ display_name }})
+{%- endmacro -%}
+{%- macro format_cycle(cycle) -%}
+Title: {{ cycle.title | default('No title available') }}
+Duration: {{ cycle.durationInMinutes | default('No duration specified') }} minutes
+Explanation:
+    {% if cycle.explanation is mapping %}
+    {% for exp_key, exp_value in cycle.explanation.items() -%}
+        {{ exp_key }}: 
+        {% if exp_value is iterable and exp_value is not string %}
+        {% for item in exp_value %}
+        - {{ item }}
+        {% endfor %}
+        {% else %}
+        {{ exp_value }}
+        {% endif %}
+    {% endfor %}
+    {% else %}
+        {{ cycle.explanation | default('No explanation available') }}
+    {% endif %}
+Check for Understanding: {{ cycle.checkForUnderstanding | default('No check available') }}
+Practice: {{ cycle.practice | default('No practice information available') }}
+Script: {{ cycle.script | default('No script information available') }}
+Feedback: {{ cycle.feedback | default('No feedback available') }}
+{%- endmacro -%}
+{%- macro get_cycles(lesson) -%}
+{% set output = namespace(found=false) %}
+{% for cycle_key, cycle_value in lesson.items() -%}
+{% if cycle_key.startswith('cycle') -%}
+{% set is_valid = cycle_value.title or cycle_value.feedback or cycle_value.practice or cycle_value.explanation or cycle_value.durationInMinutes or cycle_value.checkForUnderstanding %}
+{% if is_valid -%}
+{% set output.found = true %}
+{{ cycle_key }}:
+
+{{ format_cycle(cycle_value) }}
+-----
+{% endif -%}
+{% endif -%}
+{% endfor -%}
+{% if not output.found -%}
+Missing data
+{% endif -%}
+{%- endmacro -%}
+{%- macro list_cycle_attributes(lesson, attribute) -%}
+{% set output = namespace(found=false) %}
+{% for cycle, details in lesson.items() -%}
+{% if details is not none and attribute in details %}
+{% set output.found = true %}
+{{ cycle }}:
+{% if details[attribute] is mapping -%}
+{% for key, value in details[attribute].items() %}
+    {{ key }}: {{ value }}
+{% endfor -%}
+{% else %}
+    {{ details[attribute] }}
+{% endif -%}
+{% endif -%}
+{% endfor %}
+{% if not output.found %}
+Missing data
+{% endif -%}
+{%- endmacro -%}
+{%- macro list_cycle_attributes_by_key(lesson, attribute_key) -%}
+{% set output = namespace(found=false, all_missing=true) %}
+{% for cycle_key, cycle_value in lesson.items() -%}
+    {% if cycle_key.startswith('cycle') and cycle_value.explanation and attribute_key in cycle_value.explanation -%}
+        {% set output.found = true %}
+        {% if cycle_value.explanation[attribute_key] -%}
+            {% set output.all_missing = false %}
+            {{ cycle_key }}:
+            {{ cycle_value.explanation[attribute_key] }}
+        {% endif -%}
+    {% endif -%}
+{% endfor -%}
+{% if not output.found or output.all_missing -%}
+Missing data
+{% endif -%}
+{%- endmacro -%}
+{# ====== End Section ====== #}
+Objective:
+{{prompt_objective }}
+
+{% if "lesson" in lesson_plan_params %}
+Lesson Plan:
+{{lesson}}
+(End of Lesson Plan)
+{% endif -%}
+{% if "title" in lesson_plan_params %}
+{{ check_and_display(lesson, 'title', 'Title') }}
+{% endif -%}
+{% if "topic" in lesson_plan_params %}
+{{ check_and_display(lesson, 'topic', 'Topic') }}
+{% endif -%}
+{% if "subject" in lesson_plan_params %}
+{{ check_and_display(lesson, 'subject', 'Subject') }}
+{% endif -%}
+{% if "cycles" in lesson_plan_params %}
+Cycles:
+{{ get_cycles(lesson) }}
+(End of Cycles)
+{% endif -%}
+{% if "cycle_titles" in lesson_plan_params %}
+Titles:
+{{ list_cycle_attributes(lesson, 'title') }}
+(End of Titles)
+{% endif -%}
+{% if "cycle_feedback" in lesson_plan_params %}
+Feedback:
+{{ list_cycle_attributes(lesson, 'feedback') }}
+(End of Feedback)
+{% endif -%}
+{% if "cycle_practice" in lesson_plan_params %}
+Practice Tasks:
+{{ list_cycle_attributes(lesson, 'practice') }}
+(End of Practice Tasks)
+{% endif -%}
+{% if "cycle_explanations" in lesson_plan_params %}
+Explanations:
+{{ list_cycle_attributes(lesson, 'explanation') }}
+(End of Explanations)
+{% endif -%}
+{% if "cycle_spokenexplanations" in lesson_plan_params %}
+Spoken Explanations:
+{{ list_cycle_attributes_by_key(lesson, 'spokenExplanation') }}
+(End of Spoken Explanations)
+{% endif -%}
+{% if "cycle_accompanyingslidedetails" in lesson_plan_params %}
+Accompanying Slide Details:
+{{ list_cycle_attributes_by_key(lesson, 'accompanyingSlideDetails') }}
+(End of Accompanying Slide Details)
+{% endif -%}
+{% if "cycle_imageprompts" in lesson_plan_params %}
+Image Prompts:
+{{ list_cycle_attributes_by_key(lesson, 'imagePrompt') }}
+(End of Image Prompts)
+{% endif -%}
+{% if "cycle_slidetext" in lesson_plan_params %}
+Slide Text:
+{{ list_cycle_attributes_by_key(lesson, 'slideText') }}
+(End of Slide Text)
+{% endif -%}
+{% if "cycle_durationinmins" in lesson_plan_params %}
+Duration in Minutes:
+{{ list_cycle_attributes(lesson, 'durationInMinutes') }}
+(End of Duration in Minutes)
+{% endif -%}
+{% if "cycle_checkforunderstandings" in lesson_plan_params %}
+Check for Understandings:
+{{ list_cycle_attributes(lesson, 'checkForUnderstanding') }}
+(End of Check for Understandings)
+{% endif -%}
+{% if "cycle_scripts" in lesson_plan_params %}
+Scripts:
+{{ list_cycle_attributes(lesson, 'script') }}
+(End of Scripts)
+{% endif -%}
+{% if "exitQuiz" in lesson_plan_params %}
+{{ check_and_display(lesson, 'exitQuiz', 'Exit Quiz') }}
+{% endif -%}
+{% if "keyStage" in lesson_plan_params %}
+{{ check_and_display(lesson, "keyStage", 'Key Stage') }}
+{% endif -%}
+{% if "starterQuiz" in lesson_plan_params %}
+{{ check_and_display(lesson, 'starterQuiz', 'Starter Quiz') }}
+{% endif -%}
+{% if "learningCycles" in lesson_plan_params %}
+{{ check_and_display(lesson, 'learningCycles', 'Learning Cycles') }}
+{% endif -%}
+{% if "misconceptions" in lesson_plan_params %}
+{{ check_and_display(lesson, 'misconceptions', 'Misconceptions') }}
+{% endif -%}
+{% if "priorKnowledge" in lesson_plan_params %}
+{{ check_and_display(lesson, 'priorKnowledge', 'Prior Knowledge') }}
+{% endif -%}
+{% if "learningOutcome" in lesson_plan_params %}
+{{ check_and_display(lesson, 'learningOutcome', 'Learning Outcome') }}
+{% endif -%}
+{% if "keyLearningPoints" in lesson_plan_params %}
+{{ check_and_display(lesson, 'keyLearningPoints', 'Key Learning Points') }}
+{% endif -%}
+{% if "additionalMaterials" in lesson_plan_params %}
+{{ check_and_display(lesson, 'additionalMaterials', 'Additional Materials') }}
+{% endif -%}
+
+{% if output_format == 'Boolean' %}
+Evaluation Criteria:
+{% for criterion, description in rating_criteria.items() %}
+{{ criterion }}: {{ description }}
+{% endfor %}
+{{ general_criteria_note }}
+
+Provide Your Evaluation:
+{{ rating_instruction }}
+
+Format your response according to the JSON structure below, providing a justification for your evaluation. Your justification should be concise, precise and directly support your evaluation.
+Use this JSON format for your evaluation:
+{   
+    "justification": "<JUSTIFICATION>",
+    "result": "<TRUE or FALSE>"
+}
+Only answer with the format above and return a single score, not a collection of scores.
+A detailed justification is crucial.
+
+{% elif output_format == 'Score' %}
+Rating Criteria:
+{% for criterion, description in rating_criteria.items() %}
+{{ criterion }}: {{ description }}
+{% endfor %}
+{{ general_criteria_note}}
+
+Provide Your Rating:
+{{ rating_instruction }}
+
+Format your response according to the JSON structure below, providing a justification for your score. Your justification should be concise, precise and directly support your rating.
+Use this JSON format for your evaluation:
+{   
+    "justification": "<JUSTIFICATION>",
+    "result": "<SCORE>"
+}
+Only answer with the format above and return a single score, not a collection of scores.
+A detailed justification is crucial, even for a score of 5.
+{%- endif %}

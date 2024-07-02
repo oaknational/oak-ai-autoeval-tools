@@ -1,0 +1,10 @@
+streamlit
+openai
+psycopg2-binary
+pandas
+plotly
+python-dotenv
+numpy
+langsmith
+mlflow
+jinja2
