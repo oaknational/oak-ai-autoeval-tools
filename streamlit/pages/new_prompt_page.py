@@ -446,7 +446,7 @@ if action == "Create a new prompt":
         
         experiment_description = experiment_desc_input('Score', new=True)
         
-        objective_title, objective_desc = objective_title_select()
+        objective_title, objective_desc = objective_title_select(new=True)
 
         teachers = get_teachers()
         teachers_options = teachers['name'].tolist()
@@ -457,8 +457,7 @@ if action == "Create a new prompt":
         general_criteria_note = st.text_area("General Criteria Note", value="", height=100)
         rating_instruction = st.text_area("Rating Instruction", value="", height=100)
         experiment_description = experiment_desc_input('Boolean', new=True)
-        objective_title = st.text_input("Objective Title", value="")
-        objective_desc = st.text_area("Objective Description", value="", height=100)
+        objective_title, objective_desc = objective_title_select(new=True)
 
         teachers = get_teachers()
         teachers_options = teachers['name'].tolist()
