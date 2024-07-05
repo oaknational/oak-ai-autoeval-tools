@@ -27,6 +27,11 @@ DB_PASS = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 
+#duplicate strings
+description_1 = 'Description for 1'
+description_5 = 'Description for 5'
+description_true = 'Description for TRUE'
+description_false = 'Description for FALSE'
 # Function to clear cache
 def clear_all_caches():
     st.cache_data.clear()
@@ -118,10 +123,10 @@ def show_rating_criteria_input(output_format, new=False, current_prompt=None):
         
         # Input fields for labels and descriptions
         label_1 = st.text_input('Label for 1 e.g. Predominantly American ', value=label_1, key="label_1")
-        desc_1 = st.text_area('Description for 1', value=desc_1, key="desc_1", height=50)
+        desc_1 = st.text_area(description_1, value=desc_1, key="desc_1", height=50)
         
         label_5 = st.text_input('Label for 5 e.g. No Americanisms Detected', value=label_5, key="label_5")
-        desc_5 = st.text_area('Description for 5', value=desc_5, key="desc_5", height=50)
+        desc_5 = st.text_area(description_5, value=desc_5, key="desc_5", height=50)
         
         # Update the rating criteria based on user input
         rating_criteria = {
@@ -157,8 +162,8 @@ def show_rating_criteria_input(output_format, new=False, current_prompt=None):
         rating_criteria_placeholder.json(rating_criteria)
 
         # Input fields for labels and descriptions
-        desc_t = st.text_area('Description for TRUE', value=desc_t, key="desc_t", height=50)
-        desc_f = st.text_area('Description for FALSE', value=desc_f, key="desc_f", height=50)
+        desc_t = st.text_area(description_true, value=desc_t, key="desc_t", height=50)
+        desc_f = st.text_area(description_false, value=desc_f, key="desc_f", height=50)
         
         # Update the rating criteria based on user input
         rating_criteria = {
@@ -202,8 +207,8 @@ def experiment_desc_input(output_format, new=False, current_prompt=None):
             experiment_desc = "5 (ideal) =, 1 = "
             experiment_desc_placeholder.text(experiment_desc)
 
-            exp_desc_5 = st.text_input('Description for 5', value="", key="exp_desc_5")
-            exp_desc_1 = st.text_input('Description for 1', value="", key="exp_desc_1")
+            exp_desc_5 = st.text_input(description_5, value="", key="exp_desc_5")
+            exp_desc_1 = st.text_input(description_1, value="", key="exp_desc_1")
 
             experiment_desc = f"5 (ideal) = {exp_desc_5}, 1 = {exp_desc_1}"
 
@@ -212,8 +217,8 @@ def experiment_desc_input(output_format, new=False, current_prompt=None):
             current_experiment_desc = current_prompt['experiment_description']
             desc_5, desc_1 = parse_experiment_desc(current_experiment_desc, 'Score')
             
-            exp_desc_5 = st.text_input('Description for 5', value=desc_5, key='exp_desc_5_mod')
-            exp_desc_1 = st.text_input('Description for 1', value=desc_1, key='exp_desc_1_mod')
+            exp_desc_5 = st.text_input(description_5, value=desc_5, key='exp_desc_5_mod')
+            exp_desc_1 = st.text_input(description_1, value=desc_1, key='exp_desc_1_mod')
             
             experiment_desc = f"5 (ideal) = {exp_desc_5}, 1 = {exp_desc_1}"
             experiment_desc_placeholder.text(experiment_desc)
@@ -228,8 +233,8 @@ def experiment_desc_input(output_format, new=False, current_prompt=None):
             experiment_desc = "TRUE (ideal) = , FALSE = "
             experiment_desc_placeholder.text(experiment_desc)
 
-            exp_desc_t = st.text_input('Description for TRUE', value="", key="exp_desc_t")
-            exp_desc_f = st.text_input('Description for FALSE', value="", key="exp_desc_f")
+            exp_desc_t = st.text_input(description_true, value="", key="exp_desc_t")
+            exp_desc_f = st.text_input(description_false, value="", key="exp_desc_f")
 
             experiment_desc = f"TRUE (ideal) = {exp_desc_t}, FALSE = {exp_desc_f}"
 
@@ -238,8 +243,8 @@ def experiment_desc_input(output_format, new=False, current_prompt=None):
             current_experiment_desc = current_prompt['experiment_description']
             desc_true, desc_false = parse_experiment_desc(current_experiment_desc, output_format)
             
-            exp_desc_t = st.text_input('Description for TRUE', value=desc_true, key='exp_desc_t_mod')
-            exp_desc_f = st.text_input('Description for FALSE', value=desc_false, key='exp_desc_f_mod')
+            exp_desc_t = st.text_input(description_true, value=desc_true, key='exp_desc_t_mod')
+            exp_desc_f = st.text_input(description_false, value=desc_false, key='exp_desc_f_mod')
             
             experiment_desc = f"TRUE (ideal) = {exp_desc_t}, FALSE = {exp_desc_f}"
             experiment_desc_placeholder.text(experiment_desc)
@@ -430,8 +435,6 @@ if action == "Modify an existing prompt":
         st.markdown('#### Relevant Lesson Plan Parts')
         lesson_plan_params = current_prompt['lesson_plan_params']
         st.markdown(f"{lesson_plan_params}")
-        # lesson_plan_params_to_display = get_lesson_plan_plain_eng(lesson_plan_params)
-        # st.markdown(f"**{', '.join(lesson_plan_params_to_display)}**")
         
         st.markdown('#### Output Format')
         output_format = st.selectbox("Choose 'Score' for a Likert scale rating between 1 and 5, where 5 is ideal. Choose 'Boolean' for a simple TRUE/FALSE evaluation, where TRUE is ideal", options=['Score', 'Boolean'], index = ['Score', 'Boolean'].index(current_prompt['output_format']))
