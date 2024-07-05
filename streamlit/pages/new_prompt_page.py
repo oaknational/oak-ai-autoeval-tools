@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import json
 from datetime import datetime
 import numpy as np
-from jinja_funcs import *
+from jinja_funcs import get_teachers, to_prompt_metadata_db
 import re
 
 
@@ -67,7 +67,8 @@ def fix_json_format(json_string):
     # Add double quotes around keys if they are missing
     json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)
     # Ensure property names are quoted properly
-    json_string = re.sub(r"'", r'"', json_string)
+    # json_string = re.sub(r"'", r'"', json_string)
+    json_string = json_string.replace("'", '"')
     return json_string
 
 def check_prompt_title_exists(prompt_title):
@@ -171,102 +172,7 @@ def show_rating_criteria_input(output_format, new=False, current_prompt=None):
     return rating_criteria
 
 
-
-def show_rating_criteria_input_old(output_format, new=False, current_prompt=None):
-    if new:
-        if output_format == 'Score':
-            st.markdown("##### Rating Criteria")
-            st.text("Please make 5 the ideal score and 1 the worst score.")
-            # Initialize placeholders for the rating criteria
-            rating_criteria_placeholder = st.empty()
-            
-            # Initialize with empty values
-            rating_criteria = {
-                f'5 ()': "",
-                f'1 ()': ""
-            }
-            
-            # Display the initial empty rating criteria
-            rating_criteria_placeholder.json(rating_criteria)
-            
-            # Input fields for labels and descriptions
-            label_1 = st.text_input('Label for 1 e.g. Predominantly American ', value="", key="label_1")
-            desc_1 = st.text_area('Description for 1', value="", key="desc_1", height=50)
-            
-            label_5 = st.text_input('Label for 5 e.g. No Americanims Detected', value="", key="label_5")
-            desc_5 = st.text_area('Description for 5', value="", key="desc_5", height=50)
-            
-            # Update the rating criteria based on user input
-            rating_criteria = {
-                f'5 ({label_5})': desc_5,
-                f'1 ({label_1})': desc_1
-            }
-
-            # Update the rating criteria placeholder with the new values
-            rating_criteria_placeholder.json(rating_criteria)
-            
-        if output_format == 'Boolean':
-            st.markdown("##### Evaluation Criteria")
-            st.text("Please make TRUE the ideal output")
-            # Initialize placeholders for the rating criteria
-            rating_criteria_placeholder = st.empty()
-            
-            # Initialize with empty values
-            rating_criteria = {
-                'TRUE': "",
-                'FALSE': ""
-            }
-            
-            # Display the initial empty rating criteria
-            rating_criteria_placeholder.json(rating_criteria)
-
-            # Input fields for labels and descriptions
-            desc_t = st.text_area('Description for TRUE', value="", key="desc_t", height=50)
-            
-            desc_f = st.text_area('Description for FALSE', value="", key="desc_f", height=50)
-            
-            # Update the rating criteria based on user input
-            rating_criteria = {
-                'TRUE': desc_t,
-                'FALSE': desc_f
-            }
-
-            # Update the rating criteria placeholder with the new values
-            rating_criteria_placeholder.json(rating_criteria)
-            
-        return rating_criteria
-    
-    else:
-        if output_format == 'Score':
-            st.markdown("##### Rating Criteria")
-            st.text("Please make 5 the ideal score and 1 the worst score.")
-            
-            
-            
-            # Initialize with empty values
-            rating_criteria = current_prompt['rating_criteria']
-
-            
-            
-            # Input fields for labels and descriptions
-            label_1 = st.text_input('Label for 1 e.g. Predominantly American ', value="", key="label_1")
-            desc_1 = st.text_area('Description for 1', value="", key="desc_1", height=50)
-            
-            label_5 = st.text_input('Label for 5 e.g. No Americanims Detected', value="", key="label_5")
-            desc_5 = st.text_area('Description for 5', value="", key="desc_5", height=50)
-            
-            # Update the rating criteria based on user input
-            rating_criteria = {
-                f'5 ({label_5})': desc_5,
-                f'1 ({label_1})': desc_1
-            }
-
-            # Update the rating criteria placeholder with the new values
-            rating_criteria_placeholder.json(rating_criteria)
-
-
 def parse_experiment_desc(current_experiment_desc, output_format):
-    # desc_true, desc_false = "", ""
     
     if output_format == 'Score':
         parts = current_experiment_desc.split(', ')
@@ -435,34 +341,51 @@ if action == "Create a new prompt":
     lesson_plan_params = get_lesson_plan_params(lesson_plan_params_st)
     st.markdown('#### Output Format')
     output_format = st.selectbox("Choose 'Score' for a Likert scale rating between 1 and 5, where 5 is ideal. Choose 'Boolean' for a simple TRUE/FALSE evaluation, where TRUE is ideal", options=['Score', 'Boolean'])
-    if output_format == 'Score':
-        rating_criteria = show_rating_criteria_input('Score', new=True)
-        # Add markdown headers and input fields
-        st.markdown("#### General Criteria Note")
-        general_criteria_note = st.text_area("Either leave this section empty or add things you'd like the LLM to focus on", value="", height=100)
-        
-        st.markdown("#### Rating Instruction")
-        rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value="", height=100)
-        
-        experiment_description = experiment_desc_input('Score', new=True)
-        
-        objective_title, objective_desc = objective_title_select(new=True)
 
-        teachers = get_teachers()
-        teachers_options = teachers['name'].tolist()
-        teacher_option = ['Select a teacher'] + teachers_options
-        created_by = st.selectbox('Who is creating the prompt?', teacher_option)
-    if output_format == 'Boolean':
-        rating_criteria = show_rating_criteria_input('Boolean', new=True)
-        general_criteria_note = st.text_area("General Criteria Note", value="", height=100)
-        rating_instruction = st.text_area("Rating Instruction", value="", height=100)
-        experiment_description = experiment_desc_input('Boolean', new=True)
-        objective_title, objective_desc = objective_title_select(new=True)
+    rating_criteria = show_rating_criteria_input(output_format, new=True)
+    st.markdown("#### General Criteria Note")
+    general_criteria_note = st.text_area("Either leave this section empty or add things you'd like the LLM to focus on", value="", height=100)
 
-        teachers = get_teachers()
-        teachers_options = teachers['name'].tolist()
-        teacher_option = ['Select a teacher'] + teachers_options
-        created_by = st.selectbox('Who is creating the prompt?', teacher_option)
+    st.markdown("#### Rating Instruction")
+    rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value="", height=100)
+
+    experiment_description = experiment_desc_input(output_format, new=True)
+        
+    objective_title, objective_desc = objective_title_select(new=True)
+
+    teachers = get_teachers()
+    teachers_options = teachers['name'].tolist()
+    teacher_option = ['Select a teacher'] + teachers_options
+    created_by = st.selectbox('Who is creating the prompt?', teacher_option)
+
+    # if output_format == 'Score':
+    #     rating_criteria = show_rating_criteria_input('Score', new=True)
+    #     # Add markdown headers and input fields
+    #     st.markdown("#### General Criteria Note")
+    #     general_criteria_note = st.text_area("Either leave this section empty or add things you'd like the LLM to focus on", value="", height=100)
+        
+    #     st.markdown("#### Rating Instruction")
+    #     rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value="", height=100)
+        
+    #     experiment_description = experiment_desc_input('Score', new=True)
+        
+    #     objective_title, objective_desc = objective_title_select(new=True)
+
+    #     teachers = get_teachers()
+    #     teachers_options = teachers['name'].tolist()
+    #     teacher_option = ['Select a teacher'] + teachers_options
+    #     created_by = st.selectbox('Who is creating the prompt?', teacher_option)
+    # if output_format == 'Boolean':
+    #     rating_criteria = show_rating_criteria_input('Boolean', new=True)
+    #     general_criteria_note = st.text_area("General Criteria Note", value="", height=100)
+    #     rating_instruction = st.text_area("Rating Instruction", value="", height=100)
+    #     experiment_description = experiment_desc_input('Boolean', new=True)
+    #     objective_title, objective_desc = objective_title_select(new=True)
+
+    #     teachers = get_teachers()
+    #     teachers_options = teachers['name'].tolist()
+    #     teacher_option = ['Select a teacher'] + teachers_options
+    #     created_by = st.selectbox('Who is creating the prompt?', teacher_option)
 
     if st.button("Save New Prompt", help="Save the new prompt to the database."):
         if check_prompt_title_exists(prompt_title):
@@ -595,10 +518,9 @@ if action == "Modify an existing prompt":
             rating_criteria = show_rating_criteria_input(output_format, new=True)
             # Add markdown headers and input fields
             st.markdown("#### General Criteria Note")
-            general_criteria_note = st.text_area("Either leave this section empty or add things you'd like the LLM to focus on", value="", height=100)
-            
+            general_criteria_note = st.text_area("Either leave this section empty or add things you'd like the LLM to focus on", value=current_prompt['general_criteria_note'], height=100)
             st.markdown("#### Rating Instruction")
-            rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value="", height=100)
+            rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value=current_prompt['rating_instruction'], height=100)
             
             experiment_description = experiment_desc_input(output_format, new=True)
             
