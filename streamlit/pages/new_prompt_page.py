@@ -358,34 +358,6 @@ if action == "Create a new prompt":
     teacher_option = ['Select a teacher'] + teachers_options
     created_by = st.selectbox('Who is creating the prompt?', teacher_option)
 
-    # if output_format == 'Score':
-    #     rating_criteria = show_rating_criteria_input('Score', new=True)
-    #     # Add markdown headers and input fields
-    #     st.markdown("#### General Criteria Note")
-    #     general_criteria_note = st.text_area("Either leave this section empty or add things you'd like the LLM to focus on", value="", height=100)
-        
-    #     st.markdown("#### Rating Instruction")
-    #     rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value="", height=100)
-        
-    #     experiment_description = experiment_desc_input('Score', new=True)
-        
-    #     objective_title, objective_desc = objective_title_select(new=True)
-
-    #     teachers = get_teachers()
-    #     teachers_options = teachers['name'].tolist()
-    #     teacher_option = ['Select a teacher'] + teachers_options
-    #     created_by = st.selectbox('Who is creating the prompt?', teacher_option)
-    # if output_format == 'Boolean':
-    #     rating_criteria = show_rating_criteria_input('Boolean', new=True)
-    #     general_criteria_note = st.text_area("General Criteria Note", value="", height=100)
-    #     rating_instruction = st.text_area("Rating Instruction", value="", height=100)
-    #     experiment_description = experiment_desc_input('Boolean', new=True)
-    #     objective_title, objective_desc = objective_title_select(new=True)
-
-    #     teachers = get_teachers()
-    #     teachers_options = teachers['name'].tolist()
-    #     teacher_option = ['Select a teacher'] + teachers_options
-    #     created_by = st.selectbox('Who is creating the prompt?', teacher_option)
 
     if st.button("Save New Prompt", help="Save the new prompt to the database."):
         if check_prompt_title_exists(prompt_title):
@@ -414,38 +386,7 @@ if action == "Create a new prompt":
 
             st.success(f"New prompt created successfully! With ID: {returned_id}")
 
-    # st.sidebar.header('New Prompt Preview')
-    # st.sidebar.markdown("#### Prompt Title:")
-    # st.sidebar.markdown(prompt_title)
-    # st.sidebar.markdown("#### Objective:")
-    # st.sidebar.markdown(prompt_objective)
 
-    # st.sidebar.markdown("#### Relevant Lesson Plan Parts:")
-    # st.sidebar.markdown(lesson_plan_params)
-
-    # st.sidebar.markdown("#### Output Format:")
-    # st.sidebar.markdown(output_format)
-
-    # st.sidebar.markdown("#### Rating Criteria:")
-    # st.sidebar.code(rating_criteria, language='json')
-
-    # st.sidebar.markdown("#### General Criteria Note:")
-    # st.sidebar.markdown(general_criteria_note)
-
-    # st.sidebar.markdown("#### Rating Instruction:")
-    # st.sidebar.markdown(rating_instruction)
-    
-    # st.sidebar.markdown("#### Experiment Description:")
-    # st.sidebar.markdown(experiment_description)
-
-    # st.sidebar.markdown("#### Objective Title:")
-    # st.sidebar.markdown(objective_title)
-
-    # st.sidebar.markdown("#### Objective Description:")
-    # st.sidebar.markdown(objective_desc)
-
-    # st.sidebar.markdown("#### Created By:")
-    # st.sidebar.markdown(created_by)
 
 if action == "Modify an existing prompt":
     prompt_title_options = filtered_data['prompt_title'].unique().tolist()
@@ -586,62 +527,6 @@ if action == "Modify an existing prompt":
             )
 
             st.success(f"Prompt saved successfully! With ID: {returned_id}")
-
-        # def pretty_print_json(json_data):
-        #     if json_data:
-        #         return json.dumps(json_data, indent=2, sort_keys=False)
-        #     return "None"
-
-        # st.sidebar.header('Draft Prompt Preview')
-        # st.sidebar.markdown("#### Prompt Title:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['prompt_title'])
-        # st.sidebar.markdown("#### Objective:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['prompt_objective'])
-
-        # st.sidebar.markdown("#### Relevant Lesson Plan Parts:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['lesson_plan_params'])
-
-        # st.sidebar.markdown("#### Output Format:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['output_format'])
-
-        # st.sidebar.markdown("#### Rating Criteria:")
-        # rating_criteria = st.session_state['draft_prompt']['rating_criteria']
-        # st.sidebar.code(rating_criteria, language='json')
-
-        # st.sidebar.markdown("#### General Criteria Note:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['general_criteria_note'])
-
-        # st.sidebar.markdown("#### Rating Instruction:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['rating_instruction'])
-        
-        # st.sidebar.markdown("#### Experiment Description:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['experiment_description'])
-
-        # st.sidebar.markdown("#### Objective Title:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['objective_title'])
-
-        # st.sidebar.markdown("#### Objective Description:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['objective_desc'])
-
-        # st.sidebar.markdown("#### Created By:")
-        # st.sidebar.markdown(st.session_state['draft_prompt']['created_by'])
-
-        # st.markdown('### Rendered Prompt')
-        # st.warning('This feature has compatibility issues with edited prompts due to json rating_criteria and might not be working. We are working on fixing it but if you want to use it; one workaround is to edit the prompt rating_criteria directly on the DB table to work as a dictionary.')
-        # st.markdown('You can review what will be sent to the LLM after the prompt is rendered with the prompt template below.')
-        # with st.expander("# Click to Expand"):
-        #     file_path = os.path.join(DATA_PATH, 'sample_lesson_empty.json')
-        #     with open(file_path, 'r') as file:
-        #         sample_lesson_dict = json.load(file)
-
-        #     prompt_details = get_prompt(prompt_id)
-
-        #     # prompt_details
-            
-
-        #     prompt_details_processed = process_prompt(prompt_details) #our new function
-        #     rendered_prompt = render_prompt(sample_lesson_dict, prompt_details_processed)
-        #     st.markdown(rendered_prompt)
 
     else:
         st.write("No prompts available for the selected title.")
