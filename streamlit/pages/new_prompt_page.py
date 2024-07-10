@@ -362,40 +362,51 @@ def fetch_prompt_details_by_id(prompt_id):
         return None
 
 # Fetch example prompt data
-example_prompt_id_score = "fa57a7ca-604c-462d-b4e0-0d43b17b691d" # Quiz Qs Require Explicit Knowledge
+# Quiz Qs Require Explicit Knowledge
+example_prompt_id_score = "fa57a7ca-604c-462d-b4e0-0d43b17b691d"
 example_prompt_score = fetch_prompt_details_by_id(example_prompt_id_score)
 
-example_prompt_id_boolean = "872592e3-ba7a-408d-9995-a66f056b1ed3" # Learning Cycles Increase in Challenge
+# Learning Cycles Increase in Challenge
+example_prompt_id_boolean = "872592e3-ba7a-408d-9995-a66f056b1ed3"
 example_prompt_boolean = fetch_prompt_details_by_id(example_prompt_id_boolean)
 
-# Lesson parameters and their corresponding titles (for display sidebar purposes) and plain English descriptions
+# Lesson parameters and their corresponding titles (for display sidebar
+# purposes) and plain English descriptions
 lesson_params = ['lesson', 'title', 'topic', 'subject', 'cycles', 
-                 'cycle_titles', 'cycle_feedback', 'cycle_practice', 'cycle_explanations',
-                 'cycle_spokenexplanations', 'cycle_accompanyingslidedetails',
-                 'cycle_imageprompts', 'cycle_slidetext', 'cycle_durationinmins',
-                 'cycle_checkforunderstandings', 'cycle_scripts', 'exitQuiz', 'keyStage',
-                 'starterQuiz', 'learningCycles', 'misconceptions','priorKnowledge',
-                 'learningOutcome, keyLearningPoints', 'additionalMaterials']
+                 'cycle_titles', 'cycle_feedback', 'cycle_practice',
+                 'cycle_explanations', 'cycle_spokenexplanations',
+                 'cycle_accompanyingslidedetails', 'cycle_imageprompts',
+                 'cycle_slidetext', 'cycle_durationinmins',
+                 'cycle_checkforunderstandings', 'cycle_scripts', 'exitQuiz',
+                 'keyStage','starterQuiz', 'learningCycles', 'misconceptions',
+                 'priorKnowledge', 'learningOutcome', 'keyLearningPoints',
+                 'additionalMaterials']
 
 lesson_params_titles = ['Lesson', 'Title', 'Topic', 'Subject', 'Cycles',
-                        'Titles', 'Feedback', 'Practice Tasks', 'Explanations', 'Spoken Explanations',
-                        'Accompanying Slide Details', 'Image Prompts', 'Slide Text',
-                        'Duration in Minutes', 'Check for Understandings', 'Scripts',
-                        'Exit Quiz', 'Key Stage', 'Starter Quiz', 'Learning Cycles', 'Misconceptions',
-                        'Prior Knowledge', 'Learning Outcome', 'Key Learning Points',
+                        'Titles', 'Feedback', 'Practice Tasks', 'Explanations',
+                        'Spoken Explanations', 'Accompanying Slide Details',
+                        'Image Prompts', 'Slide Text', 'Duration in Minutes',
+                        'Check for Understandings', 'Scripts', 'Exit Quiz',
+                        'Key Stage', 'Starter Quiz', 'Learning Cycles',
+                        'Misconceptions', 'Prior Knowledge',
+                        'Learning Outcome', 'Key Learning Points',
                         'Additional Materials']
 
 lesson_params_plain_eng = ['Whole lesson', 'Title', 'Topic', 'Subject',
-                           'All content from all cycles', 'All cycle titles', 'All cycle feedback',
-                           'All cycle practice', 'Entire explanations from all cycles',
+                           'All content from all cycles', 'All cycle titles',
+                           'All cycle feedback', 'All cycle practice',
+                           'Entire explanations from all cycles',
                            'All spoken explanations from all cycles',
                            'All accompanying slide details from all cycles',
-                           'All image prompts from all cycles', 'All slide text from all cycles',
+                           'All image prompts from all cycles',
+                           'All slide text from all cycles',
                            'All durations in minutes from all cycles',
                            'All check for understandings from all cycles',
-                           'All scripts from all cycles', 'Exit Quiz', 'Key Stage',
-                           'Starter Quiz', 'Learning cycles', 'Misconceptions', 'Prior knowledge',
-                           'Learning outcomes', 'Key learning points', 'Additional materials']
+                           'All scripts from all cycles', 'Exit Quiz',
+                           'Key Stage', 'Starter Quiz', 'Learning cycles',
+                           'Misconceptions', 'Prior knowledge',
+                           'Learning outcomes', 'Key learning points',
+                           'Additional materials']
 
 #The following function isn't in use yet, wasn't working as expected
 def get_lesson_plan_plain_eng(proper_lesson_params):
