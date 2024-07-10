@@ -640,36 +640,6 @@ if action == "Modify an existing prompt":
                 st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
                 st.session_state['refresh'] = False
 
-    # if prompt_title != '':
-
-    #     filtered_data = filtered_data[filtered_data['prompt_title'] == prompt_title]
-
-    #     latest_prompt = filtered_data.loc[filtered_data['created_at'].idxmax()]
-
-    #     if 'current_index' not in st.session_state:
-    #         st.session_state.current_index = 0
-
-    #     if not filtered_data.empty:
-    #         max_index = len(filtered_data) - 1
-    #         if not (0 <= st.session_state.current_index <= max_index):
-    #             st.session_state.current_index = 0
-    #             st.error("Selected prompt index is out of bounds, resetting to first prompt.")
-
-    #         current_prompt = filtered_data.loc[filtered_data['created_at'].idxmax()]
-    #         prompt_title_unique_checker = current_prompt['prompt_title']
-    #         prompt_id = current_prompt['id']
-        
-    #         st.table(current_prompt[['created_at', 'prompt_title', 'prompt_objective', 'created_by', 'version']])
-            
-    #         st.markdown("##### Click Refresh Prompt if you decide to use another existing prompt.")
-
-    #         if 'draft_prompt' not in st.session_state or st.session_state['refresh']:
-    #             st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
-    #             st.session_state['refresh'] = False
-    #         elif st.button('Refresh Prompt'):
-    #             st.session_state['refresh'] = True
-    #             st.experimental_rerun()
-
             # Display the non-editable prompt title
             st.markdown(prompt_title_header)
             st.markdown(f"{current_prompt['prompt_title']}")
@@ -834,26 +804,6 @@ if action == "Modify an existing prompt":
                 created_by = st.selectbox(created_by_text, teacher_option)
                 st.session_state['draft_prompt']['created_by'] = created_by
             
-
-
-            # if st.button("Save Changes"):
-                # st.session_state['draft_prompt']['prompt_title'] = prompt_title
-                # st.session_state['draft_prompt']['prompt_objective'] = prompt_objective
-                # st.session_state['draft_prompt']['output_format'] = output_format
-                # rating_criteria_fixed = fix_json_format(rating_criteria)
-                # if is_valid_json(rating_criteria_fixed):
-                #     st.session_state['draft_prompt']['rating_criteria'] = json.loads(rating_criteria_fixed)
-                # else:
-                #     st.error("Unable to fix JSON format in Rating Criteria")
-                # st.session_state['draft_prompt']['rating_criteria'] = rating_criteria
-                # st.session_state['draft_prompt']['general_criteria_note'] = general_criteria_note
-                # st.session_state['draft_prompt']['rating_instruction'] = rating_instruction
-                # st.session_state['draft_prompt']['experiment_description'] = experiment_description
-                # st.session_state['draft_prompt']['objective_title'] = objective_title
-                # st.session_state['draft_prompt']['objective_desc'] = objective_desc
-                # st.session_state['draft_prompt']['created_by'] = created_by
-                
-                # st.success("Changes saved successfully!")
 
             if st.button("Save Prompt", help="Save the prompt to the database."):
                 prompt_objective = st.session_state['draft_prompt']['prompt_objective']
