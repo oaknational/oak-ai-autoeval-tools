@@ -561,7 +561,7 @@ if action == "Modify an existing prompt":
             prompt_title_unique_checker = current_prompt['prompt_title']
             prompt_id = current_prompt['id']
         
-            st.table(current_prompt[['created_at', 'prompt_title', 'prompt_objective', 'created_by', 'version']])
+            st.table(current_prompt[['created_at', 'prompt_title', 'prompt_objective', 'output_format', 'created_by', 'version']])
 
             if 'draft_prompt' not in st.session_state or st.session_state['refresh']:
                 st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
