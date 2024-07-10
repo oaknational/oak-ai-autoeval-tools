@@ -1,3 +1,22 @@
+"""
+This script is for creating and managing prompt tests using Streamlit.
+It allows users to either create new prompts from scratch with guidance or modify existing prompts.
+
+Modules and libraries used:
+- streamlit: For creating the web interface
+- psycopg2: For connecting to the PostgreSQL database
+- pandas: For data manipulation and analysis
+- os and dotenv: For loading environment variables
+- json: For handling JSON data
+- datetime: For working with dates and times
+- numpy: For numerical operations
+- jinja_funcs: Custom module with utility functions (get_teachers, to_prompt_metadata_db)
+- re: For regular expression operations
+
+The script sets up the Streamlit page configuration, loads environment variables,
+and initialises database connection parameters.
+"""
+
 import streamlit as st
 import psycopg2
 import pandas as pd
@@ -8,8 +27,6 @@ from datetime import datetime
 import numpy as np
 from jinja_funcs import get_teachers, to_prompt_metadata_db
 import re
-
-
 
 st.set_page_config(page_title="Create Prompt Tests", page_icon="📝")
 st.markdown("# 📝 Create Prompt Tests")
@@ -116,7 +133,7 @@ def check_prompt_title_exists(prompt_title):
 def show_rating_criteria_input(output_format, new=False, current_prompt=None):
     """
     Displays input fields for rating criteria based on the given output format. The function 
-    initializes the criteria either as new or based on an existing prompt and allows the user 
+    initialises the criteria either as new or based on an existing prompt and allows the user 
     to update the criteria through input fields.
 
     Args:
@@ -130,7 +147,7 @@ def show_rating_criteria_input(output_format, new=False, current_prompt=None):
     if output_format == 'Score':
         st.markdown(rating_criteria_header)
         st.markdown("Please make 5 the ideal score and 1 the worst score.")
-        # Initialize placeholders for the rating criteria
+        # Initialise placeholders for the rating criteria
         rating_criteria_placeholder = st.empty()
         
         # Determine the initial values based on whether it's new or existing
@@ -176,7 +193,7 @@ def show_rating_criteria_input(output_format, new=False, current_prompt=None):
         st.markdown(evaluation_criteria_header)
         st.markdown("Please make TRUE the ideal output")
         
-        # Initialize placeholders for the rating criteria
+        # Initialise placeholders for the rating criteria
         rating_criteria_placeholder = st.empty()
         
         # Determine the initial values based on whether it's new or existing
