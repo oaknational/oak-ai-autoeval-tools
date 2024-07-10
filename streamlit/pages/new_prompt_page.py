@@ -14,11 +14,6 @@ import re
 st.set_page_config(page_title="Create Prompt Tests", page_icon="📝")
 st.markdown("# 📝 Create Prompt Tests")
 
-# st.markdown("#### Please select a prompt to modify. As you make modifications on the selected prompt, the changes will be visible on the sidebar.:arrow_left:")
-# st.markdown("##### Don't forget to click Refresh Prompt if you decide to use another existing prompt.")
-
-
-
 load_dotenv()
 DATA_PATH = os.getenv('DATA_PATH')
 DB_NAME = os.getenv('DB_NAME')
@@ -27,19 +22,24 @@ DB_PASS = os.getenv('DB_PASSWORD')
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT')
 
-#duplicate strings
+# Duplicate strings
 description_1 = 'Description for 1'
 description_5 = 'Description for 5'
 description_true = 'Description for TRUE'
 description_false = 'Description for FALSE'
-general_criteria_note_text = "Either leave this section empty or add things you'd like the LLM to focus on"
+general_criteria_note_text = (
+    "Either leave this section empty or add things you'd like the LLM to focus on"
+)
 rating_instruction_text = "Tell the LLM to actually do the evaluation"
 teacher_option_text = 'Select a teacher'
 created_by_text = 'Who is creating the prompt?'
 prompt_objective_text = 'State what you want the LLM to check for'
-output_format_text = "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for a TRUE/FALSE evaluation"
+output_format_text = (
+    "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for a TRUE/FALSE"
+    " evaluation"
+)
 
-#Headers
+# Headers
 prompt_title_header = "#### Prompt Title"
 prompt_objective_header = "#### Prompt Objective"
 lesson_plan_params_header = "#### Relevant Lesson Plan Parts"
@@ -62,6 +62,14 @@ if st.sidebar.button('Clear Cache'):
     st.sidebar.success('Cache cleared!')
 
 def get_all_prompts():
+    """
+    Connects to the PostgreSQL database and retrieves all prompts from the 'm_prompts' table.
+    The function returns the data as a pandas DataFrame with appropriate column names and parses 
+    the 'rating_criteria' column from JSON strings to Python dictionaries.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing all the prompts from the 'm_prompts' table.
+    """
     conn = psycopg2.connect(
         dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
     )
@@ -80,21 +88,16 @@ def get_all_prompts():
     
     return data
 
-def is_valid_json(json_string):
-    try:
-        json.loads(json_string)
-        return True
-    except ValueError:
-        return False
-
-def fix_json_format(json_string):
-    # Add double quotes around keys if they are missing
-    json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)
-    # Ensure property names are quoted properly
-    json_string = re.sub(r"'", r'"', json_string)
-    return json_string
-
 def check_prompt_title_exists(prompt_title):
+    """
+    Checks if a prompt title exists in the 'm_prompts' table of the PostgreSQL database.
+
+    Args:
+        prompt_title (str): The prompt title to check for existence in the database.
+
+    Returns:
+        bool: True if the prompt title exists, False otherwise.
+    """
     conn = psycopg2.connect(
         dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
     )
@@ -111,6 +114,19 @@ def check_prompt_title_exists(prompt_title):
     return exists
 
 def show_rating_criteria_input(output_format, new=False, current_prompt=None):
+    """
+    Displays input fields for rating criteria based on the given output format. The function 
+    initializes the criteria either as new or based on an existing prompt and allows the user 
+    to update the criteria through input fields.
+
+    Args:
+        output_format (str): The format of the output, either 'Score' or 'Boolean'.
+        new (bool): Indicates whether the criteria are new or based on an existing prompt.
+        current_prompt (dict): The existing prompt data, used when new is False.
+
+    Returns:
+        dict: The updated rating criteria.
+    """
     if output_format == 'Score':
         st.markdown(rating_criteria_header)
         st.markdown("Please make 5 the ideal score and 1 the worst score.")
@@ -196,77 +212,18 @@ def show_rating_criteria_input(output_format, new=False, current_prompt=None):
         
     return rating_criteria
 
-def parse_experiment_desc(current_experiment_desc, output_format):
-    
-    if output_format == 'Score':
-        parts = current_experiment_desc.split(', ')
-        for part in parts:
-            if part.startswith('5'):
-                desc_5 = part.split('= ')[1]
-            elif part.startswith('1'):
-                desc_1 = part.split('= ')[1]
-        return desc_5, desc_1
-    elif output_format == 'Boolean':
-        parts = current_experiment_desc.split(', ')
-        for part in parts:
-            if part.startswith('TRUE'):
-                desc_true = part.split('= ')[1]
-            elif part.startswith('FALSE'):
-                desc_false = part.split('= ')[1]
-        return desc_true, desc_false
-
-def experiment_desc_input(output_format, new=False, current_prompt=None):
-    if output_format == 'Score':
-        st.markdown(experiment_description_header)
-        st.text("State briefly what a 1 means and what a 5 means (this is just for database purposes).")
-
-        if new:
-
-            exp_desc_5 = st.text_input(description_5, value="", key="exp_desc_5")
-            exp_desc_1 = st.text_input(description_1, value="", key="exp_desc_1")
-
-            experiment_desc = f"5 (ideal) = {exp_desc_5}, 1 = {exp_desc_1}"
-
-            
-        else:
-            current_experiment_desc = current_prompt['experiment_description']
-            desc_5, desc_1 = parse_experiment_desc(current_experiment_desc, 'Score')
-            
-            exp_desc_5 = st.text_input(description_5, value=desc_5, key='exp_desc_5_mod')
-            exp_desc_1 = st.text_input(description_1, value=desc_1, key='exp_desc_1_mod')
-            
-            experiment_desc = f"5 (ideal) = {exp_desc_5}, 1 = {exp_desc_1}"
-            
-
-
-    if output_format == 'Boolean':
-        st.markdown(experiment_description_header)
-        st.text("This is just for database purposes. State briefly what a TRUE means and what FALSE means.")
-        # experiment_desc_placeholder = st.empty()
-        if new:
-
-            # experiment_desc = "TRUE (ideal) = , FALSE = "
-            # experiment_desc_placeholder.text(experiment_desc)
-
-            exp_desc_t = st.text_input(description_true, value="", key="exp_desc_t")
-            exp_desc_f = st.text_input(description_false, value="", key="exp_desc_f")
-
-            experiment_desc = f"TRUE (ideal) = {exp_desc_t}, FALSE = {exp_desc_f}"
-
-            # experiment_desc_placeholder.text(experiment_desc)
-        else:
-            current_experiment_desc = current_prompt['experiment_description']
-            desc_true, desc_false = parse_experiment_desc(current_experiment_desc, output_format)
-            
-            exp_desc_t = st.text_input(description_true, value=desc_true, key='exp_desc_t_mod')
-            exp_desc_f = st.text_input(description_false, value=desc_false, key='exp_desc_f_mod')
-            
-            experiment_desc = f"TRUE (ideal) = {exp_desc_t}, FALSE = {exp_desc_f}"
-            # experiment_desc_placeholder.text(experiment_desc)
-    
-    return experiment_desc
-
 def objective_title_select(new = False, current_prompt=None):
+    """
+    Displays input fields for selecting or entering the objective title and description based on whether
+    the prompt is new or existing. 
+
+    Args:
+        new (bool): Indicates whether the prompt is new or existing.
+        current_prompt (dict): The existing prompt data, used when new is False.
+
+    Returns:
+        tuple: A tuple containing the objective title and description.
+    """
     st.markdown(objective_title_header)
 
     if new:
@@ -298,6 +255,15 @@ def objective_title_select(new = False, current_prompt=None):
         return objective_title, objective_desc
          
 def get_lesson_plan_params(plain_eng_list):
+    """
+    Maps a list of plain English lesson plan parameter names to their corresponding keys used in the system.
+
+    Args:
+        plain_eng_list (list of str): A list of lesson plan parameter names in plain English.
+
+    Returns:
+        list of str: A list of corresponding keys for the lesson plan parameters.
+    """
     # Define the mapping dictionary within the function
     lesson_params_to_titles = dict(zip(lesson_params_plain_eng, lesson_params))
     
@@ -307,6 +273,16 @@ def get_lesson_plan_params(plain_eng_list):
     return acc_params
 
 def lesson_plan_parts_sidebar(lesson_plan_params):
+    """
+    Generates a formatted string for displaying lesson plan parts in the sidebar.
+    The function maps lesson plan parameters to their titles and formats them for display.
+
+    Args:
+        lesson_plan_params (list or str): A list of lesson plan parameters or a JSON string representing the list.
+
+    Returns:
+        str: A formatted string with lesson plan parts for sidebar display.
+    """
     # Create the mapping dictionary using zip
     lesson_params_to_titles = dict(zip(lesson_params, lesson_params_titles))
     
@@ -321,6 +297,17 @@ def lesson_plan_parts_sidebar(lesson_plan_params):
     )
 
 def get_first_ten_words(text):
+    """
+    Extracts the first ten words from a given text and appends an ellipsis ('...') 
+    if there are more than ten words.
+
+    Args:
+        text (str): The input text from which to extract the first ten words.
+
+    Returns:
+        str: A string containing the first ten words followed by an ellipsis if the 
+             original text has more than ten words, otherwise returns the original text.
+    """
     words = text.split()
     first_ten_words = ' '.join(words[:10]) + '...' if len(words) > 10 else text
     return first_ten_words
@@ -358,34 +345,52 @@ def fetch_prompt_details_by_id(prompt_id):
         return None
 
 # Fetch example prompt data
-example_prompt_id_score = "fa57a7ca-604c-462d-b4e0-0d43b17b691d" #Quiz qs require explicit knowledge
+example_prompt_id_score = "fa57a7ca-604c-462d-b4e0-0d43b17b691d" # Quiz Qs Require Explicit Knowledge
 example_prompt_score = fetch_prompt_details_by_id(example_prompt_id_score)
 
-example_prompt_id_boolean = "872592e3-ba7a-408d-9995-a66f056b1ed3" #learning cycles increase in challenge
+example_prompt_id_boolean = "872592e3-ba7a-408d-9995-a66f056b1ed3" # Learning Cycles Increase in Challenge
 example_prompt_boolean = fetch_prompt_details_by_id(example_prompt_id_boolean)
 
+# Lesson parameters and their corresponding titles (for display sidebar purposes) and plain English descriptions
+lesson_params = ['lesson', 'title', 'topic', 'subject', 'cycles', 
+                 'cycle_titles', 'cycle_feedback', 'cycle_practice', 'cycle_explanations',
+                 'cycle_spokenexplanations', 'cycle_accompanyingslidedetails',
+                 'cycle_imageprompts', 'cycle_slidetext', 'cycle_durationinmins',
+                 'cycle_checkforunderstandings', 'cycle_scripts', 'exitQuiz', 'keyStage',
+                 'starterQuiz', 'learningCycles', 'misconceptions','priorKnowledge',
+                 'learningOutcome, keyLearningPoints', 'additionalMaterials']
 
+lesson_params_titles = ['Lesson', 'Title', 'Topic', 'Subject', 'Cycles',
+                        'Titles', 'Feedback', 'Practice Tasks', 'Explanations', 'Spoken Explanations',
+                        'Accompanying Slide Details', 'Image Prompts', 'Slide Text',
+                        'Duration in Minutes', 'Check for Understandings', 'Scripts',
+                        'Exit Quiz', 'Key Stage', 'Starter Quiz', 'Learning Cycles', 'Misconceptions',
+                        'Prior Knowledge', 'Learning Outcome', 'Key Learning Points',
+                        'Additional Materials']
 
-lesson_params = ['lesson', 'title', 'topic', 'subject', 'cycles', 'cycle_titles', 'cycle_feedback',
-                     'cycle_practice', 'cycle_explanations', 'cycle_spokenexplanations', 'cycle_accompanyingslidedetails',
-                     'cycle_imageprompts', 'cycle_slidetext', 'cycle_durationinmins', 'cycle_checkforunderstandings',
-                     'cycle_scripts', 'exitQuiz', 'keyStage', 'starterQuiz', 'learningCycles', 'misconceptions',
-                     'priorKnowledge', 'learningOutcome, keyLearningPoints', 'additionalMaterials']
+lesson_params_plain_eng = ['Whole lesson', 'Title', 'Topic', 'Subject',
+                           'All content from all cycles', 'All cycle titles', 'All cycle feedback',
+                           'All cycle practice', 'Entire explanations from all cycles',
+                           'All spoken explanations from all cycles',
+                           'All accompanying slide details from all cycles',
+                           'All image prompts from all cycles', 'All slide text from all cycles',
+                           'All durations in minutes from all cycles',
+                           'All check for understandings from all cycles',
+                           'All scripts from all cycles', 'Exit Quiz', 'Key Stage',
+                           'Starter Quiz', 'Learning cycles', 'Misconceptions', 'Prior knowledge',
+                           'Learning outcomes', 'Key learning points', 'Additional materials']
 
-lesson_params_titles = ['Lesson', 'Title', 'Topic', 'Subject', 'Cycles', 'Titles', 'Feedback', 'Practice Tasks',
-                        'Explanations', 'Spoken Explanations', 'Accompanying Slide Details', 'Image Prompts',
-                        'Slide Text', 'Duration in Minutes', 'Check for Understandings', 'Scripts', 'Exit Quiz',
-                        'Key Stage', 'Starter Quiz', 'Learning Cycles', 'Misconceptions', 'Prior Knowledge',
-                        'Learning Outcome', 'Key Learning Points', 'Additional Materials']
-
-lesson_params_plain_eng = ['Whole lesson', 'Title', 'Topic', 'Subject', 'All content from all cycles', 'All cycle titles',
-                           'All cycle feedback', 'All cycle practice', 'Entire explanations from all cycles',
-                           'All spoken explanations from all cycles', 'All accompanying slide details from all cycles',
-                           'All image prompts from all cycles', 'All slide text from all cycles', 'All durations in minutes from all cycles',
-                           'All check for understandings from all cycles', 'All scripts from all cycles', 'Exit Quiz', 'Key Stage',
-                           'Starter Quiz', 'Learning cycles', 'Misconceptions', 'Prior knowledge', 'Learning outcomes',
-                           'Key learning points', 'Additional materials']
+#The following function isn't in use yet, wasn't working as expected
 def get_lesson_plan_plain_eng(proper_lesson_params):
+    """
+    Maps a list of proper lesson plan parameters to their plain English counterparts.
+
+    Args:
+        proper_lesson_params (list of str): A list of proper lesson plan parameters.
+
+    Returns:
+        list of str: A list of plain English names corresponding to the given proper lesson plan parameters.
+    """
     # Create a dictionary from lesson_params_plain_eng to lesson_params
     dict_lesson_params = dict(zip(lesson_params_plain_eng, lesson_params))
     acc_params = []
@@ -397,55 +402,74 @@ def get_lesson_plan_plain_eng(proper_lesson_params):
                 acc_params.append(key) 
     
     return acc_params
-        
+
+# Retrieve all prompt data from the database
 data = get_all_prompts()
 
 filtered_data = data
 
+# Display a header in the sidebar
 st.sidebar.markdown("# Your Prompt")
 
-
+# Display a dropdown menu for the user to select an action
 action = st.selectbox("What would you like to do?", [" ", "Create a new prompt", "Modify an existing prompt"])
 
 if action == "Create a new prompt":
-
+    # Display the header for prompt title input
     st.markdown(prompt_title_header)
-    prompt_title = st.text_input('Choose a unique title for your prompt', value='')
- 
-    st.markdown(prompt_objective_header)
-    prompt_objective = st.text_area(prompt_objective_text, value="", height=200)
 
+    # Input field for the prompt title
+    prompt_title = st.text_input('Choose a unique title for your prompt', value='')
+    
+    # Display the header for prompt objective input
+    st.markdown(prompt_objective_header)
+
+    # Text area for the prompt objective
+    prompt_objective = st.text_area(prompt_objective_text, value="", height=200)
+    
+    # Display the objective in the sidebar
     st.sidebar.markdown("### Objective:")
     truncated_prompt_objective = get_first_ten_words(prompt_objective)
     st.sidebar.markdown(f"{truncated_prompt_objective}")
+
+    # Display an example prompt objective
     with st.expander("Example"):
         st.write(f"{example_prompt_score['prompt_objective']}")
 
+    # Display the header for lesson plan parameters input
     st.markdown(lesson_plan_params_header)
+
+    # Multiselect for lesson plan parameters
     lesson_plan_params_st = st.multiselect("Choose the parts of the lesson plan that you're evaluating", options=lesson_params_plain_eng)
+
+    # Get the lesson plan parameters in the required format
     lesson_plan_params = get_lesson_plan_params(lesson_plan_params_st)
 
-
+    # Generate and display the lesson plan parts in the sidebar
     output = lesson_plan_parts_sidebar(lesson_plan_params)
     st.sidebar.markdown(output)
 
+    # Display the header for output format selection
     st.markdown(output_format_header)
+
+    # Select box for output format
     output_format = st.selectbox(output_format_text, options=[' ', 'Score', 'Boolean'])
     
 
     if output_format != ' ':
-    
-    # Select the appropriate example prompt based on output_format
+        # Select the appropriate example prompt based on output_format
         if output_format == 'Score':
             example_prompt = example_prompt_score
         elif output_format == 'Boolean':
             example_prompt = example_prompt_boolean
 
+        # Display input fields for rating criteria based on output format
         rating_criteria = show_rating_criteria_input(output_format, new=True)
         
         if output_format == 'Score':
             st.sidebar.markdown("### Rating Criteria:")
-            # Extract label and description for 5
+
+            # Extract and display label and description for rating 5
             label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
             desc_5 = list(rating_criteria.values())[0]
             desc_5_short = get_first_ten_words(desc_5)
@@ -456,13 +480,17 @@ if action == "Create a new prompt":
             desc_1 = list(rating_criteria.values())[1]
             desc_1_short = get_first_ten_words(desc_1)
             st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
+
         elif output_format == 'Boolean':
             st.sidebar.markdown("### Evaluation Criteria:")
+
+            # Extract and display description for TRUE and FALSE ratings
             desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
             desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
             st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
             st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
 
+        # Display example rating criteria in an expander
         with st.expander("Example"):
             if output_format == 'Score':
                 example_rating_criteria = example_prompt_score['rating_criteria']
@@ -484,17 +512,27 @@ if action == "Create a new prompt":
                 st.write(f"**Description for TRUE**: {desc_t}")
                 st.write(f"**Description for FALSE**: {desc_f}")
 
+        # Display and input general criteria note
         st.markdown(general_criteria_note_header)
         general_criteria_note = st.text_area(general_criteria_note_text, value="", height=100)
+
+        # Display example general criteria note in an expander
         with st.expander("Example"):
             st.write(f"{example_prompt['general_criteria_note']}")
+
+        # Display truncated general criteria note in the sidebar
         truncated_general_criteria_note = get_first_ten_words(general_criteria_note)
         st.sidebar.markdown(f"{truncated_general_criteria_note}")
 
+        # Display and input rating instruction
         st.markdown(rating_instruction_header)
         rating_instruction = st.text_area(rating_instruction_text, value="", height=100)
+
+        # Display example rating instruction
         with st.expander("Example"):
             st.write(f"{example_prompt['rating_instruction']}")
+        
+        # Display truncated rating instruction in the sidebar
         truncated_rating_instruction = get_first_ten_words(rating_instruction)
         if output_format == 'Score':
             st.sidebar.markdown("### Rating Instruction:")
@@ -503,16 +541,19 @@ if action == "Create a new prompt":
             st.sidebar.markdown("### Evaluation Instruction:")
             st.sidebar.markdown(f"{truncated_rating_instruction}")
 
+        # Leave experiment description empty (redundant field)
         experiment_description = ' '
 
+        # Select or input objective title and description
         objective_title, objective_desc = objective_title_select(new=True)
 
+        # Get and display list of teachers for selection
         teachers = get_teachers()
         teachers_options = teachers['name'].tolist()
         teacher_option = [teacher_option_text] + teachers_options
         created_by = st.selectbox(created_by_text, teacher_option)
 
-
+        # Save the new prompt to the database when the button is clicked
         if st.button("Save New Prompt", help="Save the new prompt to the database."):
             if check_prompt_title_exists(prompt_title):
                 st.error("This name already exists. Choose another one.")
@@ -520,9 +561,9 @@ if action == "Create a new prompt":
                 
                 returned_id = to_prompt_metadata_db(
                     prompt_objective, 
-                    json.dumps(lesson_plan_params), 
+                    json.dumps(lesson_plan_params),
                     output_format, 
-                    rating_criteria,  # Convert JSON object back to string
+                    rating_criteria,
                     general_criteria_note, 
                     rating_instruction, 
                     prompt_title, 
@@ -530,7 +571,7 @@ if action == "Create a new prompt":
                     objective_title, 
                     objective_desc, 
                     created_by, 
-                    '1'  # Starting version for new prompt
+                    '1' 
                 )
 
                 st.success(f"New prompt created successfully! With ID: {returned_id}")
