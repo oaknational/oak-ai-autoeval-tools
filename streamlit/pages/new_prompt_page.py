@@ -473,7 +473,7 @@ if action == "Create a new prompt":
     # Get the lesson plan parameters in the required format
     lesson_plan_params = get_lesson_plan_params(lesson_plan_params_st)
 
-    # Generate and display the lesson plan parts in the sidebar
+    # Generate and display the lesson plan parameters in the sidebar
     output = lesson_plan_parts_sidebar(lesson_plan_params)
     st.sidebar.markdown(output)
 
@@ -482,7 +482,6 @@ if action == "Create a new prompt":
 
     # Select box for output format
     output_format = st.selectbox(output_format_text, options=[' ', 'Score', 'Boolean'])
-    
 
     if output_format != ' ':
         # Select the appropriate example prompt based on output_format
@@ -494,16 +493,17 @@ if action == "Create a new prompt":
         # Display input fields for rating criteria based on output format
         rating_criteria = show_rating_criteria_input(output_format, new=True)
         
+        # Display the rating criteria in the sidebar
         if output_format == 'Score':
             st.sidebar.markdown("### Rating Criteria:")
 
-            # Extract and display label and description for rating 5
+            # Extract and display label and description for 5
             label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
             desc_5 = list(rating_criteria.values())[0]
             desc_5_short = get_first_ten_words(desc_5)
             st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
             
-            # Extract label and description for 1
+            # Extract and display label and description for 1
             label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
             desc_1 = list(rating_criteria.values())[1]
             desc_1_short = get_first_ten_words(desc_1)
@@ -540,7 +540,7 @@ if action == "Create a new prompt":
                 st.write(f"**Description for TRUE**: {desc_t}")
                 st.write(f"**Description for FALSE**: {desc_f}")
 
-        # Display and input general criteria note
+        # Display and input for general criteria note
         st.markdown(general_criteria_note_header)
         general_criteria_note = st.text_area(general_criteria_note_text, value="", height=100)
 
@@ -552,7 +552,7 @@ if action == "Create a new prompt":
         truncated_general_criteria_note = get_first_ten_words(general_criteria_note)
         st.sidebar.markdown(f"{truncated_general_criteria_note}")
 
-        # Display and input rating instruction
+        # Display and input for rating instruction
         st.markdown(rating_instruction_header)
         rating_instruction = st.text_area(rating_instruction_text, value="", height=100)
 
@@ -605,11 +605,10 @@ if action == "Create a new prompt":
                 st.success(f"New prompt created successfully! With ID: {returned_id}")
 
 if action == "Modify an existing prompt":
-
+    # Get a list of unique prompt titles and insert a blank option at the beginning
     prompt_title_options = filtered_data['prompt_title'].unique().tolist()
     prompt_title_options.insert(0, '') 
     prompt_title = st.selectbox('Select an existing prompt to modify:', prompt_title_options)
-
 
     # Track the selected prompt in the session state
     if 'selected_prompt' not in st.session_state:
@@ -621,17 +620,20 @@ if action == "Modify an existing prompt":
         st.session_state['refresh'] = True
 
     if prompt_title != '':
+        # Filter the data for the selected prompt title
         filtered_data = filtered_data[filtered_data['prompt_title'] == prompt_title]
 
         if not filtered_data.empty:
+            # Get the latest version of the selected prompt
             latest_prompt = filtered_data.loc[filtered_data['created_at'].idxmax()]
 
             current_prompt = filtered_data.loc[filtered_data['created_at'].idxmax()]
-            prompt_title_unique_checker = current_prompt['prompt_title']
             prompt_id = current_prompt['id']
-        
+
+            # Display the key details of the current prompt in a table
             st.table(current_prompt[['created_at', 'prompt_title', 'prompt_objective', 'output_format', 'created_by', 'version']])
 
+            # Initialise or refresh the draft prompt in session state
             if 'draft_prompt' not in st.session_state or st.session_state['refresh']:
                 st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
                 st.session_state['refresh'] = False
@@ -644,60 +646,87 @@ if action == "Modify an existing prompt":
             st.markdown(prompt_title_header)
             st.markdown(f"{current_prompt['prompt_title']}")
 
+            # Display the header for prompt objective
             st.markdown(prompt_objective_header)
+
+            # Text area for the prompt objective, initialised with the current prompt's objective
             prompt_objective = st.text_area(prompt_objective_text, value=current_prompt['prompt_objective'], height=100)
+
+            # Update the prompt objective in the session state
             st.session_state['draft_prompt']['prompt_objective'] = prompt_objective
+
+            # Display the objective in the sidebar
             truncated_prompt_objective = get_first_ten_words(prompt_objective)
             st.sidebar.markdown("### Objective:")
             st.sidebar.markdown(f"{truncated_prompt_objective}")
 
-            
+            # Display the non-editable lesson plan parameters
             st.markdown(lesson_plan_params_header)
             lesson_plan_params = current_prompt['lesson_plan_params']
+            st.markdown(f"{lesson_plan_params}")
+
+            # Generate and display the lesson plan parameters in the sidebar
             output = lesson_plan_parts_sidebar(lesson_plan_params)
             st.sidebar.markdown(output)
-            st.markdown(f"{lesson_plan_params}")
             
+            # Display the header for output format selection
             st.markdown(output_format_header)
+
+            # Select box for output format, defaults to the chosen prompt's output format
             output_format = st.selectbox(output_format_text, options=['Score', 'Boolean'], index = ['Score', 'Boolean'].index(current_prompt['output_format']))
             
             if output_format == current_prompt['output_format']:
                 
-
+                # Display input fields for rating criteria, initialised with the current prompt's rating criteria
                 rating_criteria = show_rating_criteria_input(output_format, current_prompt=current_prompt)
+
+                # Update the rating criteria in the session state
                 st.session_state['draft_prompt']['rating_criteria'] = rating_criteria
 
+                # Display the rating criteria in the sidebar
                 if output_format == 'Score':
                     st.sidebar.markdown("### Rating Criteria:")
-                    # Extract label and description for 5
+
+                    # Extract and display label and description for 5
                     label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
                     desc_5 = list(rating_criteria.values())[0]
                     desc_5_short = get_first_ten_words(desc_5)
                     st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
                     
-                    # Extract label and description for 1
+                    # Extract and display label and description for 1
                     label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
                     desc_1 = list(rating_criteria.values())[1]
                     desc_1_short = get_first_ten_words(desc_1)
                     st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
+
                 elif output_format == 'Boolean':
                     st.sidebar.markdown("### Evaluation Criteria:")
+
+                    # Extract and display description for TRUE and FALSE ratings
                     desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
                     desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
                     st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
                     st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
 
+                # Display and input for general criteria note, initialised with the current prompt's general criteria note
                 st.markdown(general_criteria_note_header)
                 general_criteria_note = st.text_area(general_criteria_note_text, value=current_prompt['general_criteria_note'], height=100)
+
+                # Update the general criteria note in the session state
                 st.session_state['draft_prompt']['general_criteria_note'] = general_criteria_note
 
+                # Display truncated general criteria note in the sidebar
                 truncated_general_criteria_note = get_first_ten_words(st.session_state['draft_prompt']['general_criteria_note'])
                 st.sidebar.markdown(f"{truncated_general_criteria_note}")
-
+                
+                # Display and input for rating instruction, initialised with the current prompt's rating instruction
                 st.markdown(rating_instruction_header)
                 rating_instruction = st.text_area(rating_instruction_text, value=current_prompt['rating_instruction'], height=100)
+
+                # Update the rating instruction in the session state
                 st.session_state['draft_prompt']['rating_instruction'] = rating_instruction
 
+                # Display truncated rating instruction in the sidebar
                 truncated_rating_instruction = get_first_ten_words(st.session_state['draft_prompt']['rating_instruction'])
                 if output_format == 'Score':
                     st.sidebar.markdown("### Rating Instruction:")
@@ -706,42 +735,58 @@ if action == "Modify an existing prompt":
                     st.sidebar.markdown("### Evaluation Instruction:")
                     st.sidebar.markdown(f"{truncated_rating_instruction}")
 
+                # Leave experiment description empty (redundant field)
                 experiment_description = ' '
+
+                # Update the experiment description in the session state
                 st.session_state['draft_prompt']['experiment_description'] = experiment_description
+
+                # Select or input objective title and description
                 objective_title, objective_desc = objective_title_select(current_prompt=current_prompt)
 
+                # Get and display list of teachers for selection
                 teachers = get_teachers()
                 teachers_options = teachers['name'].tolist()
                 teacher_option = [teacher_option_text] + teachers_options
                 created_by = st.selectbox(created_by_text, teacher_option, index=teacher_option.index(current_prompt['created_by']) if current_prompt['created_by'] in teacher_option else 0)
+
+                # Update the created by in the session state
                 st.session_state['draft_prompt']['created_by'] = created_by
 
-                
-
             else:
+                # Handle changes in output format by resetting the rating criteria, general criteria note and rating instruction
+                # Select the appropriate example prompt based on output_format
                 if output_format == 'Score':
                     example_prompt = example_prompt_score
                 elif output_format == 'Boolean':
                     example_prompt = example_prompt_boolean
                 
+                # Update the output format in the session state
                 st.session_state['draft_prompt']['output_format'] = output_format
+
+                # Display input fields for rating criteria based on output format
                 rating_criteria = show_rating_criteria_input(output_format, new=True)
+
+                # Update the rating criteria in the session state
                 st.session_state['draft_prompt']['rating_criteria'] = rating_criteria
 
+                # Display the rating criteria in the sidebar
                 if output_format == 'Score':
                     st.sidebar.markdown("### Rating Criteria:")
-                    # Extract label and description for 5
+
+                    # Extract and display label and description for 5
                     label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
                     desc_5 = list(rating_criteria.values())[0]
                     desc_5_short = get_first_ten_words(desc_5)
                     st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
                     
-                    # Extract label and description for 1
+                    # Extract and display label and description for 1
                     label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
                     desc_1 = list(rating_criteria.values())[1]
                     desc_1_short = get_first_ten_words(desc_1)
                     st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
 
+                    # Display example rating criteria in an expander
                     with st.expander("Example"):
                         example_rating_criteria = example_prompt_score['rating_criteria']
                         label_5 = list(example_rating_criteria.keys())[0].split('(')[-1].strip(')')
@@ -753,13 +798,17 @@ if action == "Modify an existing prompt":
                         st.write(f"**Description for 1**: {desc_1}")
                         st.write(f"**Label for 5**: {label_5}")
                         st.write(f"**Description for 5**: {desc_5}")
+
                 elif output_format == 'Boolean':
+
+                    # Extract and display description for TRUE and FALSE ratings
                     st.sidebar.markdown("### Evaluation Criteria:")
                     desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
                     desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
                     st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
                     st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
 
+                    # Display example rating criteria in an expander
                     with st.expander("Example"):
                         example_rating_criteria = example_prompt_boolean['rating_criteria']
                         desc_t = example_rating_criteria.get('TRUE', "")
@@ -768,22 +817,33 @@ if action == "Modify an existing prompt":
                         st.write(f"**Description for TRUE**: {desc_t}")
                         st.write(f"**Description for FALSE**: {desc_f}")
 
-                # Add markdown headers and input fields
+                # Display and input for general criteria note
                 st.markdown(general_criteria_note_header)
                 general_criteria_note = st.text_area(general_criteria_note_text, value="", height=100)
+
+                # Update the general criteria note in the session state
                 st.session_state['draft_prompt']['general_criteria_note'] = general_criteria_note
+                
+                # Display example general criteria note in an expander
                 with st.expander("Example"):
                     st.write(f"{example_prompt['general_criteria_note']}")
 
+                # Display truncated general criteria note in the sidebar
                 truncated_general_criteria_note = get_first_ten_words(general_criteria_note)
                 st.sidebar.markdown(f"{truncated_general_criteria_note}")
 
+                # Display and input for rating instruction
                 st.markdown(rating_instruction_header)
                 rating_instruction = st.text_area(rating_instruction_text, value="", height=100)
+
+                # Update the rating instruction in the session state
                 st.session_state['draft_prompt']['rating_instruction'] = rating_instruction
+
+                # Display example rating instruction in an expander
                 with st.expander("Example"):
                     st.write(f"{example_prompt['rating_instruction']}")
 
+                # Display truncated rating instruction in the sidebar
                 truncated_rating_instruction = get_first_ten_words(rating_instruction)
                 if output_format == 'Score':
                     st.sidebar.markdown("### Rating Instruction:")
@@ -792,20 +852,25 @@ if action == "Modify an existing prompt":
                     st.sidebar.markdown("### Evaluation Instruction:")
                     st.sidebar.markdown(f"{truncated_rating_instruction}")
                 
+                # Leave experiment description empty (redundant field)
                 experiment_description = ' '
+
+                # Update the experiment description in the session state
                 st.session_state['draft_prompt']['experiment_description'] = experiment_description
 
+                # Select or input objective title and description
                 objective_title, objective_desc = objective_title_select(current_prompt=current_prompt)
 
-
+                # Get and display list of teachers for selection
                 teachers = get_teachers()
                 teachers_options = teachers['name'].tolist()
                 teacher_option = [teacher_option_text] + teachers_options
                 created_by = st.selectbox(created_by_text, teacher_option)
                 st.session_state['draft_prompt']['created_by'] = created_by
             
-
+            
             if st.button("Save Prompt", help="Save the prompt to the database."):
+                # Retrieve updated prompt details from session state
                 prompt_objective = st.session_state['draft_prompt']['prompt_objective']
                 lesson_plan_params = st.session_state['draft_prompt']['lesson_plan_params']
                 output_format = st.session_state['draft_prompt']['output_format']
@@ -817,17 +882,14 @@ if action == "Modify an existing prompt":
                 objective_title = st.session_state['draft_prompt']['objective_title']
                 objective_desc = st.session_state['draft_prompt']['objective_desc']
                 prompt_created_by = st.session_state['draft_prompt']['created_by']
+                version = str(int(st.session_state['draft_prompt']['version']) + 1)
                 
-                if prompt_title_unique_checker == prompt_title:
-                    version = str(int(st.session_state['draft_prompt']['version']) + 1)
-                else:
-                    version = '1'
-                
+                # Save the updated prompt to the database
                 returned_id = to_prompt_metadata_db(
                     prompt_objective, 
                     lesson_plan_params, 
                     output_format, 
-                    rating_criteria,  # Convert JSON object back to string
+                    rating_criteria,
                     general_criteria_note, 
                     rating_instruction, 
                     prompt_title, 
@@ -838,9 +900,11 @@ if action == "Modify an existing prompt":
                     version
                 )
 
+                # Display success message with the returned ID
                 st.success(f"Prompt saved successfully! With ID: {returned_id}")
 
         else:
+            # Display message if no prompts are available for the selected title
             st.write("No prompts available for the selected title.")
 
 
