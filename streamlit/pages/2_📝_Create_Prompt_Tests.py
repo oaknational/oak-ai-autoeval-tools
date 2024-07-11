@@ -37,24 +37,24 @@ if st.sidebar.button('Clear Cache'):
     clear_all_caches()
     st.sidebar.success('Cache cleared!')
 
-def get_all_prompts():
-    conn = psycopg2.connect(
-        dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
-    )
-    query = """
-    SELECT id, prompt_objective, lesson_plan_params, output_format, rating_criteria, general_criteria_note, rating_instruction, encode(prompt_hash, 'hex'), prompt_title, experiment_description, objective_title, objective_desc, created_at, created_by, version
-    FROM public.m_prompts;
-    """
-    cur = conn.cursor()
-    cur.execute(query)
-    data = pd.DataFrame(cur.fetchall(), columns=[desc[0] for desc in cur.description])
-    cur.close()
-    conn.close()
+# def get_all_prompts():
+#     conn = psycopg2.connect(
+#         dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
+#     )
+#     query = """
+#     SELECT id, prompt_objective, lesson_plan_params, output_format, rating_criteria, general_criteria_note, rating_instruction, encode(prompt_hash, 'hex'), prompt_title, experiment_description, objective_title, objective_desc, created_at, created_by, version
+#     FROM public.m_prompts;
+#     """
+#     cur = conn.cursor()
+#     cur.execute(query)
+#     data = pd.DataFrame(cur.fetchall(), columns=[desc[0] for desc in cur.description])
+#     cur.close()
+#     conn.close()
     
-    # Parse JSON fields safely
-    data['rating_criteria'] = data['rating_criteria'].apply(lambda x: json.loads(x) if x else {})
+#     # Parse JSON fields safely
+#     data['rating_criteria'] = data['rating_criteria'].apply(lambda x: json.loads(x) if x else {})
     
-    return data
+#     return data
 
 def is_valid_json(json_string):
     try:
