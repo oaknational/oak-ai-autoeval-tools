@@ -641,13 +641,8 @@ if action == "Modify an existing prompt":
             st.table(current_prompt[['created_at', 'prompt_title', 'prompt_objective', 'output_format', 'created_by', 'version']])
 
             # Initialise or refresh the draft prompt in session state
-            if 'draft_prompt' not in st.session_state or st.session_state['refresh']:
-                st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
-                st.session_state['refresh'] = False
-            else:
-                # Automatically refresh the prompt when the selected prompt changes
-                st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
-                st.session_state['refresh'] = False
+            st.session_state['draft_prompt'] = current_prompt.copy(deep=True)
+            st.session_state['refresh'] = False
 
             # Display the non-editable prompt title
             st.markdown(prompt_title_header)
