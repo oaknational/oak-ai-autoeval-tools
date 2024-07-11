@@ -352,10 +352,6 @@ def example_boolean_rating_criteria():
         st.write(f"**Description for FALSE**: {desc_f}")
 
 
-def save_prompt():
-    return
-
-
 def get_lesson_plan_params(plain_eng_list):
     """
     Maps a list of plain English lesson plan parameter names to their corresponding keys used in the system.
