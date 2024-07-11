@@ -9,10 +9,13 @@ This module provides the following functions:
   Logs messages with different severity levels.
 - get_db_connection: 
   Establishes a connection to the PostgreSQL database.
-- execute_query: 
-  Executes a SQL query and returns the results as a DataFrame.
-- get_data: 
-  Executes a query and returns the results as a DataFrame.
+- db_error_handler:
+  A decorator that provides error handling and connection management 
+  for database operations.
+- execute_single_query:
+  Executes a single SQL query.
+- execute_multi_query:
+  Executes multiple SQL queries.
 - json_to_html: 
   Converts a JSON object to an HTML-formatted string.
 - get_light_experiment_data: 
@@ -41,6 +44,9 @@ This module provides the following functions:
   Processes prompt details, ensuring correct formatting.
 - render_prompt: 
   Renders a prompt template using lesson plan and prompt details.
+- clean_response:
+  Cleans JSON response by removing extraneous characters and decoding 
+  the JSON content.
 - run_inference: 
   Runs inference using a lesson plan and a prompt ID.
 - add_results: 
@@ -64,19 +70,14 @@ import os
 import re
 import json
 import hashlib
+import functools
 
 import pandas as pd
 import psycopg2
 import openai
 import streamlit as st
-
 from openai import OpenAI
-from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-
-
-# Load environment variables from .env file
-load_dotenv()
 
 
 def get_env_variable(var_name, default_value=None):
@@ -85,28 +86,29 @@ def get_env_variable(var_name, default_value=None):
 
     Args:
         var_name (str): The name of the environment variable to retrieve.
-        default_value (any, optional): The value to return if the 
-        environment variable is not set. Defaults to None.
+            default_value (any, optional): The value to return if the 
+            environment variable is not set. Defaults to None.
 
     Returns:
         any: The value of the environment variable, or the default value 
-        if the environment variable is not set.
+            if the environment variable is not set.
 
     Raises:
         EnvironmentError: If the environment variable is not set and no 
-        default value is provided.
+            default value is provided.
     """
     value = os.getenv(var_name, default_value)
     if value is None:
         log_message("error", f"Environment variable {var_name} not found")
         if default_value is None:
-            raise EnvironmentError(f"Missing mandatory environment variable: {var_name}")
+            raise EnvironmentError(
+                f"Missing mandatory environment variable: {var_name}"
+            )
     return value
 
 
 def log_message(level, message):
-    """
-    Log a message using Streamlit's log functions based on the level.
+    """ Log a message using Streamlit's log functions based on the level.
 
     Args:
         level (str): Log level ('error', 'warning', 'info').
@@ -126,7 +128,7 @@ def log_message(level, message):
 
 
 def get_db_connection():
-    """Establish a connection to the PostgreSQL database.
+    """ Establish a connection to the PostgreSQL database.
 
     Returns:
         conn: connection object to interact with the database.
@@ -138,77 +140,134 @@ def get_db_connection():
         DB_HOST = get_env_variable("DB_HOST")
         DB_PORT = get_env_variable("DB_PORT")
 
-        return psycopg2.connect(
-            dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
+        conn =  psycopg2.connect(
+            dbname=DB_NAME, 
+            user=DB_USER, 
+            password=DB_PASS, 
+            host=DB_HOST, 
+            port=DB_PORT
         )
     except psycopg2.Error as e:
         log_message("error", f"Error connecting to the database: {e}")
-        return None
+    return conn
 
 
-def execute_query(query, params=None):
-    """
-    Execute a SQL query and returns the results as a Pandas DataFrame.
+def db_error_handler(func):
+    """ A decorator that provides error handling and connection 
+    management for database operations.
+
+    This decorator ensures that a database connection is established 
+    before executing the decorated function. If the connection fails, 
+    it logs an error message and returns an empty DataFrame or list 
+    based on the function's return type. The decorator also handles 
+    database errors by logging appropriate messages and rolling back 
+    any transactions in case of an error.
 
     Args:
-        query (str): SQL query to execute.
+        func (function): The function to be decorated. It should expect 
+            a database connection object as its first argument.
 
     Returns:
-        pd.DataFrame: DataFrame containing the query results.
+        function: A wrapped function with database connection management 
+            and error handling.
+
+    Raises:
+        psycopg2.DatabaseError: If a database-related error occurs 
+            during the execution of the query.
+        psycopg2.OperationalError: If an operational error related to 
+            the database occurs during the execution of the query.
+        Exception: If any other unexpected error occurs during the 
+            execution of the query.
     """
-    conn = get_db_connection()
-    if not conn:
-        return pd.DataFrame()
-    
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(query, params)
-                data = pd.DataFrame(
-                    cur.fetchall(), columns=[desc[0] for desc in cur.description]
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        conn = get_db_connection()
+        if not conn:
+            return pd.DataFrame() if kwargs.get('return_dataframe', True) else []
+        try:
+            with conn:
+                return func(conn, *args, **kwargs)
+        except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
+            log_message("error", f"Error executing query: {db_err}")
+            conn.rollback()
+            return pd.DataFrame() if kwargs.get('return_dataframe', True) else []
+        except Exception as e:
+            log_message("error", f"Error executing query: {e}")
+            conn.rollback()
+            return pd.DataFrame() if kwargs.get('return_dataframe', True) else []
+    return wrapper
+
+
+@db_error_handler
+def execute_single_query(conn, query, params=None, return_dataframe=False):
+    """ Execute a given SQL query using a PostgreSQL database connection.
+
+    This function handles the connection, cursor management, and error
+    handling for executing a SQL query. It supports both parameterized
+    queries and returning results as DataFrames for SELECT queries.
+
+    Args:
+        query (str): The SQL query to be executed.
+        params (tuple, optional): A tuple of parameters to be passed to the
+            SQL query. Defaults to None if no parameters are required.
+        return_dataframe (bool, optional): If True, returns results as a
+            DataFrame. Defaults to False.
+
+    Returns:
+        pd.DataFrame or bool: If return_dataframe is True, returns a
+            DataFrame containing the query results. If return_dataframe is
+            False, returns True if the query was executed and committed
+            successfully, or False if an error occurred.
+    """
+    with conn.cursor() as cur:
+            cur.execute(query, params or ())
+            if return_dataframe:
+                return pd.DataFrame(
+                    cur.fetchall(), 
+                    columns=[desc[0] for desc in cur.description]
                 )
-        return data
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
-        return pd.DataFrame()
-    except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
-        return pd.DataFrame()
+            else:
+                return cur.fetchall()
+    
 
+def execute_multi_query(queries_and_params, return_results=False):
+    """ Execute a list of SQL queries using a PostgreSQL database 
+    connection with rollback on failure.
 
-def get_data(query):
-    """
-    Execute a query and returns the results as a Pandas DataFrame.
+    This function handles the connection, cursor management, and error
+    handling for executing a list of SQL queries. It supports both 
+    parameterized queries and fetching results from SELECT queries.
 
     Args:
-        query (str): SQL query to execute.
+        queries_and_params (list of tuples): A list where each element 
+            is a tuple containing the SQL query as a string and the 
+            parameters as a tuple.
+        return_results (bool, optional): If True, returns the results 
+            of the SELECT queries. Defaults to False.
 
     Returns:
-        pd.DataFrame: DataFrame containing the query results.
+        list or bool: Returns a list of results if return_results is 
+            True, otherwise True if all queries were executed and 
+            committed successfully, or False if an error occurred.
+
+    Raises:
+        psycopg2.Error: If a database error occurs during the execution 
+            of the query.
+        Exception: If any other unexpected error occurs during the 
+            execution of the query.
     """
-    conn = get_db_connection()
-    if not conn:
-        return pd.DataFrame()
-    
-    try:
-        with conn:
-            data = pd.read_sql_query(query, conn)
-        return data
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
-        return pd.DataFrame()
-    except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
-        return pd.DataFrame()
+    results = []
+    for query, params in queries_and_params:
+        result = execute_single_query(
+            query, params, return_dataframe=return_results
+        )
+        if return_results:
+            results.append(result)
+    return results if return_results else True
 
 
 def json_to_html(json_obj, indent=0):
-    """
-    Convert a JSON object to an HTML-formatted string recursively.
+    """ Convert a JSON object to an HTML-formatted string recursively.
 
     Args:
         json_obj (dict or list): JSON object to convert.
@@ -243,8 +302,7 @@ def json_to_html(json_obj, indent=0):
 
 
 def get_light_experiment_data():
-    """
-    Retrieve light experiment data from the database.
+    """ Retrieve light experiment data from the database.
 
     Returns:
         pd.DataFrame: DataFrame with light experiment data.
@@ -263,7 +321,7 @@ def get_light_experiment_data():
         WHERE ex.tracked = true
         ORDER by ex.created_at DESC;
     """
-    return execute_query(query_light)
+    return execute_single_query(query_light, return_dataframe=True)
 
 
 def get_full_experiment_data(selected_experiment_id):
@@ -315,7 +373,9 @@ def get_full_experiment_data(selected_experiment_id):
             ex.id = %s 
             AND ex.tracked = true;
     """
-    return execute_query(query_full, (selected_experiment_id,))
+    return execute_single_query(
+        query_full, (selected_experiment_id,), return_dataframe=True
+    )
 
 
 def get_prompts():
@@ -363,7 +423,7 @@ def get_prompts():
         WHERE 
             row_num = 1;
     """
-    return get_data(query)
+    return execute_single_query(query, return_dataframe=True)
 
 
 def get_samples():
@@ -386,7 +446,7 @@ def get_samples():
             m.id, m.sample_title, m.created_at
             order by m.created_at desc;
     """
-    return get_data(query)
+    return execute_single_query(query, return_dataframe=True)
 
 
 def get_teachers():
@@ -396,13 +456,12 @@ def get_teachers():
         pd.DataFrame: DataFrame with teachers data.
     """
     query = "SELECT id, name FROM m_teachers;"
-    return get_data(query)
+    return execute_single_query(query, return_dataframe=True)
 
 
 def get_samples_data(add_query):
-    """
-    Retrieves lesson plans data from the database based on an additional 
-    query.
+    """ Retrieve lesson plans data from the database based on an 
+    additional query.
 
     Args:
         add_query (str): Additional query to execute.
@@ -410,25 +469,13 @@ def get_samples_data(add_query):
     Returns:
         list: List of lesson plans fetched from the database.
     """
-    conn = get_db_connection()
-    if not conn:
+    try:
+        results = execute_multi_query([(add_query, ())], return_results=True)
+        return results[0] if results else []
+    except Exception as e:
+        log_message("error", f"An unexpected error occurred: {e}")
         return []
     
-    try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(add_query)
-                lesson_plans = cur.fetchall()
-        return lesson_plans
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
-        return []
-    except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
-        return []
-
 
 def get_lesson_plans(limit):
     """ Retrieve lesson plans data from the database with a specified 
@@ -441,24 +488,13 @@ def get_lesson_plans(limit):
         list: List of lesson plans fetched from the database.
     """
     query = "SELECT * FROM m_lesson_plans ORDER BY created_at DESC LIMIT %s;"
-    
-    conn = get_db_connection()
-    if not conn:
-        return []
+    params = (limit,)
     
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (limit,))
-                lesson_plans = cur.fetchall()
-        return lesson_plans
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
-        return []
+        results = execute_multi_query([(query, params)], return_results=True)
+        return results[0] if results else []
     except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
+        log_message("error", f"An unexpected error occurred: {e}")
         return []
 
 
@@ -483,30 +519,18 @@ def get_lesson_plans_by_id(sample_id, limit=None):
     if limit:
         query += " LIMIT %s"
         params.append(int(limit))
-        
-    conn = get_db_connection()
-    if not conn:
-        return []
-
+    
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(query, params)
-                lesson_plans = cur.fetchall()
-        return lesson_plans
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
-        return []
+        results = execute_multi_query([(query, tuple(params))], return_results=True)
+        return results[0] if results else []
     except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
+        log_message("error", f"An unexpected error occurred: {e}")
         return []
 
 
 def add_experiment(experiment_name, sample_ids, created_by, tracked, 
-                   llm_model="gpt-4", llm_model_temp=0.5, description="None", 
-                   status="PENDING"):
+        llm_model="gpt-4", llm_model_temp=0.5, description="None", 
+        status="PENDING"):
     """ Add a new experiment to the database.
 
     Args:
@@ -522,7 +546,7 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
     Returns:
         int: ID of the newly added experiment.
     """
-    sample_ids_str = ",".join(sample_ids)
+    sample_ids_str = ",".join(map(str, sample_ids))
     insert_query = """
         INSERT INTO m_experiments (
             created_at, updated_at, experiment_name, sample_id, llm_model, 
@@ -531,29 +555,19 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
             now(), now(), %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id;
     """
-    
-    conn = get_db_connection()
-    if not conn:
-        return None
-    
+    params = (
+        experiment_name, sample_ids_str, llm_model, llm_model_temp, 
+        description, created_by, status, tracked
+    )
+
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    insert_query, 
-                    (experiment_name, sample_ids_str, llm_model, 
-                    llm_model_temp, description, created_by, status, tracked)
-                )
-                experiment_id = cur.fetchone()[0]
-            conn.commit()
-        return experiment_id
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
+        results = execute_multi_query(
+            [(insert_query, params)], return_results=True
+        )
+        return results[0][0][0] if results else None
     except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
-    return None
+        log_message("error", f"An unexpected error occurred: {e}")
+        return None
 
 
 def fix_json_format(json_string):
@@ -568,16 +582,17 @@ def fix_json_format(json_string):
     try:
         json.loads(json_string)
         return json_string
-    
     except ValueError:
-        json_string = re.sub(r'\\\\"', r'"', json_string)  
-        json_string = re.sub(r"'", r'"', json_string)
-        json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)
-        try:
-            json.loads(json_string)
-            return json_string
-        except ValueError:
-            return "{}"
+        pass
+    
+    json_string = re.sub(r'\\\\"', r'"', json_string)  
+    json_string = re.sub(r"'", r'"', json_string)
+    json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)
+    try:
+        json.loads(json_string)
+        return json_string
+    except ValueError:
+        return "{}"
 
 
 def get_prompt(prompt_id):
@@ -588,7 +603,7 @@ def get_prompt(prompt_id):
 
     Returns:
         dict: Dictionary containing prompt details, 
-        or None if prompt is not found.
+            or None if prompt is not found.
     """
     query = """
         SELECT id, prompt_objective, lesson_plan_params, output_format, 
@@ -616,7 +631,7 @@ def get_prompt(prompt_id):
             "prompt_title": result[7],
             "experiment_description": result[8],
             "objective_title": result[9],
-            "objective_desc": result[10]
+            "objective_desc": result[10],
         }
     return None
 
@@ -668,7 +683,7 @@ def render_prompt(lesson_plan, prompt_details):
 
     Returns:
         str: Rendered prompt template or error message if template 
-        cannot be loaded.
+            cannot be loaded.
     """
     jinja_path = get_env_variable('JINJA_TEMPLATE_PATH')
     jinja_env = Environment(
@@ -695,8 +710,52 @@ def render_prompt(lesson_plan, prompt_details):
     )
 
 
-def run_inference(lesson_plan, prompt_id, llm_model, 
-                  llm_model_temp, timeout=15):
+def clean_response(response_text):
+    """ Clean and process a JSON response text by removing extraneous 
+    characters and decoding the JSON content.
+
+    The function strips the input text, removes enclosing triple 
+    backticks if they exist, and then removes any newline, 
+    carriage return, tab, and backslash characters. It attempts to 
+    decode the cleaned text into a JSON object. If successful, it 
+    returns the decoded JSON object and a success status. If a JSON 
+    decoding error occurs, it identifies the error position, extracts a 
+    snippet around the problematic area, and returns an error message 
+    and failure status.
+
+    Args:
+        response_text (str): The raw response text to be cleaned and 
+            decoded.
+
+    Returns:
+        Tuple[Union[Dict, Any], str]: A tuple containing the cleaned and 
+            decoded JSON object or an error message in case of failure, 
+            and a status string ("SUCCESS" or "FAILURE").
+    """
+    try:
+        raw_content = response_text.strip()
+        if raw_content.startswith("```json"):
+            raw_content = raw_content[7:].strip()
+        if raw_content.endswith("```"):
+            raw_content = raw_content[:-3].strip()
+        cleaned_content = re.sub(r"[\n\r\t\\]", "", raw_content)
+        return json.loads(cleaned_content), "SUCCESS"
+    except json.JSONDecodeError as e:
+        error_position = e.pos
+        start_snippet = max(0, error_position - 40)
+        end_snippet = min(len(json_str), error_position + 40)
+        snippet = response_text[start_snippet:end_snippet]
+        return {
+            "result": None,
+            "justification": (
+                f"An error occurred: {e}. "
+                f"Problematic snippet: {repr(snippet)}"
+            )
+        }, "FAILURE"
+        
+
+def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp, 
+        timeout=15):
     """ Run inference using a lesson plan and a prompt ID.
 
     Args:
@@ -709,25 +768,26 @@ def run_inference(lesson_plan, prompt_id, llm_model,
     Returns:
         dict: Inference result or error response.
     """
-    if set(lesson_plan.keys()) != {"title", "topic", "subject", "keyStage"}:
+    required_keys = ["title", "topic", "subject", "keyStage"]
+    if not all(k in lesson_plan for k in required_keys):
         return {
             "response": {
-                "result": None,
-                "justification": "Lesson data is missing for this check.",
+                "result": None, 
+                "justification": "Lesson data is missing for this check."
             },
             "status": "ABORTED",
         }
-
-    if not lesson_plan:
-        return {
-            "response": {
-                "result": None,
-                "justification": "Lesson data is missing for this check.",
-            },
-            "status": "ABORTED",
-        }
-        
+    
     prompt_details = get_prompt(prompt_id)
+    if not prompt_details:
+        return {
+            "response": {
+                "result": None,
+                "justification": "Prompt details not found for the given ID."
+            },
+            "status": "ABORTED",
+        }
+    
     cleaned_prompt_details = process_prompt(prompt_details)
     prompt = render_prompt(lesson_plan, cleaned_prompt_details)
 
@@ -752,36 +812,17 @@ def run_inference(lesson_plan, prompt_id, llm_model,
             frequency_penalty=0,
             presence_penalty=0,
         )
-
-        try:
-            raw_content = response.choices[0].message.content.strip()
-            if raw_content.startswith("```json"):
-                raw_content = raw_content[7:].strip()
-            if raw_content.endswith("```"):
-                raw_content = raw_content[:-3].strip()
-            cleaned_content = re.sub(r"[\n\r\t\\]", "", raw_content)
-
-            return {
-                "response": json.loads(cleaned_content),
-                "status": "SUCCESS",
-            }
-
-        except json.JSONDecodeError as e:
-            print(response.choices[0].message.content)
-            error_position = e.pos
-            json_str = response.choices[0].message.content
-            start_snippet = max(0, error_position - 40)
-            end_snippet = min(len(json_str), error_position + 40)
-            snippet = json_str[start_snippet:end_snippet]
-            return {
-                "response": {
-                    "result": None,
-                    "justification": f"An error occurred: {e}. Problematic snippet: {repr(snippet)}",
-                },
-                "status": "FAILURE",
-            }
-
+        
+        cleaned_content, status = clean_response(
+            response.choices[0].message.content
+        )
+        return {
+            "response": cleaned_content,
+            "status": status,
+        }
+            
     except Exception as e:
+        log_message("error", f"Unexpected error during inference: {e}")
         return {
             "response": {
                 "result": None,
@@ -792,7 +833,7 @@ def run_inference(lesson_plan, prompt_id, llm_model,
 
 
 def add_results(experiment_id, prompt_id, lesson_plan_id, score, 
-                justification, status):
+        justification, status):
     """ Add results of an experiment to the database.
 
     Args:
@@ -806,10 +847,6 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
     Returns:
         None
     """
-    conn = get_db_connection()
-    if not conn:
-        return None
-    
     try:
         if score is not None and score != "":
             try:
@@ -830,29 +867,22 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
                 lesson_plan_id, result, justification, status)
             VALUES (now(), now(), %s, %s, %s, %s, %s, %s);
         """
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    insert_query,
-                    (
-                        experiment_id, prompt_id, lesson_plan_id, score, 
-                        justification, status
-                    ),
-                )
-            conn.commit()
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
+        params = (
+            experiment_id, prompt_id, lesson_plan_id, score, justification, 
+            status
+        )
+        
+        success = execute_multi_query([(insert_query, params)])
+        if not success:
+            log_message("error", "Failed to insert result")
     except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
-    return None
+        log_message("error", f"An unexpected error occurred: {e}")
 
 
 def run_test(sample_id, prompt_id, experiment_id, limit, llm_model, 
-             llm_model_temp, timeout=15):
-    """ Run a test for each lesson plan associated with a sample 
-    and add results to the database.
+        llm_model_temp, timeout=15):
+    """ Run a test for each lesson plan associated with a sample and add 
+    results to the database.
 
     Args:
         sample_id (str): ID of the sample.
@@ -978,25 +1008,18 @@ def update_status(experiment_id, status):
         UPDATE m_experiments SET status = %s
         WHERE id = %s;
     """
-    conn = get_db_connection()
-    if not conn:
-        return
-    
+    params = (status, experiment_id)
+
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (status, experiment_id))
-            conn.commit()
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
+        success = execute_multi_query([(query, params)])
+        if not success:
+            log_message("error", "Failed to update status")
     except Exception as e:
-        log_message("error", f"Error executing query: {e}")
-        conn.rollback()
+        log_message("error", f"An unexpected error occurred: {e}")
 
 
 def start_experiment(experiment_name, exp_description, sample_ids, created_by, 
-                     prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5):
+        prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5):
     """ Start a new experiment, run tests for each sample and prompt, 
     and update status.
 
@@ -1048,10 +1071,9 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 
 
 def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format, 
-                          rating_criteria, general_criteria_note, 
-                          rating_instruction, prompt_title, 
-                          experiment_description, objective_title, 
-                          objective_desc, prompt_created_by, version,):
+        rating_criteria, general_criteria_note, rating_instruction, 
+        prompt_title, experiment_description, objective_title, objective_desc, 
+        prompt_created_by, version,):
     """ Add or retrieve prompt metadata in the database.
 
     Args:
@@ -1079,60 +1101,54 @@ def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format,
         + general_criteria_note
         + rating_instruction
     )
-    prompt_hash = hashlib.sha256(unique_prompt_details.encode("utf-8")).digest()
+    prompt_hash = hashlib.sha256(
+        unique_prompt_details.encode("utf-8")
+    ).digest()
 
     duplicates_check = "SELECT id FROM m_prompts WHERE prompt_hash = %s;"
     
-    conn = get_db_connection()
-    if not conn:
-        return None
-    
     try:
-        with conn:
-            with conn.cursor() as cur:
-                cur.execute(duplicates_check, (psycopg2.Binary(prompt_hash),))
-                duplicates = cur.fetchall()
+        results = execute_multi_query(
+            [(duplicates_check, (psycopg2.Binary(prompt_hash),))], 
+            return_results=True
+        )
+        duplicates = results[0] if results else []
 
-                if len(duplicates) == 0:
-                    insert_query = """
-                        INSERT INTO m_prompts (
-                            created_at, updated_at, prompt_objective, 
-                            lesson_plan_params, output_format, rating_criteria, 
-                            general_criteria_note, rating_instruction, prompt_hash, 
-                            prompt_title, experiment_description, objective_title, 
-                            objective_desc, created_by, version
-                        )
-                        VALUES (
-                            now(), now(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                            %s, %s, %s
-                        ) 
-                        RETURNING id;
-                    """
-                    cur.execute(
-                        insert_query,
-                        (
-                            prompt_objective, lesson_plan_params, output_format,
-                            json.dumps(rating_criteria), general_criteria_note,
-                            rating_instruction, prompt_hash, prompt_title,
-                            experiment_description, objective_title, objective_desc,
-                            prompt_created_by, version,
-                        ),
-                    )
-                    conn.commit()
-                    returned_id = cur.fetchone()[0]
-                else:
-                    return duplicates[0][0]
-        return returned_id
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-        log_message("error", f"Error executing query: {db_err}")
-        conn.rollback()
-    except psycopg2.Error as e:
-        log_message("error", f"Error checking duplicates: {e}")
-    return None
+        if len(duplicates) == 0:
+            insert_query = """
+                INSERT INTO m_prompts (
+                    created_at, updated_at, prompt_objective, 
+                    lesson_plan_params, output_format, rating_criteria, 
+                    general_criteria_note, rating_instruction, prompt_hash, 
+                    prompt_title, experiment_description, objective_title, 
+                    objective_desc, created_by, version
+                )
+                VALUES (
+                    now(), now(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                    %s, %s, %s
+                ) 
+                RETURNING id;
+            """
+            params = (
+                prompt_objective, lesson_plan_params, output_format,
+                json.dumps(rating_criteria), general_criteria_note,
+                rating_instruction, prompt_hash, prompt_title,
+                experiment_description, objective_title, objective_desc,
+                prompt_created_by, version
+            )
+            results = execute_multi_query(
+                [(insert_query, params)], return_results=True
+            )
+            return results[0][0][0] if results else None
+        else:
+            return duplicates[0][0]
+    except Exception as e:
+        log_message("error", f"An unexpected error occurred: {e}")
+        return None
 
 
 def generate_experiment_placeholders(model_name, temperature, limit, 
-                                     prompt_count, sample_count, teacher_name):
+        prompt_count, sample_count, teacher_name):
     """ Generate placeholders for an experiment based on specified parameters.
 
     Args:

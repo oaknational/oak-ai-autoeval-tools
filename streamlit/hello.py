@@ -27,10 +27,8 @@ scripts for each menu option in the pages/ directory. Click on a menu
 item to run the corresponding script in the main window.
 """
 
-# Import the required libraries and modules
 import streamlit as st
 
-# Specify the icon and text displayed in the browser tab
 st.set_page_config(
     page_title="Hello",
     page_icon="👋",

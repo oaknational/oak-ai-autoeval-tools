@@ -2,6 +2,10 @@
 
 Functions:
 
+- initialize_database:
+This function initializes the database schema and populates it with data
+by calling the functions listed below to create tables and rows.
+
 Create new tables in the database:
 - new_objectives_table
 - new_prompts_table
@@ -23,23 +27,20 @@ Create new rows in tables:
 - add_obj_prompt (link objective with prompt)
 """
 
-# Import the required libraries and modules
-import os
 import csv
 import json
 import uuid
 import hashlib
+
 import psycopg2
 import psycopg2.extras
-
 from dotenv import load_dotenv
-from utils import get_db_connection
 
-# Enable direct use of UUID objects in PostgreSQL
-psycopg2.extras.register_uuid()
+from utils import execute_single_query, execute_multi_query, log_message
 
-# Load environment variables from .env file into Python environment
+
 load_dotenv()
+psycopg2.extras.register_uuid()
 
 
 def new_objectives_table():
@@ -49,27 +50,16 @@ def new_objectives_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table `m_objectives`
-    cur = conn.cursor()
-    cur.execute(
-        """ 
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_objectives (
-            id UUID DEFAULT 
-            uuid_generate_v4() PRIMARY KEY, 
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(), 
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(), 
-            created_by TEXT, title TEXT, 
-            description TEXT
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            created_by TEXT, title TEXT,
+            description TEXT);
+    """
+    execute_single_query(query)
 
 
 def add_objective(created_by, title, description):
@@ -83,21 +73,12 @@ def add_objective(created_by, title, description):
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Insert a new row into `m_objectives` table
-    cur = conn.cursor()
-    cur.execute(
-        """ 
-        INSERT INTO m_objectives (created_by, title, description) 
+    query = """
+        INSERT INTO m_objectives (created_by, title, description)
         VALUES (%s, %s, %s);
-        """,
-        (created_by, title, description),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+    """
+    params = (created_by, title, description)
+    execute_single_query(query, params)
 
 
 def new_prompts_table():
@@ -106,13 +87,7 @@ def new_prompts_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table `m_prompts`
-    cur = conn.cursor()
-    cur.execute(
-        """ 
+    query = """ 
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_prompts (
             id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -130,18 +105,13 @@ def new_prompts_table():
             objective_title TEXT,
             objective_desc TEXT,
             created_by TEXT,
-            version TEXT
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            version TEXT);
+    """
+    execute_single_query(query)
 
 
-def upload_prompt(
-    prompt_title, prompt, prompt_hash, output_format, lesson_plan_params, created_by
-):
+def upload_prompt(prompt_title, prompt, prompt_hash, output_format, 
+        lesson_plan_params, created_by):
     """ Upload a prompt for experiments into the `m_prompts` table.
 
     Args:
@@ -155,48 +125,18 @@ def upload_prompt(
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Insert a new row into the `m_prompts` table
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         INSERT INTO m_prompts (
             prompt_title, prompt, prompt_hash, output_format, 
             lesson_plan_params, created_by) 
         VALUES (%s, %s, %s, %s, %s, %s);
-        """,
-        (
-            prompt_title,
-            prompt,
-            prompt_hash,
-            output_format,
-        ),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
-# WHATS THIS STUFF DOING HERE?
-
-prompt_title = "<PROMPT TITLE>"
-
-prompt = """
-        <PROMPT>
     """
-
-prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
-
-output_format = "<SCORE OR TRUE/FALSE>"
-
-lesson_plan_params = "lesson_plan"  # Input params for prompt
-
-created_by = "<NAME>"
-
-# END OF STUFF
-
+    params = (
+        prompt_title, prompt, prompt_hash, output_format, lesson_plan_params, 
+        created_by
+    )
+    execute_single_query(query, params)
+        
 
 def new_obj_prompt_table():
     """ Create a new table 'm_objectives_prompts' in the database to 
@@ -205,24 +145,14 @@ def new_obj_prompt_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table `m_objectives_prompts`
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_objectives_prompts (
             objective_id UUID,
-            prompt_id UUID
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
+            prompt_id UUID);
+    """
+    execute_single_query(query)
+        
 
 def add_obj_prompt(objective_id, prompt_id):
     """ Link an objective with a prompt in the 'm_objectives_prompts' 
@@ -235,49 +165,30 @@ def add_obj_prompt(objective_id, prompt_id):
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Insert a new row into the 'm_objectives_prompts' table
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO m_objectives_prompts (objective_id, prompt_id) 
+    query = """
+        INSERT INTO m_objectives_prompts (objective_id, prompt_id)
         VALUES (%s, %s);
-        """,
-        (objective_id, prompt_id),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-
+    """
+    params = (objective_id, prompt_id)
+    execute_single_query(query, params)
+        
+        
 def new_samples_table():
     """ Create a new table 'm_samples' in the database to store samples.
 
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table 'm_samples'
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_samples (
             id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
             sample_title TEXT,
-            created_by TEXT
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            created_by TEXT);
+    """
+    execute_single_query(query)
 
 
 def add_to_samples(sample_table, sample_title, created_by):
@@ -291,22 +202,13 @@ def add_to_samples(sample_table, sample_title, created_by):
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Insert a new row into the 'm_samples' table
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO m_samples (sample_table, sample_title, created_by) 
+    query = """
+        INSERT INTO m_samples (sample_table, sample_title, created_by)
         VALUES (%s, %s, %s);
-        """,
-        (sample_table, sample_title, created_by),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
+    """
+    params = (sample_table, sample_title, created_by)
+    execute_single_query(query, params)
+                    
 
 def new_experiments_table():
     """ Create a new table 'm_experiments' in the database to store
@@ -315,13 +217,7 @@ def new_experiments_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table 'm_experiments'
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_experiments (
             id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -331,19 +227,15 @@ def new_experiments_table():
             objective_id UUID,
             sample_id TEXT,
             llm_model TEXT,
-            llm_model_temp FLOAT, 
+            llm_model_temp FLOAT,
             llm_max_tok INT,
             description TEXT,
             created_by TEXT,
             status TEXT,
-            tracked BOOL DEFAULT TRUE
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
+            tracked BOOL DEFAULT TRUE);
+    """
+    execute_single_query(query)
+                    
 
 def new_results_table():
     """ Create a new table 'm_results' in the database to store results 
@@ -352,13 +244,7 @@ def new_results_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table 'm_results'
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_results (
             id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -369,13 +255,9 @@ def new_results_table():
             lesson_plan_id TEXT,
             result TEXT,
             justification TEXT,
-            status TEXT
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            status TEXT);
+    """
+    execute_single_query(query)
 
 
 def new_samples_lessons_table():
@@ -385,24 +267,14 @@ def new_samples_lessons_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table 'm_sample_lesson_plans'
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_sample_lesson_plans (
             sample_id UUID,
             lesson_plan_id TEXT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now());
+    """
+    execute_single_query(query)
 
 
 def new_teachers_table():
@@ -412,24 +284,14 @@ def new_teachers_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table 'm_teachers'
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_teachers (
             id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-            name TEXT
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            name TEXT);
+    """
+    execute_single_query(query)
 
 
 def add_teacher(name):
@@ -443,23 +305,16 @@ def add_teacher(name):
         str: Success or error message indicating whether the teacher was
         added successfully.
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Check if the teacher already exists
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM m_teachers WHERE name = %s;", (name,))
-    if cur.fetchone() is not None:
-        print("Teacher already exists.")
-        cur.close()
-        conn.close()
+    select_query = """
+        SELECT 1 FROM m_teachers WHERE name = %s;
+    """
+    if execute_single_query(select_query, (name,)):
         return "Teacher already exists."
 
-    # Insert a new row into the 'm_teachers' table
-    cur.execute("INSERT INTO m_teachers (name) VALUES (%s);", (name,))
-    conn.commit()
-    cur.close()
-    conn.close()
+    insert_query = """
+        INSERT INTO m_teachers (name) VALUES (%s);
+    """
+    execute_single_query(insert_query, (name,))
     return "Teacher added successfully."
 
 
@@ -470,13 +325,7 @@ def new_lesson_plans_table():
     Returns:
         None
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
-
-    # Create a new table 'lesson_plans'
-    cur = conn.cursor()
-    cur.execute(
-        """
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS lesson_plans (
             id TEXT,
@@ -485,13 +334,9 @@ def new_lesson_plans_table():
             generation_details TEXT,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
             key_stage TEXT,
-            subject TEXT
-        );
-        """
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+            subject TEXT);
+    """
+    execute_single_query(query)
 
 
 def insert_lesson_plan():
@@ -499,44 +344,39 @@ def insert_lesson_plan():
     a JSON file.
 
     Returns:
-        None
+        str: Success message or error message indicating the result of the 
+        operation.
     """
-    # Establish connection to the PostgreSQL database
-    conn = get_db_connection()
+    try:
+        with open("data/sample_lesson.json", "r") as file:
+            json_data = file.read()
 
-    with open("data/sample_lesson.json", "r") as file:
-        json_data = file.read()
+        id_value = uuid.uuid4()
+        lesson_id_value = None
+        json_value = json_data
+        generation_details_value = "sample lesson plan"
+        key_stage_value = "key-stage-1"
+        subject_value = "english"
 
-    # Define the values to insert
-    id_value = uuid.uuid4()
-    lesson_id_value = None
-    json_value = json_data
-    generation_details_value = "sample lesson plan"
-    key_stage_value = "key-stage-1"
-    subject_value = "english"
-
-    # Insert a new row into the 'lesson_plans' table
-    cur = conn.cursor()
-    cur.execute(
+        query = """
+            INSERT INTO lesson_plans (
+                id, lesson_id, json, generation_details, created_at,
+                key_stage, subject)
+            VALUES (%s, %s, %s, %s, now(), %s, %s);
         """
-        INSERT INTO lesson_plans (
-            id, lesson_id, json, generation_details, created_at, 
-            key_stage, subject
-        ) 
-        VALUES (%s, %s, %s, %s, now(), %s, %s);
-        """,
-        (
-            id_value,
-            lesson_id_value,
-            json_value,
-            generation_details_value,
-            key_stage_value,
-            subject_value,
-        ),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+        params = (
+            id_value, lesson_id_value, json_value, generation_details_value, 
+            key_stage_value, subject_value
+        )
+        
+        success = execute_multi_query([(query, params)])
+        return (
+            "Lesson plan inserted successfully." if success else 
+            "An unexpected error occurred."
+        )
+    except Exception as e:
+        log_message("error", f"An unexpected error occurred: {e}")
+        return "An unexpected error occurred."
 
 
 def insert_sample_prompt(csv_file_path):
@@ -546,77 +386,66 @@ def insert_sample_prompt(csv_file_path):
         csv_file_path (str): CSV file path containing prompts data.
 
     Returns:
-        None
+        str: Success message or error message indicating the result of the 
+        operation.
     """
-    # Connect to the PostgreSQL database
-    conn = get_db_connection()
+    try:
+        with open(csv_file_path, "r") as file:
+            reader = csv.DictReader(file)
+            queries_and_params = []
 
-    with open(csv_file_path, "r") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            prompt_data = json.loads(row["result"])
+            for row in reader:
+                prompt_data = json.loads(row["result"])
 
-            # Extract data from the row's JSON object
-            id = prompt_data["id"]
-            prompt_title = prompt_data["prompt_title"]
-            prompt_objective = prompt_data["prompt_objective"]
-            output_format = prompt_data["output_format"]
-            lesson_plan_params = prompt_data["lesson_plan_params"]
-            rating_criteria = prompt_data["rating_criteria"]
-            general_criteria_note = prompt_data["general_criteria_note"]
-            rating_instruction = prompt_data["rating_instruction"]
-            experiment_description = prompt_data["experiment_description"]
-            objective_title = prompt_data["objective_title"]
-            objective_desc = prompt_data["objective_desc"]
-            created_by = prompt_data["created_by"]
-            version = prompt_data["version"]
+                id = prompt_data["id"]
+                prompt_title = prompt_data["prompt_title"]
+                prompt_objective = prompt_data["prompt_objective"]
+                output_format = prompt_data["output_format"]
+                lesson_plan_params = prompt_data["lesson_plan_params"]
+                rating_criteria = prompt_data["rating_criteria"]
+                general_criteria_note = prompt_data["general_criteria_note"]
+                rating_instruction = prompt_data["rating_instruction"]
+                experiment_description = prompt_data["experiment_description"]
+                objective_title = prompt_data["objective_title"]
+                objective_desc = prompt_data["objective_desc"]
+                created_by = prompt_data["created_by"]
+                version = prompt_data["version"]
 
-            # Compute the prompt hash
-            prompt_hash = hashlib.sha256(prompt_objective.encode()).digest()
+                prompt_hash = hashlib.sha256(prompt_objective.encode()).digest()
 
-            # Insert a new row into m_prompts
-            cur = conn.cursor()
-            cur.execute(
+                query = """
+                    INSERT INTO m_prompts (
+                        id, prompt_title, prompt_objective,
+                        prompt_hash, output_format, lesson_plan_params,
+                        rating_criteria, general_criteria_note,
+                        rating_instruction, experiment_description,
+                        objective_title, objective_desc, created_by,
+                        version, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, now(), now());
                 """
-                INSERT INTO m_prompts (
+                params = (
                     id, prompt_title, prompt_objective, prompt_hash, 
                     output_format, lesson_plan_params, rating_criteria, 
                     general_criteria_note, rating_instruction, 
                     experiment_description, objective_title, 
-                    objective_desc, created_by, version, created_at, 
-                    updated_at
+                    objective_desc, created_by, version
                 )
-                VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-                    %s, %s, now(), now()
-                );
-                """,
-                (
-                    id,
-                    prompt_title,
-                    prompt_objective,
-                    prompt_hash,
-                    output_format,
-                    lesson_plan_params,
-                    rating_criteria,
-                    general_criteria_note,
-                    rating_instruction,
-                    experiment_description,
-                    objective_title,
-                    objective_desc,
-                    created_by,
-                    version,
-                ),
+
+                queries_and_params.append((query, params))
+            
+            success = execute_multi_query(queries_and_params)
+            return (
+                "Sample prompts inserted successfully." if success else 
+                "An unexpected error occurred."
             )
-            conn.commit()
-            cur.close()
-    conn.close()
+    except Exception as e:
+        log_message("error", f"An unexpected error occurred: {e}")
+        return "An unexpected error occurred."
 
 
-if __name__ == "__main__":
+def initialize_database(csv_file_path):
     """Initialize the database schema and populate it with data."""
-    csv_file_path = "data/sample_prompts.csv"
-
     new_experiments_table()
     new_results_table()
     new_prompts_table()
@@ -629,3 +458,7 @@ if __name__ == "__main__":
     insert_lesson_plan()
     add_teacher("John Doe")
     insert_sample_prompt(csv_file_path)
+    
+
+if __name__ == "__main__":
+    initialize_database("data/sample_prompts.csv")
