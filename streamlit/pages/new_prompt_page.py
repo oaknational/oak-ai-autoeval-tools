@@ -68,6 +68,13 @@ rating_instruction_header = "#### Rating Instruction"
 experiment_description_header = "#### Experiment Description"
 objective_title_header = "#### Prompt Group"
 
+# Sidebar Headers
+objective_sb_header = "### Objective:"
+rating_criteria_sb_header = "### Rating Criteria:"
+evaluation_criteria_sb_header = "### Evaluation Criteria:"
+rating_instruction_sb_header = "### Rating Instruction:"
+evaluation_instruction_sb_header = "### Evaluation Instruction:"
+
 # Function to clear cache
 def clear_all_caches():
     st.cache_data.clear()
@@ -456,7 +463,7 @@ if action == "Create a new prompt":
     prompt_objective = st.text_area(prompt_objective_text, value="", height=200)
     
     # Display the objective in the sidebar
-    st.sidebar.markdown("### Objective:")
+    st.sidebar.markdown(objective_sb_header)
     truncated_prompt_objective = get_first_ten_words(prompt_objective)
     st.sidebar.markdown(f"{truncated_prompt_objective}")
 
@@ -495,7 +502,7 @@ if action == "Create a new prompt":
         
         # Display the rating criteria in the sidebar
         if output_format == 'Score':
-            st.sidebar.markdown("### Rating Criteria:")
+            st.sidebar.markdown(rating_criteria_sb_header)
 
             # Extract and display label and description for 5
             label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
@@ -510,7 +517,7 @@ if action == "Create a new prompt":
             st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
 
         elif output_format == 'Boolean':
-            st.sidebar.markdown("### Evaluation Criteria:")
+            st.sidebar.markdown(evaluation_criteria_sb_header)
 
             # Extract and display description for TRUE and FALSE ratings
             desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
@@ -563,10 +570,10 @@ if action == "Create a new prompt":
         # Display truncated rating instruction in the sidebar
         truncated_rating_instruction = get_first_ten_words(rating_instruction)
         if output_format == 'Score':
-            st.sidebar.markdown("### Rating Instruction:")
+            st.sidebar.markdown(rating_instruction_sb_header)
             st.sidebar.markdown(f"{truncated_rating_instruction}")
         elif output_format == 'Boolean':
-            st.sidebar.markdown("### Evaluation Instruction:")
+            st.sidebar.markdown(evaluation_instruction_sb_header)
             st.sidebar.markdown(f"{truncated_rating_instruction}")
 
         # Leave experiment description empty (redundant field)
@@ -657,7 +664,7 @@ if action == "Modify an existing prompt":
 
             # Display the objective in the sidebar
             truncated_prompt_objective = get_first_ten_words(prompt_objective)
-            st.sidebar.markdown("### Objective:")
+            st.sidebar.markdown(objective_sb_header)
             st.sidebar.markdown(f"{truncated_prompt_objective}")
 
             # Display the non-editable lesson plan parameters
@@ -685,7 +692,7 @@ if action == "Modify an existing prompt":
 
                 # Display the rating criteria in the sidebar
                 if output_format == 'Score':
-                    st.sidebar.markdown("### Rating Criteria:")
+                    st.sidebar.markdown(rating_criteria_sb_header)
 
                     # Extract and display label and description for 5
                     label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
@@ -700,7 +707,7 @@ if action == "Modify an existing prompt":
                     st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
 
                 elif output_format == 'Boolean':
-                    st.sidebar.markdown("### Evaluation Criteria:")
+                    st.sidebar.markdown(evaluation_criteria_sb_header)
 
                     # Extract and display description for TRUE and FALSE ratings
                     desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
@@ -729,10 +736,10 @@ if action == "Modify an existing prompt":
                 # Display truncated rating instruction in the sidebar
                 truncated_rating_instruction = get_first_ten_words(st.session_state['draft_prompt']['rating_instruction'])
                 if output_format == 'Score':
-                    st.sidebar.markdown("### Rating Instruction:")
+                    st.sidebar.markdown(rating_instruction_sb_header)
                     st.sidebar.markdown(f"{truncated_rating_instruction}")
                 elif output_format == 'Boolean':
-                    st.sidebar.markdown("### Evaluation Instruction:")
+                    st.sidebar.markdown(evaluation_instruction_sb_header)
                     st.sidebar.markdown(f"{truncated_rating_instruction}")
 
                 # Leave experiment description empty (redundant field)
@@ -772,7 +779,7 @@ if action == "Modify an existing prompt":
 
                 # Display the rating criteria in the sidebar
                 if output_format == 'Score':
-                    st.sidebar.markdown("### Rating Criteria:")
+                    st.sidebar.markdown(rating_criteria_sb_header)
 
                     # Extract and display label and description for 5
                     label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
@@ -802,7 +809,7 @@ if action == "Modify an existing prompt":
                 elif output_format == 'Boolean':
 
                     # Extract and display description for TRUE and FALSE ratings
-                    st.sidebar.markdown("### Evaluation Criteria:")
+                    st.sidebar.markdown(evaluation_criteria_sb_header)
                     desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
                     desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
                     st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
@@ -846,10 +853,10 @@ if action == "Modify an existing prompt":
                 # Display truncated rating instruction in the sidebar
                 truncated_rating_instruction = get_first_ten_words(rating_instruction)
                 if output_format == 'Score':
-                    st.sidebar.markdown("### Rating Instruction:")
+                    st.sidebar.markdown(rating_instruction_sb_header)
                     st.sidebar.markdown(f"{truncated_rating_instruction}")
                 elif output_format == 'Boolean':
-                    st.sidebar.markdown("### Evaluation Instruction:")
+                    st.sidebar.markdown(evaluation_instruction_sb_header)
                     st.sidebar.markdown(f"{truncated_rating_instruction}")
                 
                 # Leave experiment description empty (redundant field)
