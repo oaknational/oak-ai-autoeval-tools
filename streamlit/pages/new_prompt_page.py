@@ -277,7 +277,66 @@ def objective_title_select(new = False, current_prompt=None):
         st.markdown(f"{objective_title} - {objective_desc}")
 
         return objective_title, objective_desc
-         
+
+def display_sidebar_score_criteria():
+    """
+    Display rating criteria for 'Score' output format in the sidebar.
+    """
+    st.sidebar.markdown(rating_criteria_sb_header)
+
+    label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
+    desc_5 = list(rating_criteria.values())[0]
+    desc_5_short = get_first_ten_words(desc_5)
+    st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
+    
+    # Extract and display label and description for 1
+    label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
+    desc_1 = list(rating_criteria.values())[1]
+    desc_1_short = get_first_ten_words(desc_1)
+    st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
+
+def display_sidebar_boolean_criteria():
+    """
+    Display rating criteria for 'Boolean' output format in the sidebar.
+    """
+    st.sidebar.markdown(evaluation_criteria_sb_header)
+
+    desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
+    desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
+    st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
+    st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
+
+def example_score_rating_criteria():
+    """
+    Display example rating criteria for 'Score' output format in an expander.
+    """
+    with st.expander("Example"):
+        example_rating_criteria = example_prompt_score['rating_criteria']
+        label_5 = list(example_rating_criteria.keys())[0].split('(')[-1].strip(')')
+        desc_5 = list(example_rating_criteria.values())[0]
+        label_1 = list(example_rating_criteria.keys())[1].split('(')[-1].strip(')')
+        desc_1 = list(example_rating_criteria.values())[1]
+        
+        st.write(f"**Label for 1**: {label_1}")
+        st.write(f"**Description for 1**: {desc_1}")
+        st.write(f"**Label for 5**: {label_5}")
+        st.write(f"**Description for 5**: {desc_5}")
+
+def example_boolean_rating_criteria():
+    """
+    Display example rating criteria for 'Boolean' output format in an expander.
+    """
+    with st.expander("Example"):
+        example_rating_criteria = example_prompt_boolean['rating_criteria']
+        desc_t = example_rating_criteria.get('TRUE', "")
+        desc_f = example_rating_criteria.get('FALSE', "")
+        
+        st.write(f"**Description for TRUE**: {desc_t}")
+        st.write(f"**Description for FALSE**: {desc_f}")
+
+def save_prompt():
+    return
+       
 def get_lesson_plan_params(plain_eng_list):
     """
     Maps a list of plain English lesson plan parameter names to their corresponding keys used in the system.
@@ -336,7 +395,6 @@ def get_first_ten_words(text):
     first_ten_words = ' '.join(words[:10]) + '...' if len(words) > 10 else text
     return first_ten_words
 
-# Function to fetch prompt details by ID
 def fetch_prompt_details_by_id(prompt_id):
     conn = psycopg2.connect(
         dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
@@ -500,52 +558,14 @@ if action == "Create a new prompt":
         # Display input fields for rating criteria based on output format
         rating_criteria = show_rating_criteria_input(output_format, new=True)
         
-        # Display the rating criteria in the sidebar
+        # Display the rating criteria in the sidebar and example rating criteria as an expander
         if output_format == 'Score':
-            st.sidebar.markdown(rating_criteria_sb_header)
-
-            # Extract and display label and description for 5
-            label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
-            desc_5 = list(rating_criteria.values())[0]
-            desc_5_short = get_first_ten_words(desc_5)
-            st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
-            
-            # Extract and display label and description for 1
-            label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
-            desc_1 = list(rating_criteria.values())[1]
-            desc_1_short = get_first_ten_words(desc_1)
-            st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
+            display_sidebar_score_criteria()
+            example_score_rating_criteria()
 
         elif output_format == 'Boolean':
-            st.sidebar.markdown(evaluation_criteria_sb_header)
-
-            # Extract and display description for TRUE and FALSE ratings
-            desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
-            desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
-            st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
-            st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
-
-        # Display example rating criteria in an expander
-        with st.expander("Example"):
-            if output_format == 'Score':
-                example_rating_criteria = example_prompt_score['rating_criteria']
-                label_5 = list(example_rating_criteria.keys())[0].split('(')[-1].strip(')')
-                desc_5 = list(example_rating_criteria.values())[0]
-                label_1 = list(example_rating_criteria.keys())[1].split('(')[-1].strip(')')
-                desc_1 = list(example_rating_criteria.values())[1]
-                
-                st.write(f"**Label for 1**: {label_1}")
-                st.write(f"**Description for 1**: {desc_1}")
-                st.write(f"**Label for 5**: {label_5}")
-                st.write(f"**Description for 5**: {desc_5}")
-            
-            elif output_format == 'Boolean':
-                example_rating_criteria = example_prompt_boolean['rating_criteria']
-                desc_t = example_rating_criteria.get('TRUE', "")
-                desc_f = example_rating_criteria.get('FALSE', "")
-                
-                st.write(f"**Description for TRUE**: {desc_t}")
-                st.write(f"**Description for FALSE**: {desc_f}")
+            display_sidebar_boolean_criteria()
+            example_boolean_rating_criteria()
 
         # Display and input for general criteria note
         st.markdown(general_criteria_note_header)
@@ -687,28 +707,10 @@ if action == "Modify an existing prompt":
 
                 # Display the rating criteria in the sidebar
                 if output_format == 'Score':
-                    st.sidebar.markdown(rating_criteria_sb_header)
-
-                    # Extract and display label and description for 5
-                    label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
-                    desc_5 = list(rating_criteria.values())[0]
-                    desc_5_short = get_first_ten_words(desc_5)
-                    st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
-                    
-                    # Extract and display label and description for 1
-                    label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
-                    desc_1 = list(rating_criteria.values())[1]
-                    desc_1_short = get_first_ten_words(desc_1)
-                    st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
+                    display_sidebar_score_criteria()
 
                 elif output_format == 'Boolean':
-                    st.sidebar.markdown(evaluation_criteria_sb_header)
-
-                    # Extract and display description for TRUE and FALSE ratings
-                    desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
-                    desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
-                    st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
-                    st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
+                    display_sidebar_boolean_criteria() 
 
                 # Display and input for general criteria note, initialised with the current prompt's general criteria note
                 st.markdown(general_criteria_note_header)
@@ -774,50 +776,20 @@ if action == "Modify an existing prompt":
 
                 # Display the rating criteria in the sidebar
                 if output_format == 'Score':
-                    st.sidebar.markdown(rating_criteria_sb_header)
 
-                    # Extract and display label and description for 5
-                    label_5 = list(rating_criteria.keys())[0].split('(')[-1].strip(')')
-                    desc_5 = list(rating_criteria.values())[0]
-                    desc_5_short = get_first_ten_words(desc_5)
-                    st.sidebar.markdown(f"**5 ({label_5}):** {desc_5_short}")
-                    
-                    # Extract and display label and description for 1
-                    label_1 = list(rating_criteria.keys())[1].split('(')[-1].strip(')')
-                    desc_1 = list(rating_criteria.values())[1]
-                    desc_1_short = get_first_ten_words(desc_1)
-                    st.sidebar.markdown(f"**1 ({label_1}):** {desc_1_short}")
+                    # Extract and display label and description for likert ratings
+                    display_sidebar_score_criteria()
 
                     # Display example rating criteria in an expander
-                    with st.expander("Example"):
-                        example_rating_criteria = example_prompt_score['rating_criteria']
-                        label_5 = list(example_rating_criteria.keys())[0].split('(')[-1].strip(')')
-                        desc_5 = list(example_rating_criteria.values())[0]
-                        label_1 = list(example_rating_criteria.keys())[1].split('(')[-1].strip(')')
-                        desc_1 = list(example_rating_criteria.values())[1]
-                        
-                        st.write(f"**Label for 1**: {label_1}")
-                        st.write(f"**Description for 1**: {desc_1}")
-                        st.write(f"**Label for 5**: {label_5}")
-                        st.write(f"**Description for 5**: {desc_5}")
+                    example_score_rating_criteria()
 
                 elif output_format == 'Boolean':
 
                     # Extract and display description for TRUE and FALSE ratings
-                    st.sidebar.markdown(evaluation_criteria_sb_header)
-                    desc_true_short = get_first_ten_words(rating_criteria['TRUE'])
-                    desc_false_short = get_first_ten_words(rating_criteria['FALSE'])
-                    st.sidebar.markdown(f"**TRUE:** {desc_true_short}")
-                    st.sidebar.markdown(f"**FALSE:** {desc_false_short}")
+                    display_sidebar_boolean_criteria()
 
                     # Display example rating criteria in an expander
-                    with st.expander("Example"):
-                        example_rating_criteria = example_prompt_boolean['rating_criteria']
-                        desc_t = example_rating_criteria.get('TRUE', "")
-                        desc_f = example_rating_criteria.get('FALSE', "")
-                        
-                        st.write(f"**Description for TRUE**: {desc_t}")
-                        st.write(f"**Description for FALSE**: {desc_f}")
+                    example_boolean_rating_criteria()
 
                 # Display and input for general criteria note
                 st.markdown(general_criteria_note_header)
