@@ -1,4 +1,5 @@
 {# ====== Section: Macros ====== #}
+{# Macro to check if a key in the lesson and display its value or 'Missing data' if the key is absent #}
 {%-macro check_and_display(lesson, key, display_name) -%}
 {{ display_name }}:
 {% if lesson[key] -%}
@@ -8,6 +9,7 @@ Missing data
 {%- endif %}
 (End of {{ display_name }})
 {%- endmacro -%}
+{# Macro to format an entire cycle with all of the available parts e.g. title, duration, explanation, etc. #}
 {%- macro format_cycle(cycle) -%}
 Title: {{ cycle.title | default('No title available') }}
 Duration: {{ cycle.durationInMinutes | default('No duration specified') }} minutes
@@ -31,6 +33,7 @@ Practice: {{ cycle.practice | default('No practice information available') }}
 Script: {{ cycle.script | default('No script information available') }}
 Feedback: {{ cycle.feedback | default('No feedback available') }}
 {%- endmacro -%}
+{# Macro to get all lesson cycles and format them #}
 {%- macro get_cycles(lesson) -%}
 {% set output = namespace(found=false) %}
 {% for cycle_key, cycle_value in lesson.items() -%}
@@ -49,6 +52,7 @@ Feedback: {{ cycle.feedback | default('No feedback available') }}
 Missing data
 {% endif -%}
 {%- endmacro -%}
+{# Macro to list specific attributes of each lesson cycle e.g. all the cycle feedback or all the cycle explanations #}
 {%- macro list_cycle_attributes(lesson, attribute) -%}
 {% set output = namespace(found=false) %}
 {% for cycle, details in lesson.items() -%}
@@ -68,6 +72,7 @@ Missing data
 Missing data
 {% endif -%}
 {%- endmacro -%}
+{# Macro to list specific keys within the explanation of each lesson cycle #}
 {%- macro list_cycle_attributes_by_key(lesson, attribute_key) -%}
 {% set output = namespace(found=false, all_missing=true) %}
 {% for cycle_key, cycle_value in lesson.items() -%}
@@ -85,6 +90,7 @@ Missing data
 {% endif -%}
 {%- endmacro -%}
 {# ====== End Section ====== #}
+{# Section to display the prompt objective and lesson plan components based on the lesson plan parameters provided #}
 Objective:
 {{prompt_objective }}
 
@@ -191,6 +197,7 @@ Scripts:
 {% endif -%}
 
 {% if output_format == 'Boolean' %}
+{# Section for Boolean output format - uses 'Evaluation' #}
 Evaluation Criteria:
 {% for criterion, description in rating_criteria.items() %}
 {{ criterion }}: {{ description }}
@@ -210,6 +217,7 @@ Only answer with the format above and return a single score, not a collection of
 A detailed justification is crucial.
 
 {% elif output_format == 'Score' %}
+{# Section for Score output format - uses 'Rating' #}
 Rating Criteria:
 {% for criterion, description in rating_criteria.items() %}
 {{ criterion }}: {{ description }}
