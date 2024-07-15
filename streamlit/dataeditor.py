@@ -20,9 +20,6 @@ Note:
 - If the input is not a string, the functions return it as-is.
 """
 
-import pandas as pd
-
-
 # Mappings for standardization
 KS_MAPPINGS = {
     "year 6": "key-stage-2",
@@ -58,7 +55,7 @@ def standardize_key_stage(ks):
         ks = ks.strip().lower()
         return KS_MAPPINGS.get(ks, ks)
     return ks  # Return as is if not a string
-    
+
 
 def standardize_subject(subj):
     """Standardizes subject labels."""

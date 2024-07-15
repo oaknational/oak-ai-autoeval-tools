@@ -87,7 +87,7 @@ def new_prompts_table():
     Returns:
         None
     """
-    query = """ 
+    query = """
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE TABLE IF NOT EXISTS m_prompts (
             id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -110,7 +110,7 @@ def new_prompts_table():
     execute_single_query(query)
 
 
-def upload_prompt(prompt_title, prompt, prompt_hash, output_format, 
+def upload_prompt(prompt_title, prompt, prompt_hash, output_format,
         lesson_plan_params, created_by):
     """ Upload a prompt for experiments into the `m_prompts` table.
 
@@ -132,11 +132,11 @@ def upload_prompt(prompt_title, prompt, prompt_hash, output_format,
         VALUES (%s, %s, %s, %s, %s, %s);
     """
     params = (
-        prompt_title, prompt, prompt_hash, output_format, lesson_plan_params, 
+        prompt_title, prompt, prompt_hash, output_format, lesson_plan_params,
         created_by
     )
     execute_single_query(query, params)
-        
+
 
 def new_obj_prompt_table():
     """ Create a new table 'm_objectives_prompts' in the database to 
@@ -152,7 +152,7 @@ def new_obj_prompt_table():
             prompt_id UUID);
     """
     execute_single_query(query)
-        
+
 
 def add_obj_prompt(objective_id, prompt_id):
     """ Link an objective with a prompt in the 'm_objectives_prompts' 
@@ -171,8 +171,8 @@ def add_obj_prompt(objective_id, prompt_id):
     """
     params = (objective_id, prompt_id)
     execute_single_query(query, params)
-        
-        
+
+
 def new_samples_table():
     """ Create a new table 'm_samples' in the database to store samples.
 
@@ -208,7 +208,7 @@ def add_to_samples(sample_table, sample_title, created_by):
     """
     params = (sample_table, sample_title, created_by)
     execute_single_query(query, params)
-                    
+
 
 def new_experiments_table():
     """ Create a new table 'm_experiments' in the database to store
@@ -235,7 +235,7 @@ def new_experiments_table():
             tracked BOOL DEFAULT TRUE);
     """
     execute_single_query(query)
-                    
+
 
 def new_results_table():
     """ Create a new table 'm_results' in the database to store results 
@@ -348,7 +348,7 @@ def insert_lesson_plan():
         operation.
     """
     try:
-        with open("data/sample_lesson.json", "r") as file:
+        with open("data/sample_lesson.json", "r", encoding="utf-8") as file:
             json_data = file.read()
 
         id_value = uuid.uuid4()
@@ -365,10 +365,10 @@ def insert_lesson_plan():
             VALUES (%s, %s, %s, %s, now(), %s, %s);
         """
         params = (
-            id_value, lesson_id_value, json_value, generation_details_value, 
+            id_value, lesson_id_value, json_value, generation_details_value,
             key_stage_value, subject_value
         )
-        
+
         success = execute_multi_query([(query, params)])
         return (
             "Lesson plan inserted successfully." if success else 
@@ -390,28 +390,16 @@ def insert_sample_prompt(csv_file_path):
         operation.
     """
     try:
-        with open(csv_file_path, "r") as file:
+        with open(csv_file_path, "r", encoding="utf-8") as file:
             reader = csv.DictReader(file)
             queries_and_params = []
 
             for row in reader:
                 prompt_data = json.loads(row["result"])
 
-                id = prompt_data["id"]
-                prompt_title = prompt_data["prompt_title"]
-                prompt_objective = prompt_data["prompt_objective"]
-                output_format = prompt_data["output_format"]
-                lesson_plan_params = prompt_data["lesson_plan_params"]
-                rating_criteria = prompt_data["rating_criteria"]
-                general_criteria_note = prompt_data["general_criteria_note"]
-                rating_instruction = prompt_data["rating_instruction"]
-                experiment_description = prompt_data["experiment_description"]
-                objective_title = prompt_data["objective_title"]
-                objective_desc = prompt_data["objective_desc"]
-                created_by = prompt_data["created_by"]
-                version = prompt_data["version"]
-
-                prompt_hash = hashlib.sha256(prompt_objective.encode()).digest()
+                prompt_hash = hashlib.sha256(
+                    prompt_data["prompt_objective"].encode()
+                ).digest()
 
                 query = """
                     INSERT INTO m_prompts (
@@ -425,15 +413,24 @@ def insert_sample_prompt(csv_file_path):
                         %s, %s, now(), now());
                 """
                 params = (
-                    id, prompt_title, prompt_objective, prompt_hash, 
-                    output_format, lesson_plan_params, rating_criteria, 
-                    general_criteria_note, rating_instruction, 
-                    experiment_description, objective_title, 
-                    objective_desc, created_by, version
+                    prompt_data["id"],
+                    prompt_data["prompt_title"],
+                    prompt_data["prompt_objective"],
+                    prompt_hash,
+                    prompt_data["output_format"],
+                    prompt_data["lesson_plan_params"],
+                    prompt_data["rating_criteria"],
+                    prompt_data["general_criteria_note"],
+                    prompt_data["rating_instruction"],
+                    prompt_data["experiment_description"],
+                    prompt_data["objective_title"],
+                    prompt_data["objective_desc"],
+                    prompt_data["created_by"],
+                    prompt_data["version"]
                 )
 
                 queries_and_params.append((query, params))
-            
+
             success = execute_multi_query(queries_and_params)
             return (
                 "Sample prompts inserted successfully." if success else 
@@ -458,7 +455,7 @@ def initialize_database(csv_file_path):
     insert_lesson_plan()
     add_teacher("John Doe")
     insert_sample_prompt(csv_file_path)
-    
+
 
 if __name__ == "__main__":
     initialize_database("data/sample_prompts.csv")

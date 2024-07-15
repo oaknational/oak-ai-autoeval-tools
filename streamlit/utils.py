@@ -74,10 +74,10 @@ import functools
 
 import pandas as pd
 import psycopg2
-import openai
-import streamlit as st
-from openai import OpenAI
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import openai
+from openai import OpenAI
+import streamlit as st
 
 
 def get_env_variable(var_name, default_value=None):
@@ -141,10 +141,10 @@ def get_db_connection():
         DB_PORT = get_env_variable("DB_PORT")
 
         conn =  psycopg2.connect(
-            dbname=DB_NAME, 
-            user=DB_USER, 
-            password=DB_PASS, 
-            host=DB_HOST, 
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS,
+            host=DB_HOST,
             port=DB_PORT
         )
     except psycopg2.Error as e:
@@ -220,15 +220,14 @@ def execute_single_query(conn, query, params=None, return_dataframe=False):
             successfully, or False if an error occurred.
     """
     with conn.cursor() as cur:
-            cur.execute(query, params or ())
-            if return_dataframe:
-                return pd.DataFrame(
-                    cur.fetchall(), 
-                    columns=[desc[0] for desc in cur.description]
-                )
-            else:
-                return cur.fetchall()
-    
+        cur.execute(query, params or ())
+        if return_dataframe:
+            return pd.DataFrame(
+                cur.fetchall(),
+                columns=[desc[0] for desc in cur.description]
+            )
+        return cur.fetchall()
+
 
 def execute_multi_query(queries_and_params, return_results=False):
     """ Execute a list of SQL queries using a PostgreSQL database 
@@ -475,7 +474,7 @@ def get_samples_data(add_query):
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
         return []
-    
+
 
 def get_lesson_plans(limit):
     """ Retrieve lesson plans data from the database with a specified 
@@ -489,7 +488,7 @@ def get_lesson_plans(limit):
     """
     query = "SELECT * FROM m_lesson_plans ORDER BY created_at DESC LIMIT %s;"
     params = (limit,)
-    
+
     try:
         results = execute_multi_query([(query, params)], return_results=True)
         return results[0] if results else []
@@ -519,7 +518,7 @@ def get_lesson_plans_by_id(sample_id, limit=None):
     if limit:
         query += " LIMIT %s"
         params.append(int(limit))
-    
+
     try:
         results = execute_multi_query([(query, tuple(params))], return_results=True)
         return results[0] if results else []
@@ -528,8 +527,8 @@ def get_lesson_plans_by_id(sample_id, limit=None):
         return []
 
 
-def add_experiment(experiment_name, sample_ids, created_by, tracked, 
-        llm_model="gpt-4", llm_model_temp=0.5, description="None", 
+def add_experiment(experiment_name, sample_ids, created_by, tracked,
+        llm_model="gpt-4", llm_model_temp=0.5, description="None",
         status="PENDING"):
     """ Add a new experiment to the database.
 
@@ -556,7 +555,7 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
         RETURNING id;
     """
     params = (
-        experiment_name, sample_ids_str, llm_model, llm_model_temp, 
+        experiment_name, sample_ids_str, llm_model, llm_model_temp,
         description, created_by, status, tracked
     )
 
@@ -584,8 +583,8 @@ def fix_json_format(json_string):
         return json_string
     except ValueError:
         pass
-    
-    json_string = re.sub(r'\\\\"', r'"', json_string)  
+
+    json_string = re.sub(r'\\\\"', r'"', json_string)
     json_string = re.sub(r"'", r'"', json_string)
     json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)
     try:
@@ -617,7 +616,7 @@ def get_prompt(prompt_id):
         with conn.cursor() as cur:
             cur.execute(query, (prompt_id,))
             result = cur.fetchone()
-    
+
     if result:
         clean_rating_criteria = fix_json_format(result[4])
         return {
@@ -752,9 +751,9 @@ def clean_response(response_text):
                 f"Problematic snippet: {repr(snippet)}"
             )
         }, "FAILURE"
-        
 
-def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp, 
+
+def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         timeout=15):
     """ Run inference using a lesson plan and a prompt ID.
 
@@ -777,7 +776,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             },
             "status": "ABORTED",
         }
-    
+
     prompt_details = get_prompt(prompt_id)
     if not prompt_details:
         return {
@@ -787,7 +786,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             },
             "status": "ABORTED",
         }
-    
+
     cleaned_prompt_details = process_prompt(prompt_details)
     prompt = render_prompt(lesson_plan, cleaned_prompt_details)
 
@@ -812,7 +811,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             frequency_penalty=0,
             presence_penalty=0,
         )
-        
+
         cleaned_content, status = clean_response(
             response.choices[0].message.content
         )
@@ -820,7 +819,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             "response": cleaned_content,
             "status": status,
         }
-            
+
     except Exception as e:
         log_message("error", f"Unexpected error during inference: {e}")
         return {
@@ -832,7 +831,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         }
 
 
-def add_results(experiment_id, prompt_id, lesson_plan_id, score, 
+def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         justification, status):
     """ Add results of an experiment to the database.
 
@@ -853,8 +852,8 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
                 score = float(score)
             except ValueError:
                 score = (
-                    1.0 if score.lower() == "true" else 
-                    0.0 if score.lower() == "false" else 
+                    1.0 if score.lower() == "true" else
+                    0.0 if score.lower() == "false" else
                     score
                 )
         else:
@@ -868,10 +867,10 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
             VALUES (now(), now(), %s, %s, %s, %s, %s, %s);
         """
         params = (
-            experiment_id, prompt_id, lesson_plan_id, score, justification, 
+            experiment_id, prompt_id, lesson_plan_id, score, justification,
             status
         )
-        
+
         success = execute_multi_query([(insert_query, params)])
         if not success:
             log_message("error", "Failed to insert result")
@@ -879,7 +878,7 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         log_message("error", f"An unexpected error occurred: {e}")
 
 
-def run_test(sample_id, prompt_id, experiment_id, limit, llm_model, 
+def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
         llm_model_temp, timeout=15):
     """ Run a test for each lesson plan associated with a sample and add 
     results to the database.
@@ -899,11 +898,11 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
     lesson_plans = get_lesson_plans_by_id(sample_id, limit)
     total_lessons = len(lesson_plans)
     log_message("info", f"Total lessons{total_lessons}")
-    
+
     progress = st.progress(0)
     placeholder1 = st.empty()
     placeholder2 = st.empty()
-    
+
     for i, lesson in enumerate(lesson_plans):
         lesson_plan_id = lesson[0]
         lesson_id = lesson[1]
@@ -914,7 +913,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
                 log_message("error", f"Lesson JSON is None for lesson index {i}")
                 continue
             content = json.loads(lesson_json_str)
-            
+
         except json.JSONDecodeError as e:
             error_position = e.pos
             json_str = lesson_json_str
@@ -943,7 +942,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
             if isinstance(response, dict) and all(
                 isinstance(v, dict) for v in response.values()
             ):
-                for cycle, cycle_data in response.items():
+                for _, cycle_data in response.items():
                     result = cycle_data.get("result")
                     justification = cycle_data.get("justification", "").replace("'", "")
                     add_results(
@@ -972,11 +971,11 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
                         prompt_id = {prompt_id}
                         """
                     )
-                    
+
         except KeyError as e:
             log_message("error", f"KeyError: Missing key in output: {e}")
             log_message("error", f"Output structure: {output}")
-            
+
         except Exception as e:
             log_message("error", f"Unexpected error when adding results: {e}")
             log_message(
@@ -1018,7 +1017,7 @@ def update_status(experiment_id, status):
         log_message("error", f"An unexpected error occurred: {e}")
 
 
-def start_experiment(experiment_name, exp_description, sample_ids, created_by, 
+def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5):
     """ Start a new experiment, run tests for each sample and prompt, 
     and update status.
@@ -1041,7 +1040,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         experiment_name, sample_ids, created_by, tracked, llm_model,
         llm_model_temp, description=exp_description
     )
-    
+
     if not experiment_id:
         log_message("error", "Failed to create experiment")
         return
@@ -1050,15 +1049,15 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 
     total_samples = len(sample_ids)
     total_prompts = len(prompt_ids)
-    
+
     try:
         for sample_index, sample_id in enumerate(sample_ids):
             st.write(f"Working on sample {sample_index + 1} of {total_samples}")
-            
+
             for prompt_index, prompt_id in enumerate(prompt_ids):
                 st.write(f"Working on prompt {prompt_index + 1} of {total_prompts}")
                 run_test(
-                    sample_id, prompt_id, experiment_id, limit, llm_model, 
+                    sample_id, prompt_id, experiment_id, limit, llm_model,
                     llm_model_temp
                 )
             st.write(f"Sample {sample_index + 1} Completed!")
@@ -1070,9 +1069,9 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         update_status(experiment_id, "FAILED")
 
 
-def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format, 
-        rating_criteria, general_criteria_note, rating_instruction, 
-        prompt_title, experiment_description, objective_title, objective_desc, 
+def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format,
+        rating_criteria, general_criteria_note, rating_instruction,
+        prompt_title, experiment_description, objective_title, objective_desc,
         prompt_created_by, version,):
     """ Add or retrieve prompt metadata in the database.
 
@@ -1106,10 +1105,10 @@ def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format,
     ).digest()
 
     duplicates_check = "SELECT id FROM m_prompts WHERE prompt_hash = %s;"
-    
+
     try:
         results = execute_multi_query(
-            [(duplicates_check, (psycopg2.Binary(prompt_hash),))], 
+            [(duplicates_check, (psycopg2.Binary(prompt_hash),))],
             return_results=True
         )
         duplicates = results[0] if results else []
@@ -1140,14 +1139,14 @@ def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format,
                 [(insert_query, params)], return_results=True
             )
             return results[0][0][0] if results else None
-        else:
-            return duplicates[0][0]
+        return duplicates[0][0]
+
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
         return None
 
 
-def generate_experiment_placeholders(model_name, temperature, limit, 
+def generate_experiment_placeholders(model_name, temperature, limit,
         prompt_count, sample_count, teacher_name):
     """ Generate placeholders for an experiment based on specified parameters.
 
