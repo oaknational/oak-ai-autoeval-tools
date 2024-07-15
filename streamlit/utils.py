@@ -4,65 +4,69 @@ processing data, rendering templates, and running experiments.
 This module provides the following functions:
 
 - get_env_variable:
-  Fetch environment variables with a fallback mechanism.
+    Fetch environment variables with a fallback mechanism.
 - log_message: 
-  Logs messages with different severity levels.
+    Logs messages with different severity levels.
+- clear_all_caches:
+    Clears the cache for Streamlit.
 - get_db_connection: 
-  Establishes a connection to the PostgreSQL database.
+    Establishes a connection to the PostgreSQL database.
 - db_error_handler:
-  A decorator that provides error handling and connection management 
-  for database operations.
+    A decorator that provides error handling and connection management 
+    for database operations.
 - execute_single_query:
-  Executes a single SQL query.
+    Executes a single SQL query.
 - execute_multi_query:
-  Executes multiple SQL queries.
+    Executes multiple SQL queries.
+- convert_to_json:
+    Converts text to JSON format.
 - json_to_html: 
-  Converts a JSON object to an HTML-formatted string.
+    Converts a JSON object to an HTML-formatted string.
 - get_light_experiment_data: 
-  Retrieves light experiment data from the database.
+    Retrieves light experiment data from the database.
 - get_full_experiment_data: 
-  Retrieves full data for a selected experiment ID.
+    Retrieves full data for a selected experiment ID.
 - get_prompts: 
-  Retrieves prompts data from the database.
+    Retrieves prompts data from the database.
 - get_samples: 
-  Retrieves samples data from the database.
+    Retrieves samples data from the database.
 - get_teachers: 
-  Retrieves teachers data from the database.
+    Retrieves teachers data from the database.
 - get_samples_data: 
-  Retrieves lesson plans data based on an additional query.
+    Retrieves lesson plans data based on an additional query.
 - get_lesson_plans: 
-  Retrieves lesson plans data with a specified limit.
+    Retrieves lesson plans data with a specified limit.
 - get_lesson_plans_by_id: 
-  Retrieves lesson plans based on a sample ID.
+    Retrieves lesson plans based on a sample ID.
 - add_experiment: 
-  Adds a new experiment to the database.
+    Adds a new experiment to the database.
 - fix_json_format: 
-  Fixes JSON formatting issues in a given JSON string.
+    Fixes JSON formatting issues in a given JSON string.
 - get_prompt: 
-  Retrieves prompt details based on a prompt ID.
+    Retrieves prompt details based on a prompt ID.
 - process_prompt: 
-  Processes prompt details, ensuring correct formatting.
+    Processes prompt details, ensuring correct formatting.
 - render_prompt: 
-  Renders a prompt template using lesson plan and prompt details.
+    Renders a prompt template using lesson plan and prompt details.
 - clean_response:
-  Cleans JSON response by removing extraneous characters and decoding 
-  the JSON content.
+    Cleans JSON response by removing extraneous characters and decoding 
+    the JSON content.
 - run_inference: 
-  Runs inference using a lesson plan and a prompt ID.
+    Runs inference using a lesson plan and a prompt ID.
 - add_results: 
-  Adds results of an experiment to the database.
+    Adds results of an experiment to the database.
 - run_test: 
-  Runs a test for each lesson plan associated with a sample and adds 
-  results to the database.
+    Runs a test for each lesson plan associated with a sample and adds
+    results to the database.
 - update_status: 
-  Updates the status of an experiment in the database.
+    Updates the status of an experiment in the database.
 - start_experiment: 
-  Starts a new experiment, runs tests for each sample and prompt, and 
-  updates status.
+    Starts a new experiment, runs tests for each sample and prompt, and
+    updates status.
 - to_prompt_metadata_db: 
-  Adds or retrieves prompt metadata in the database.
+    Adds or retrieves prompt metadata in the database.
 - generate_experiment_placeholders: 
-  Generates placeholders for an experiment based on specified parameters.
+    Generates placeholders for an experiment based on specified parameters.
 """
 
 # Import the required libraries and modules
@@ -123,8 +127,16 @@ def log_message(level, message):
         st.warning(message)
     elif level == "info":
         st.info(message)
+    elif level == "success":
+        st.success(message)
     else:
         st.write(message)
+
+
+def clear_all_caches():
+    """ Clear all caches in the application."""
+    st.cache_data.clear()
+    st.cache_resource.clear()
 
 
 def get_db_connection():
@@ -134,22 +146,17 @@ def get_db_connection():
         conn: connection object to interact with the database.
     """
     try:
-        DB_NAME = get_env_variable("DB_NAME")
-        DB_USER = get_env_variable("DB_USER")
-        DB_PASS = get_env_variable("DB_PASSWORD")
-        DB_HOST = get_env_variable("DB_HOST")
-        DB_PORT = get_env_variable("DB_PORT")
-
-        conn =  psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS,
-            host=DB_HOST,
-            port=DB_PORT
+        conn = psycopg2.connect(
+            dbname=get_env_variable("DB_NAME"),
+            user=get_env_variable("DB_USER"),
+            password=get_env_variable("DB_PASSWORD"),
+            host=get_env_variable("DB_HOST"),
+            port=get_env_variable("DB_PORT")
         )
+        return conn
     except psycopg2.Error as e:
         log_message("error", f"Error connecting to the database: {e}")
-    return conn
+        return None
 
 
 def db_error_handler(func):
@@ -263,6 +270,37 @@ def execute_multi_query(queries_and_params, return_results=False):
         if return_results:
             results.append(result)
     return results if return_results else True
+
+
+def convert_to_json(text):
+    """
+    Convert text to JSON format.
+
+    If the text is already in JSON format, it is returned as a dictionary. 
+    If the text is not in JSON format or an error occurs during parsing, 
+    the text is converted to a JSON object with the text stored under the 
+    key 'text'.
+
+    Args:
+        text (str): The input text to be converted to JSON.
+
+    Returns:
+        dict: A dictionary representing the JSON object. If the input 
+            text is valid JSON, it returns the parsed JSON. If the input 
+            is not valid JSON, it returns a dictionary with the original 
+            text under the key 'text'. If the input is NaN, it returns 
+            None.
+    """
+    if pd.isna(text):
+        return None
+    try:
+        json_data = json.loads(text)
+    except json.JSONDecodeError:
+        json_data = {"text": text}
+    except TypeError as e:
+        st.error(f"TypeError: {e} - Value: {text}")
+        json_data = {"text": str(text)}
+    return json_data
 
 
 def json_to_html(json_obj, indent=0):

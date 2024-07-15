@@ -18,13 +18,9 @@ Create new tables in the database:
 - new_samples_lessons_table (link samples with lesson plans)
 
 Create new rows in tables:
-- add_objective
-- upload_prompt
-- add_to_samples
 - add_teacher
 - insert_lesson_plan
 - insert_sample_prompt (add sample prompts for experiments from CSV)
-- add_obj_prompt (link objective with prompt)
 """
 
 import csv
@@ -62,25 +58,6 @@ def new_objectives_table():
     execute_single_query(query)
 
 
-def add_objective(created_by, title, description):
-    """ Add a new objective into the `m_objectives` table.
-
-    Args:
-        created_by (str): The name of the creator of the objective.
-        title (str): Title of the objective.
-        description (str): Description of the objective.
-
-    Returns:
-        None
-    """
-    query = """
-        INSERT INTO m_objectives (created_by, title, description)
-        VALUES (%s, %s, %s);
-    """
-    params = (created_by, title, description)
-    execute_single_query(query, params)
-
-
 def new_prompts_table():
     """ Create a new table `m_prompts` in the database to store prompts.
 
@@ -110,34 +87,6 @@ def new_prompts_table():
     execute_single_query(query)
 
 
-def upload_prompt(prompt_title, prompt, prompt_hash, output_format,
-        lesson_plan_params, created_by):
-    """ Upload a prompt for experiments into the `m_prompts` table.
-
-    Args:
-        prompt_title (str): Title of the prompt.
-        prompt (str): The prompt text.
-        prompt_hash (str): SHA256 hash of the prompt text.
-        output_format (str): Expected output format of the prompt.
-        lesson_plan_params (str): Parameters related to the lesson plan.
-        created_by (str): The name of the creator of the prompt.
-
-    Returns:
-        None
-    """
-    query = """
-        INSERT INTO m_prompts (
-            prompt_title, prompt, prompt_hash, output_format, 
-            lesson_plan_params, created_by) 
-        VALUES (%s, %s, %s, %s, %s, %s);
-    """
-    params = (
-        prompt_title, prompt, prompt_hash, output_format, lesson_plan_params,
-        created_by
-    )
-    execute_single_query(query, params)
-
-
 def new_obj_prompt_table():
     """ Create a new table 'm_objectives_prompts' in the database to 
     link objectives with prompts.
@@ -152,25 +101,6 @@ def new_obj_prompt_table():
             prompt_id UUID);
     """
     execute_single_query(query)
-
-
-def add_obj_prompt(objective_id, prompt_id):
-    """ Link an objective with a prompt in the 'm_objectives_prompts' 
-    table.
-
-    Args:
-        objective_id (str): UUID of the objective.
-        prompt_id (str): UUID of the prompt.
-
-    Returns:
-        None
-    """
-    query = """
-        INSERT INTO m_objectives_prompts (objective_id, prompt_id)
-        VALUES (%s, %s);
-    """
-    params = (objective_id, prompt_id)
-    execute_single_query(query, params)
 
 
 def new_samples_table():
@@ -189,25 +119,6 @@ def new_samples_table():
             created_by TEXT);
     """
     execute_single_query(query)
-
-
-def add_to_samples(sample_table, sample_title, created_by):
-    """ Insert a new sample into the 'm_samples' table.
-
-    Args:
-        sample_table (str): Table related to the sample.
-        sample_title (str): Title of the sample.
-        created_by (str): The name of the creator of the sample.
-
-    Returns:
-        None
-    """
-    query = """
-        INSERT INTO m_samples (sample_table, sample_title, created_by)
-        VALUES (%s, %s, %s);
-    """
-    params = (sample_table, sample_title, created_by)
-    execute_single_query(query, params)
 
 
 def new_experiments_table():

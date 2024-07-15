@@ -1,67 +1,98 @@
-import streamlit as st
-import psycopg2
-import pandas as pd
-import os 
-from dotenv import load_dotenv
-import plotly.express as px
-import numpy as np
+""" 
+Streamlit page for visualising the results of evaluations in the 
+AutoEval app.
+    
+Functionality:
+- Visualize evaluation results using interactive plots.
+- Filter data based on various parameters.
+- Display specific details for selected runs.
+"""
+
 import json
-from dataeditor import * 
+
+import numpy as np
+import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
-from jinja_funcs import *
+import streamlit as st
+from dotenv import load_dotenv
 
-st.set_page_config(page_title="Visualise Results", page_icon="🔍")
-
-st.markdown("# 🔍 Visualise Results")
+from dataeditor import standardize_key_stage, standardize_subject 
+from utils import clear_all_caches, get_light_experiment_data
 
 load_dotenv()
-# Function to clear cache
-def clear_all_caches():
-    st.cache_data.clear()
-    st.cache_resource.clear()
 
-# Add a button to the sidebar to clear cache
+
+# Set page configuration
+st.set_page_config(page_title="Visualise Results", page_icon="🔍")
+st.markdown("# 🔍 Visualise Results")
+
+# Sidebar button to clear cache
 if st.sidebar.button('Clear Cache'):
     clear_all_caches()
     st.sidebar.success('Cache cleared!')
 
 # Fetch light data
 light_data = get_light_experiment_data()
-#Replacing paranthesis with brackets to allow string matching
-light_data['experiment_name'] = light_data['experiment_name'].str.replace('(', '[', regex=False).str.replace(')', ']', regex=False)
+light_data['experiment_name'] = (
+    light_data['experiment_name'].str.replace(
+        '(', '[', regex=False).str.replace(')', ']', regex=False
+    )
+)
+light_data['run_date'] = pd.to_datetime(
+    light_data['run_date']).dt.strftime('%Y-%m-%d'
+)
+light_data['experiment_with_date'] = (
+    light_data['experiment_name'] + " (" +
+    light_data['run_date'].astype(str) + ")"+ " (" +
+    light_data['teacher_name'] + ")"
+)
+experiment_description_options = (
+    ['Select'] + light_data['experiment_with_date'].unique().tolist()
+)
 
-light_data['run_date'] = pd.to_datetime(light_data['run_date']).dt.strftime('%Y-%m-%d')
-light_data['experiment_with_date'] = light_data['experiment_name'] + " (" + light_data['run_date'].astype(str) + ")"+ " (" + light_data['teacher_name'] + ")"
-experiment_description_options = light_data['experiment_with_date'].unique().tolist()
-experiment_description_options = ['Select'] + experiment_description_options
-
-experiment = st.selectbox('Select Experiment', experiment_description_options, help="Select an experiment to view more options.(Run Date is in YYYY-MM-DD format)")
+experiment = st.selectbox(
+    'Select Experiment', experiment_description_options, 
+    help=(
+        "Select an experiment to view more options."
+        "(Run Date is in YYYY-MM-DD format)"
+    )
+)
 
 # Extract the selected experiment_id
+selected_experiment_id = None
 if experiment != 'Select':
     selected_experiment_name = experiment.split(" (")[0]
     selected_experiment_id = light_data[light_data['experiment_name'] == selected_experiment_name]['experiment_id'].iloc[0]
-    result_id_input =''
-else:
-    selected_experiment_id = None
+    #result_id_input =''
 
 if selected_experiment_id:
-    
     # Fetch full data
     data = get_full_experiment_data(selected_experiment_id)
 
     # Apply transformations on data
-    
     data['key_stage_slug'] = data['key_stage_slug'].apply(standardize_key_stage)
     data['subject_slug'] = data['subject_slug'].apply(standardize_subject)
     data = data.sort_values(by='run_date', ascending=False)
     data['run_date'] = pd.to_datetime(data['run_date']).dt.strftime('%Y-%m-%d')
     
-    # Filter data as needed
+    # Filter data
     if st.checkbox('Filter Experiment Data'):
-        selected_teachers = st.multiselect('Select Teacher', options=data['teacher_name'].unique(), help="Select one or more teachers to filter the experiments.")
-        selected_prompts = st.multiselect('Select Prompt', options=data['prompt_title'].unique(), help="Select one or more prompts to filter the experiments.")
-        selected_samples = st.multiselect('Select Sample', options=data['sample_title'].unique(), help="Select one or more samples to filter the experiments.")
+        selected_teachers = st.multiselect(
+            'Select Teacher',
+            options=data['teacher_name'].unique(),
+            help="Select one or more teachers to filter the experiments."
+        )
+        selected_prompts = st.multiselect(
+            'Select Prompt',
+            options=data['prompt_title'].unique(),
+            help="Select one or more prompts to filter the experiments."
+        )
+        selected_samples = st.multiselect(
+            'Select Sample',
+            options=data['sample_title'].unique(),
+            help="Select one or more samples to filter the experiments."
+        )
         
         if selected_teachers or selected_prompts or selected_samples:
             if selected_teachers:
@@ -75,63 +106,95 @@ if selected_experiment_id:
 
     exp_data = data
 
-    
     if experiment != 'Select':
         key_stage_options = exp_data['key_stage_slug'].unique().tolist()
         subject_options = exp_data['subject_slug'].unique().tolist()
+        prompt_output_format_options = (
+            exp_data['prompt_output_format'].unique().tolist()
+        )
+        
+        # REVIEW WHETHER THESE LINES SHOULD BE COMMENTED OUT
         result_sucess_options = exp_data['result_status'].unique().tolist()
         llm_model_options = exp_data['llm_model'].unique().tolist()
-        
         prompt_lp_params_options = exp_data['prompt_lp_params'].unique().tolist()
-        # objective_title_options = exp_data['objective_title'].unique().tolist()
-        prompt_output_format_options = exp_data['prompt_output_format'].unique().tolist()
         
-        st.write(
-            """Please select the filters to view the insights."""
-        )
+        # THIS LINE WAS ALREADY COMMENTED OUT
+        # objective_title_options = exp_data['objective_title'].unique().tolist()
+        
+        
+        st.write("Please select the filters to view the insights.")
         with st.expander("Key Stage and Subject Filters"):
+            key_stage = st.multiselect(
+                'Select Key Stage',
+                key_stage_options,
+                default=key_stage_options[:]
+            )
+            subject = st.multiselect(
+                'Select Subject',
+                subject_options,
+                default=subject_options[:]
+            )
 
-            key_stage = st.multiselect('Select Key Stage', key_stage_options, default=key_stage_options[:])
-            subject = st.multiselect('Select Subject', subject_options, default=subject_options[:])
-
-        st.write("""Please select the outcome option to view the insights.""")
-        output_selection = st.selectbox('Select Outcome Type', prompt_output_format_options)
+        st.write("Please select the outcome option to view the insights.")
+        output_selection = st.selectbox(
+            'Select Outcome Type', prompt_output_format_options
+        )
 
         if output_selection:
-            
             sample_title_options = exp_data['sample_title'].unique().tolist()
-
-            selected_samples = st.multiselect('Select Sample Title', sample_title_options, default=sample_title_options[:])
+            selected_samples = st.multiselect(
+                'Select Sample Title',
+                sample_title_options,
+                default=sample_title_options
+            )
 
             exp_data = exp_data[
-            (exp_data['sample_title'].isin(selected_samples))]
+                (exp_data['sample_title'].isin(selected_samples)) &
+                (exp_data['prompt_output_format'] == output_selection)
+            ]
 
-            exp_data = exp_data[
-            (exp_data['prompt_output_format'] == output_selection)]
             prompt_title_options = exp_data['prompt_title'].unique().tolist()
-
             result_status_options = exp_data['result_status'].unique().tolist()
-            result_status = st.multiselect('Select Experiment Status', result_status_options, default='SUCCESS')
+            result_status = st.multiselect(
+                'Select Experiment Status',
+                result_status_options,
+                default='SUCCESS'
+            )
 
             exp_data = exp_data[(exp_data['result_status'].isin(result_status))]
-            
-            prompt_title = st.multiselect('Select Prompt Title', prompt_title_options, default=prompt_title_options[:])
-            # outcome_options
-            #make outcome options integers if possible if not make them floats
-            exp_data['result'] = pd.to_numeric(exp_data['result'], errors='coerce')
+            prompt_title = st.multiselect(
+                'Select Prompt Title',
+                prompt_title_options,
+                default=prompt_title_options[:]
+            )
 
-            # Check each row of the exp_data value of prompt_output_format and if it is Boolean, convert the exp_data['result'] 0 to False and 1 to True
-            exp_data.loc[exp_data['prompt_output_format'] == 'Boolean', 'result'] = exp_data['result'].map({0: 'False', 1: 'True'})
-            mask = (exp_data['prompt_output_format'] != 'Boolean') & (exp_data['result'].apply(lambda x: isinstance(x, str) or not isinstance(x, (int, float))))
-            exp_data.loc[mask, 'result'] = exp_data.loc[mask, 'result'].astype(float)
-            
+            exp_data['result'] = (
+                pd.to_numeric(exp_data['result'], errors='coerce')
+            )
+            exp_data.loc[
+                exp_data['prompt_output_format'] == 'Boolean', 'result'
+            ] = exp_data['result'].map({0: 'False', 1: 'True'})
+
+            mask = (
+                (exp_data['prompt_output_format'] != 'Boolean') &
+                (exp_data['result'].apply(
+                    lambda x: isinstance(x, str)
+                    or not isinstance(x, (int, float))
+                ))
+            )
+            exp_data.loc[mask, 'result'] = (
+                exp_data.loc[mask, 'result'].astype(float)
+            )
+
             outcome_options = exp_data['result'].unique().tolist()
-
-            # outcome_options
             if output_selection == 'Score':
                 outcome_options = sorted(outcome_options)
         
-            outcome = st.multiselect('Filter by Result Outcome', outcome_options, default=outcome_options[:])
+            outcome = st.multiselect(
+                'Filter by Result Outcome',
+                outcome_options,
+                default=outcome_options[:]
+            )
 
             filtered_data = exp_data[
                 (exp_data['key_stage_slug'].isin(key_stage)) &
@@ -140,7 +203,11 @@ if selected_experiment_id:
                 (exp_data['prompt_title'].isin(prompt_title)) &
                 (exp_data['result'].isin(outcome))
             ]
-            
+
+
+# I AM HERE IN MY REVIEW !!!!!!!!!!!!!^%%%%%%%%%%%$$$$$$$$$$$$$$$@@@@@@@@@@@@@@@*************
+
+
             # st.table(filtered_data)
             # filtered_data['result']
             filtered_data['result_numeric'] = np.where(filtered_data['result'] == "TRUE", 1,
