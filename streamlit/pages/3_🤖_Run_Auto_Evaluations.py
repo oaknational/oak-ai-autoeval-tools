@@ -221,7 +221,9 @@ placeholder_name, placeholder_description = generate_experiment_placeholders(
 )
 
 tracked_options = ['True','False']
-tracked = st.selectbox('should experiment be tracked?', options=tracked_options)
+tracked = st.selectbox(
+    'should experiment be tracked?', options=tracked_options
+)
 
 with st.form(key='experiment_form'):
     st.subheader("Experiment information")
@@ -237,7 +239,9 @@ with st.form(key='experiment_form'):
     )
 
     if st.form_submit_button('Run evaluation'):
-        st.warning('Please do not close the page until the evaluation is complete.')
+        st.warning(
+            'Please do not close the page until the evaluation is complete.'
+        )
         start_experiment(
             experiment_name, exp_description, sample_ids, teacher_id,
             prompt_ids, st.session_state.limit, st.session_state.llm_model,
@@ -245,7 +249,8 @@ with st.form(key='experiment_form'):
         )
         st.session_state.experiment_run = True
 
-# Conditionally display the View Insights button based on the experiment run flag
+# Conditionally display the View Insights button based on the experiment
+# run flag
 if st.session_state.experiment_run:
     st.write('**Click the button to view insights.**')
     if st.button('View Insights'):

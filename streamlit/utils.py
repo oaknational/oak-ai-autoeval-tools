@@ -32,10 +32,10 @@ This module provides the following functions:
     Retrieves samples data from the database.
 - get_teachers: 
     Retrieves teachers data from the database.
-- get_samples_data: 
-    Retrieves lesson plans data based on an additional query.
-- get_lesson_plans: 
-    Retrieves lesson plans data with a specified limit.
+###- get_samples_data: 
+###    Retrieves lesson plans data based on an additional query.
+###- get_lesson_plans: 
+###    Retrieves lesson plans data with a specified limit.
 - get_lesson_plans_by_id: 
     Retrieves lesson plans based on a sample ID.
 - add_experiment: 
@@ -190,18 +190,21 @@ def db_error_handler(func):
     def wrapper(*args, **kwargs):
         conn = get_db_connection()
         if not conn:
-            return pd.DataFrame() if kwargs.get('return_dataframe', True) else []
+            return pd.DataFrame() if kwargs.get(
+                'return_dataframe', True) else []
         try:
             with conn:
                 return func(conn, *args, **kwargs)
         except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
             log_message("error", f"Error executing query: {db_err}")
             conn.rollback()
-            return pd.DataFrame() if kwargs.get('return_dataframe', True) else []
+            return pd.DataFrame() if kwargs.get(
+                'return_dataframe', True) else []
         except Exception as e:
             log_message("error", f"Error executing query: {e}")
             conn.rollback()
-            return pd.DataFrame() if kwargs.get('return_dataframe', True) else []
+            return pd.DataFrame() if kwargs.get(
+                'return_dataframe', True) else []
     return wrapper
 
 
@@ -319,7 +322,9 @@ def json_to_html(json_obj, indent=0):
     if isinstance(json_obj, dict):
         html += f"{indent_space}{{<br>"
         for key, value in json_obj.items():
-            html += f"{indent_space}&nbsp;&nbsp;&nbsp;&nbsp;<strong>{key}</strong>: "
+            html += f"""
+                {indent_space}&nbsp;&nbsp;&nbsp;&nbsp;<strong>
+                {key}</strong>: """
             if isinstance(value, dict) or isinstance(value, list):
                 html += "<br>" + json_to_html(value, indent + 1)
             else:
@@ -495,7 +500,7 @@ def get_teachers():
     query = "SELECT id, name FROM m_teachers;"
     return execute_single_query(query, return_dataframe=True)
 
-
+""" DELETE - NOT USED
 def get_samples_data(add_query):
     """ Retrieve lesson plans data from the database based on an 
     additional query.
@@ -512,8 +517,9 @@ def get_samples_data(add_query):
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
         return []
+"""
 
-
+""" DELETE - NOT USED
 def get_lesson_plans(limit):
     """ Retrieve lesson plans data from the database with a specified 
     limit.
@@ -533,7 +539,7 @@ def get_lesson_plans(limit):
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
         return []
-
+"""
 
 def get_lesson_plans_by_id(sample_id, limit=None):
     """ Retrieve lesson plans based on a sample ID.
@@ -558,7 +564,9 @@ def get_lesson_plans_by_id(sample_id, limit=None):
         params.append(int(limit))
 
     try:
-        results = execute_multi_query([(query, tuple(params))], return_results=True)
+        results = execute_multi_query(
+            [(query, tuple(params))], return_results=True
+        )
         return results[0] if results else []
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
@@ -948,7 +956,9 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
 
         try:
             if not lesson_json_str:
-                log_message("error", f"Lesson JSON is None for lesson index {i}")
+                log_message(
+                    "error", f"Lesson JSON is None for lesson index {i}"
+                )
                 continue
             content = json.loads(lesson_json_str)
 
@@ -974,7 +984,9 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
             response = output.get("response")
 
             if "status" not in output:
-                log_message("error", f"Key 'status' missing in output: {output}")
+                log_message(
+                    "error", f"Key 'status' missing in output: {output}"
+                )
                 continue
 
             if isinstance(response, dict) and all(
@@ -982,14 +994,16 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
             ):
                 for _, cycle_data in response.items():
                     result = cycle_data.get("result")
-                    justification = cycle_data.get("justification", "").replace("'", "")
+                    justification = cycle_data.get(
+                        "justification", "").replace("'", "")
                     add_results(
                         experiment_id, prompt_id, lesson_plan_id, result,
                         justification, output["status"],
                     )
             else:
                 result = response.get("result")
-                justification = response.get("justification", "").replace("'", "")
+                justification = response.get(
+                    "justification", "").replace("'", "")
                 add_results(
                     experiment_id, prompt_id, lesson_plan_id, result,
                     justification, output["status"],
@@ -1090,10 +1104,14 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 
     try:
         for sample_index, sample_id in enumerate(sample_ids):
-            st.write(f"Working on sample {sample_index + 1} of {total_samples}")
+            st.write(
+                f"Working on sample {sample_index + 1} of {total_samples}"
+            )
 
             for prompt_index, prompt_id in enumerate(prompt_ids):
-                st.write(f"Working on prompt {prompt_index + 1} of {total_prompts}")
+                st.write(
+                    f"Working on prompt {prompt_index + 1} of {total_prompts}"
+                )
                 run_test(
                     sample_id, prompt_id, experiment_id, limit, llm_model,
                     llm_model_temp
