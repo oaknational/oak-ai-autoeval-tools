@@ -280,7 +280,7 @@ def insert_lesson_plan():
             key_stage_value, subject_value
         )
 
-        success = execute_multi_query([(query, params)])
+        success = execute_single_query([(query, params)])
         return (
             "Lesson plan inserted successfully." if success else 
             "An unexpected error occurred."

@@ -36,9 +36,15 @@ def new_sample(sample_title, created_by):
         RETURNING id;
     """
     params = (sample_title, created_by)
-
     result = execute_single_query(query, params)
-    return result[0][0] if result else None
+    if result and result[0]:
+        sample_id = result[0][0]
+        st.session_state['sample_id'] = sample_id
+        st.info(f"Sample created with ID: {sample_id}")
+        return sample_id
+    else:
+        st.error("Failed to create a new sample.")
+        return None
 
 
 def get_lesson_plans(keyword=None):
@@ -90,21 +96,6 @@ def add_lesson_plans_to_sample(sample_id, lesson_plan_ids):
     return execute_multi_query(queries)
 
 
-def get_unique_values(column_name):
-    """ Get unique values for a specified column in the lesson_plans 
-        table.
-
-    Args:
-        column_name (str): Name of the column to fetch unique values from.
-
-    Returns:
-        list: List of unique values.
-    """
-    query = f"SELECT DISTINCT {column_name} FROM lesson_plans;"
-    result = execute_single_query(query)
-    return [value[0] for value in result] if result else []
-
-
 # Set page configuration
 st.set_page_config(page_title="Build Datasets", page_icon="🗃️")
 st.markdown("# 🗃️ Build Datasets")
@@ -122,10 +113,6 @@ if 'sample_id' not in st.session_state:
 if 'lesson_plan_ids' not in st.session_state:
     st.session_state['lesson_plan_ids'] = []
 
-# Fetch unique values for subjects and key stages
-unique_subjects = get_unique_values("subject")
-unique_key_stages = get_unique_values("key_stage")
-
 # Get user input
 sample_title = st.text_input(
     "Enter a dataset title for the Eval UI (e.g. history_ks2):"
@@ -140,34 +127,17 @@ if st.button("Get Lesson Plans"):
     lesson_plans = get_lesson_plans(keyword)
     if not lesson_plans.empty:
         st.write("Lesson Plans:")
-
-
-
-
-        # REVIEW WHETHER I CAN CHANGE THIS:
-        lesson_plans_df = pd.DataFrame(
-            lesson_plans, columns=["id", "generation_details"]
-        )
-        st.dataframe(lesson_plans_df)
-        # FOR THIS CODE:
-        #st.dataframe(lesson_plans)
-
-
-
-
-
-        st.session_state['lesson_plan_ids'] = lesson_plans_df["id"].tolist()
+        st.dataframe(lesson_plans)
+        st.session_state['lesson_plan_ids'] = lesson_plans["id"].tolist()
     else:
         st.warning("No lesson plans found with the given filters.")
 
 # Save sample with selected lesson plans
 if st.button("Save Sample with Selected Lesson Plans"):
     if sample_title and created_by:
-        if st.session_state['sample_id'] is None:
-            sample_id = new_sample(sample_title, created_by)
-            st.session_state['sample_id'] = sample_id
-        else:
-            sample_id = st.session_state['sample_id']
+        st.session_state['sample_id'] = None
+        
+        sample_id = new_sample(sample_title, created_by)
 
         if sample_id:
             if add_lesson_plans_to_sample(
@@ -176,7 +146,5 @@ if st.button("Save Sample with Selected Lesson Plans"):
                 st.success("Sample and lesson plans added successfully!")
             else:
                 st.error("Failed to add lesson plans to the sample.")
-        else:
-            st.error("Failed to create a new sample.")
     else:
         st.warning("Please fill in all the required fields.")

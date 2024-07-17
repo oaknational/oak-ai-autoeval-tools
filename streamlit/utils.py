@@ -11,9 +11,6 @@ This module provides the following functions:
     Clears the cache for Streamlit.
 - get_db_connection: 
     Establishes a connection to the PostgreSQL database.
-- db_error_handler:
-    A decorator that provides error handling and connection management 
-    for database operations.
 - execute_single_query:
     Executes a single SQL query.
 - execute_multi_query:
@@ -32,10 +29,6 @@ This module provides the following functions:
     Retrieves samples data from the database.
 - get_teachers: 
     Retrieves teachers data from the database.
-###- get_samples_data: 
-###    Retrieves lesson plans data based on an additional query.
-###- get_lesson_plans: 
-###    Retrieves lesson plans data with a specified limit.
 - get_lesson_plans_by_id: 
     Retrieves lesson plans based on a sample ID.
 - add_experiment: 
@@ -74,7 +67,6 @@ import os
 import re
 import json
 import hashlib
-import functools
 
 import pandas as pd
 import psycopg2
@@ -159,57 +151,7 @@ def get_db_connection():
         return None
 
 
-def db_error_handler(func):
-    """ A decorator that provides error handling and connection 
-    management for database operations.
-
-    This decorator ensures that a database connection is established 
-    before executing the decorated function. If the connection fails, 
-    it logs an error message and returns an empty DataFrame or list 
-    based on the function's return type. The decorator also handles 
-    database errors by logging appropriate messages and rolling back 
-    any transactions in case of an error.
-
-    Args:
-        func (function): The function to be decorated. It should expect 
-            a database connection object as its first argument.
-
-    Returns:
-        function: A wrapped function with database connection management 
-            and error handling.
-
-    Raises:
-        psycopg2.DatabaseError: If a database-related error occurs 
-            during the execution of the query.
-        psycopg2.OperationalError: If an operational error related to 
-            the database occurs during the execution of the query.
-        Exception: If any other unexpected error occurs during the 
-            execution of the query.
-    """
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        conn = get_db_connection()
-        if not conn:
-            return pd.DataFrame() if kwargs.get(
-                'return_dataframe', True) else []
-        try:
-            with conn:
-                return func(conn, *args, **kwargs)
-        except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
-            log_message("error", f"Error executing query: {db_err}")
-            conn.rollback()
-            return pd.DataFrame() if kwargs.get(
-                'return_dataframe', True) else []
-        except Exception as e:
-            log_message("error", f"Error executing query: {e}")
-            conn.rollback()
-            return pd.DataFrame() if kwargs.get(
-                'return_dataframe', True) else []
-    return wrapper
-
-
-@db_error_handler
-def execute_single_query(conn, query, params=None, return_dataframe=False):
+def execute_single_query(query, params=None, return_dataframe=False):
     """ Execute a given SQL query using a PostgreSQL database connection.
 
     This function handles the connection, cursor management, and error
@@ -229,14 +171,34 @@ def execute_single_query(conn, query, params=None, return_dataframe=False):
             False, returns True if the query was executed and committed
             successfully, or False if an error occurred.
     """
-    with conn.cursor() as cur:
-        cur.execute(query, params or ())
-        if return_dataframe:
-            return pd.DataFrame(
-                cur.fetchall(),
-                columns=[desc[0] for desc in cur.description]
-            )
-        return cur.fetchall()
+    conn = get_db_connection()
+    if not conn:
+        log_message("error", "Failed to establish database connection")
+        return pd.DataFrame() if return_dataframe else False
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(query, params or ())
+                if return_dataframe:
+                    return pd.DataFrame(
+                        cur.fetchall(),
+                        columns=[desc[0] for desc in cur.description]
+                    )
+                elif cur.description:
+                    return cur.fetchall()
+                return True
+
+    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
+        log_message("error", f"Error executing query: {db_err}")
+        conn.rollback()
+    except Exception as e:
+        log_message("error", f"Unexpected error executing query: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+        
+    return pd.DataFrame() if return_dataframe else False
 
 
 def execute_multi_query(queries_and_params, return_results=False):
@@ -500,46 +462,6 @@ def get_teachers():
     query = "SELECT id, name FROM m_teachers;"
     return execute_single_query(query, return_dataframe=True)
 
-""" DELETE - NOT USED
-def get_samples_data(add_query):
-    """ Retrieve lesson plans data from the database based on an 
-    additional query.
-
-    Args:
-        add_query (str): Additional query to execute.
-
-    Returns:
-        list: List of lesson plans fetched from the database.
-    """
-    try:
-        results = execute_multi_query([(add_query, ())], return_results=True)
-        return results[0] if results else []
-    except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
-        return []
-"""
-
-""" DELETE - NOT USED
-def get_lesson_plans(limit):
-    """ Retrieve lesson plans data from the database with a specified 
-    limit.
-
-    Args:
-        limit (str): Limitation condition for the query.
-
-    Returns:
-        list: List of lesson plans fetched from the database.
-    """
-    query = "SELECT * FROM m_lesson_plans ORDER BY created_at DESC LIMIT %s;"
-    params = (limit,)
-
-    try:
-        results = execute_multi_query([(query, params)], return_results=True)
-        return results[0] if results else []
-    except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
-        return []
-"""
 
 def get_lesson_plans_by_id(sample_id, limit=None):
     """ Retrieve lesson plans based on a sample ID.
