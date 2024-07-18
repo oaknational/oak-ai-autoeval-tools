@@ -39,7 +39,7 @@ def new_sample(sample_title, created_by):
     result = execute_single_query(query, params)
     if result and result[0]:
         sample_id = result[0][0]
-        st.session_state['sample_id'] = sample_id
+        st.session_state.sample_id = sample_id
         st.info(f"Sample created with ID: {sample_id}")
         return sample_id
     else:
@@ -108,10 +108,10 @@ if st.sidebar.button('Clear Cache'):
 
 # Initialize session state
 if 'sample_id' not in st.session_state:
-    st.session_state['sample_id'] = None
+    st.session_state.sample_id = None
 
 if 'lesson_plan_ids' not in st.session_state:
-    st.session_state['lesson_plan_ids'] = []
+    st.session_state.lesson_plan_ids = []
 
 # Get user input
 sample_title = st.text_input(
@@ -128,20 +128,20 @@ if st.button("Get Lesson Plans"):
     if not lesson_plans.empty:
         st.write("Lesson Plans:")
         st.dataframe(lesson_plans)
-        st.session_state['lesson_plan_ids'] = lesson_plans["id"].tolist()
+        st.session_state.lesson_plan_ids = lesson_plans["id"].tolist()
     else:
         st.warning("No lesson plans found with the given filters.")
 
 # Save sample with selected lesson plans
 if st.button("Save Sample with Selected Lesson Plans"):
     if sample_title and created_by:
-        st.session_state['sample_id'] = None
+        st.session_state.sample_id = None
         
         sample_id = new_sample(sample_title, created_by)
 
         if sample_id:
             if add_lesson_plans_to_sample(
-                sample_id, st.session_state['lesson_plan_ids']
+                sample_id, st.session_state.lesson_plan_ids
             ):
                 st.success("Sample and lesson plans added successfully!")
             else:

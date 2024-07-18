@@ -528,10 +528,11 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
     )
 
     try:
-        results = execute_multi_query(
-            [(insert_query, params)], return_results=True
-        )
-        return results[0][0][0] if results else None
+        result = execute_single_query(insert_query, params)
+        if result:
+            return result[0][0]
+        else:
+            return None
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
         return None
@@ -865,7 +866,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
     """
     lesson_plans = get_lesson_plans_by_id(sample_id, limit)
     total_lessons = len(lesson_plans)
-    log_message("info", f"Total lessons{total_lessons}")
+    log_message("info", f"Total lessons: {total_lessons}")
 
     progress = st.progress(0)
     placeholder1 = st.empty()
@@ -975,7 +976,7 @@ def update_status(experiment_id, status):
         status (str): New status to update.
         
     Returns:
-        None
+        bool: True if the status was updated successfully, False otherwise.
     """
     query = """
         UPDATE m_experiments SET status = %s
@@ -987,8 +988,11 @@ def update_status(experiment_id, status):
         success = execute_multi_query([(query, params)])
         if not success:
             log_message("error", "Failed to update status")
+            return False
+        return True
     except Exception as e:
         log_message("error", f"An unexpected error occurred: {e}")
+        return False
 
 
 def start_experiment(experiment_name, exp_description, sample_ids, created_by,
@@ -1008,7 +1012,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         llm_model_temp (float, optional): Temperature parameter for LLM.
 
     Returns:
-        None
+        bool: True if the experiment completes successfully, False otherwise.
     """
     experiment_id = add_experiment(
         experiment_name, sample_ids, created_by, tracked, llm_model,
@@ -1017,7 +1021,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 
     if not experiment_id:
         log_message("error", "Failed to create experiment")
-        return
+        return False
 
     st.success(f"Experiment details saved with ID: {experiment_id}")
 
@@ -1034,17 +1038,23 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
                 st.write(
                     f"Working on prompt {prompt_index + 1} of {total_prompts}"
                 )
+                st.write("RUN TEST")
                 run_test(
                     sample_id, prompt_id, experiment_id, limit, llm_model,
                     llm_model_temp
                 )
+                st.write("AFTER TEST")
             st.write(f"Sample {sample_index + 1} Completed!")
 
-        update_status(experiment_id, "COMPLETE")
-        st.write("Experiment Completed!")
+        if update_status(experiment_id, "COMPLETE"):
+            st.write("Experiment Completed!")
+            return True
+        else:
+            return False
     except Exception as e:
         log_message("error", f"An error occurred during the experiment: {e}")
         update_status(experiment_id, "FAILED")
+        return False
 
 
 def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format,
@@ -1140,17 +1150,12 @@ def generate_experiment_placeholders(model_name, temperature, limit,
         tuple: placeholder name and description formatted as strings.
     """
     placeholder_name = (
-        f"""
-        {model_name}-temp:{temperature}-prompts:{prompt_count}-samples:
-        {sample_count}-limit:{limit}-created:{teacher_name}
-        """
+        f"{model_name}-temp:{temperature}-prompts:{prompt_count}-samples:"
+        f"{sample_count}-limit:{limit}-created:{teacher_name}"
     )
     placeholder_description = (
-        f"""
-        {model_name} Evaluating with temperature {temperature}, 
-        using {prompt_count} prompts on {sample_count} samples, 
-        with a limit of {limit} lesson plans per sample. 
-        Run by {teacher_name}.
-        """
+        f"{model_name} Evaluating with temperature {temperature}, using "
+        f"{prompt_count} prompts on {sample_count} samples, with a limit of "
+        f"{limit} lesson plans per sample. Run by {teacher_name}."
     )
     return placeholder_name, placeholder_description

@@ -19,17 +19,6 @@ from utils import (
 load_dotenv()
 
 
-def update_session_state(key, value):
-    """
-    Updates the Streamlit session state with a specified key-value pair.
-
-    Args:
-        key (str): The key in the session state to update.
-        value (any): The new value to set for the specified key.
-    """
-    st.session_state[key] = value
-
-
 # Set page configuration
 st.set_page_config(page_title="Run Auto Evaluations", page_icon="🤖")
 
@@ -40,7 +29,6 @@ if st.sidebar.button('Clear Cache'):
 
 # Page and sidebar headers
 st.markdown("# 🤖 Run Auto Evaluations")
-st.sidebar.header("Run Auto Evaluations")
 st.write(
     """
     This page allows you to run evaluations on a dataset using a
@@ -50,16 +38,16 @@ st.write(
 )
 
 # Initialize session state
-default_session_state = {
-    'llm_model': 'gpt-4',
-    'llm_model_temp': 0.5,
-    'limit': 5,
-    'created_by': 'Select a teacher',
-    'experiment_run': False
-}
-for key, value in default_session_state.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
+if 'llm_model' not in st.session_state: 
+    st.session_state.llm_model = 'gpt-4'
+if 'llm_model_temp' not in st.session_state:
+    st.session_state.llm_model_temp = 0.5
+if 'limit' not in st.session_state:
+    st.session_state.limit = 5
+if 'created_by' not in st.session_state:
+    st.session_state.created_by = 'Select a teacher'
+if 'experiment_run' not in st.session_state:
+    st.session_state.experiment_run = False
 
 # Fetching data
 prompts_data = get_prompts()
@@ -138,22 +126,18 @@ samples_table = pd.DataFrame({
 
 st.dataframe(samples_table, hide_index=True, use_container_width=True)
 
-
 # Calculate time estimates and set limits
-MAX_LESSONS = 5
-TOTAL_SAMPLE_COUNT = TOTAL_PROMPT_COUNT = 0
-
 max_lessons = (
     samples_table['Number of Lessons'].max()
-    if not samples_table.empty else MAX_LESSONS
+    if not samples_table.empty else 5
 )
 total_sample_count = (
     samples_table['Number of Lessons'].sum()
-    if not samples_table.empty else TOTAL_SAMPLE_COUNT
+    if not samples_table.empty else 0
 )
 total_prompt_count = (
     prompt_table.shape[0]
-    if not prompt_table.empty else TOTAL_PROMPT_COUNT
+    if not prompt_table.empty else 0
 )
 
 AVG_LATENCY = 7.78  # seconds
@@ -170,45 +154,42 @@ st.warning(
 )
 
 # Set limit on lesson plans
-st.session_state['limit'] = st.number_input(
+st.session_state.limit = st.number_input(
     'Set a limit on the number of lesson plans per sample to evaluate:',
     min_value=1,
     max_value=9000,
-    value=max_lessons,
-    help='Minimum value is 1.',
-    key='limit_input',
-    on_change=update_session_state,
-    args=('limit', st.session_state['limit_input'])
+    value=st.session_state.limit,
+    help='Minimum value is 1.'
 )
 
 llm_model_options = ['gpt-4', 'gpt-4o', 'gpt-4-turbo']
 
-# Model selection section
-st.selectbox(
+st.session_state.llm_model = st.selectbox(
     'Select a model:',
-    llm_model_options, index=0, key='model_select',
-    on_change=update_session_state, args=(
-        'llm_model', st.session_state['model_select'])
+    llm_model_options,
+    index=llm_model_options.index(st.session_state.llm_model)
 )
-st.number_input(
-    'Enter temperature:', min_value=0.0, max_value=2.00, value=0.5, 
-    key='temp_input',
-    help='Minimum value is 0.0, maximum value is 2.00.',
-    on_change=update_session_state, args=(
-        'llm_model_temp', st.session_state['temp_input'])
+
+st.session_state.llm_model_temp = st.number_input(
+    'Enter temperature:',
+    min_value=0.0, max_value=2.00,
+    value=st.session_state.llm_model_temp,
+    help='Minimum value is 0.0, maximum value is 2.00.'
 )
+
 teachers_options = ['Select a teacher'] + teachers_data['name'].tolist()
-st.selectbox(
+
+st.session_state.created_by = st.selectbox(
     'Who is running the experiment?',
-    teachers_options, index=0, key='created_by_select',
-    on_change=update_session_state, args=(
-        'created_by', st.session_state['created_by_select'])
+    teachers_options,
+    index=teachers_options.index(st.session_state.created_by)
 )
-teacher_id = (
-    teachers_data.loc[
-        teachers_data['name'] == st.session_state['created_by'], 'id'
-    ].iloc[0] if st.session_state['created_by'] != 'Select a teacher' else None
-)
+
+teacher_id = None
+if st.session_state.created_by != 'Select a teacher':
+    teacher_id = teachers_data[
+        teachers_data['name'] == st.session_state.created_by
+    ]['id'].iloc[0]
 
 # Generate placeholders dynamically
 placeholder_name, placeholder_description = generate_experiment_placeholders(
@@ -220,9 +201,8 @@ placeholder_name, placeholder_description = generate_experiment_placeholders(
     st.session_state.created_by
 )
 
-tracked_options = ['True','False']
 tracked = st.selectbox(
-    'should experiment be tracked?', options=tracked_options
+    'Should experiment be tracked?', options=['True', 'False']
 )
 
 with st.form(key='experiment_form'):
@@ -242,16 +222,22 @@ with st.form(key='experiment_form'):
         st.warning(
             'Please do not close the page until the evaluation is complete.'
         )
-        start_experiment(
+        experiment_complete = start_experiment(
             experiment_name, exp_description, sample_ids, teacher_id,
             prompt_ids, st.session_state.limit, st.session_state.llm_model,
             tracked, st.session_state.llm_model_temp
         )
-        st.session_state.experiment_run = True
+        
+        if experiment_complete:
+            st.session_state.experiment_run = True
+        else:
+            st.error(
+                "Experiment failed to complete. "
+                "Please check the logs for details."
+            )
 
-# Conditionally display the View Insights button based on the experiment
-# run flag
 if st.session_state.experiment_run:
     st.write('**Click the button to view insights.**')
     if st.button('View Insights'):
-        st.switch_page('pages/4_🔍_Visualise Results.py')
+        st.switch_page('pages/4_🔍_Visualise_Results.py')
+            
