@@ -68,12 +68,12 @@ rating_instruction_header = "#### Rating Instruction"
 experiment_description_header = "#### Experiment Description"
 objective_title_header = "#### Prompt Group"
 
-# Sidebar Headers
+# Simplified Jinja Headers
 objective_sb_header = "### Objective:"
 rating_criteria_sb_header = "### Rating Criteria:"
 evaluation_criteria_sb_header = "### Evaluation Criteria:"
-rating_instruction_sb_header = "### Rating Instruction:"
-evaluation_instruction_sb_header = "### Evaluation Instruction:"
+rating_instruction_sb_header = "### Provide Your Rating:"
+evaluation_instruction_sb_header = "### Provide Your Evaluation:"
 
 
 # Function to clear cache
@@ -387,14 +387,14 @@ def get_lesson_plan_params(plain_eng_list):
 
 def lesson_plan_parts_at_end(lesson_plan_params):
     """
-    Generates a formatted string for displaying lesson plan parts at the end.
+    Generates a formatted string for displaying lesson plan parts after users click 'View Your Prompt;.
     The function maps lesson plan parameters to their titles and formats them for display.
 
     Args:
         lesson_plan_params (list or str): A list of lesson plan parameters or a JSON string representing the list.
 
     Returns:
-        str: A formatted string with lesson plan parts for sidebar display.
+        str: A formatted string with lesson plan parts for display.
     """
     # Create the mapping dictionary using zip
     lesson_params_to_titles = dict(zip(lesson_params, lesson_params_titles))
@@ -486,7 +486,7 @@ example_prompt_score = fetch_prompt_details_by_id(example_prompt_id_score)
 example_prompt_id_boolean = "872592e3-ba7a-408d-9995-a66f056b1ed3"
 example_prompt_boolean = fetch_prompt_details_by_id(example_prompt_id_boolean)
 
-# Lesson parameters and their corresponding titles (for display sidebar
+# Lesson parameters and their corresponding titles (for 'View Your Prompt' display
 # purposes) and plain English descriptions
 lesson_params = [
     "lesson",
@@ -602,9 +602,6 @@ data = get_all_prompts()
 
 filtered_data = data
 
-# Display a header in the sidebar
-# st.sidebar.markdown("# Your Prompt")
-
 # Display a dropdown menu for the user to select an action
 action = st.selectbox(
     "What would you like to do?",
@@ -656,13 +653,11 @@ if action == "Create a new prompt":
         # Display input fields for rating criteria based on output format
         rating_criteria = show_rating_criteria_input(output_format, new=True)
 
-        # Display the rating criteria in the sidebar and example rating criteria as an expander
+        # Display the example rating criteria as an expander
         if output_format == "Score":
-            # display_at_end_score_criteria()
             example_score_rating_criteria()
 
         elif output_format == "Boolean":
-            # display_at_end_boolean_criteria()
             example_boolean_rating_criteria()
 
         # Display and input for general criteria note
