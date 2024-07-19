@@ -1,9 +1,0 @@
-streamlit
-openai
-psycopg2-binary
-pandas
-plotly
-python-dotenv
-numpy
-jinja2
-setuptools>=70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
