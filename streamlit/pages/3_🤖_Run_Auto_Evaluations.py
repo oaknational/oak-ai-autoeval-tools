@@ -110,7 +110,7 @@ def update_created_by():
 # Set limit on lesson plans
 st.session_state['limit'] = st.number_input('Set a limit on the number of lesson plans per sample to evaluate:', min_value=1, max_value=9000, value=max_lessons, help='Minimum value is 1.', key='limit_input', on_change=update_limit)
 
-llm_model_options = ['gpt-4', 'gpt-4o', 'gpt-4-turbo']
+llm_model_options = ['gpt-4o','gpt-4o-mini','gpt-4', 'gpt-4-turbo','gpt-4-32k']
 
 # Callbacks outside of the form
 llm_model = st.selectbox('Select a model:', llm_model_options, index=0, key='model_select', on_change=update_model)
