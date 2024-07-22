@@ -33,6 +33,7 @@ import psycopg2.extras
 from dotenv import load_dotenv
 
 from utils import execute_single_query, execute_multi_query, log_message
+from constants import ErrorMessages
 
 
 load_dotenv()
@@ -283,11 +284,11 @@ def insert_lesson_plan():
         success = execute_single_query([(query, params)])
         return (
             "Lesson plan inserted successfully." if success else 
-            "An unexpected error occurred."
+            ErrorMessages.UNEXPECTED_ERROR
         )
     except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
-        return "An unexpected error occurred."
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
+        return ErrorMessages.UNEXPECTED_ERROR
 
 
 def insert_sample_prompt(csv_file_path):
@@ -345,12 +346,12 @@ def insert_sample_prompt(csv_file_path):
             success = execute_multi_query(queries_and_params)
             return (
                 "Sample prompts inserted successfully." if success else 
-                "An unexpected error occurred."
+                ErrorMessages.UNEXPECTED_ERROR
             )
     except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
-        return "An unexpected error occurred."
-
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
+        return ErrorMessages.UNEXPECTED_ERROR
+    
 
 def initialize_database(csv_file_path):
     """Initialize the database schema and populate it with data."""
