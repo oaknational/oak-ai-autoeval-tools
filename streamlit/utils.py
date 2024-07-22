@@ -48,6 +48,10 @@ This module provides the following functions:
     Runs inference using a lesson plan and a prompt ID.
 - add_results: 
     Adds results of an experiment to the database.
+- decode_lesson_json:
+    Decodes JSON string and logs errors if any.
+- handle_inference:
+    Runs inference and adds results to the database.
 - run_test: 
     Runs a test for each lesson plan associated with a sample and adds
     results to the database.
@@ -74,6 +78,8 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import openai
 from openai import OpenAI
 import streamlit as st
+
+from constants import ErrorMessages
 
 
 def get_env_variable(var_name, default_value=None):
@@ -189,7 +195,7 @@ def execute_single_query(query, params=None, return_dataframe=False):
                     return cur.fetchall()
                 return True
 
-    except (psycopg2.DatabaseError, psycopg2.OperationalError) as db_err:
+    except (psycopg2.DatabaseError) as db_err:
         log_message("error", f"Error executing query: {db_err}")
         conn.rollback()
     except Exception as e:
@@ -278,31 +284,48 @@ def json_to_html(json_obj, indent=0):
     Returns:
         str: HTML-formatted string representing the JSON object.
     """
-    html = ""
-    indent_space = "&nbsp;&nbsp;" * indent
+    def dict_to_html(d, indent):
+        """Convert a dictionary to an HTML-formatted string."""
+        if not d:
+            return f"{get_indent(indent)}{{}}"
+        html = f"{get_indent(indent)}{{<br>"
+        items = list(d.items())
+        for i, (key, value) in enumerate(items):
+            html += f"{get_indent(indent + 1)}<strong>{key}</strong>: "
+            html += convert_to_html(value, indent + 1)
+            if i < len(items) - 1:
+                html += ","
+            html += "<br>" if i < len(items) - 1 else ""
+        html += f"{get_indent(indent)}}}"
+        return html
 
-    if isinstance(json_obj, dict):
-        html += f"{indent_space}{{<br>"
-        for key, value in json_obj.items():
-            html += f"""
-                {indent_space}&nbsp;&nbsp;&nbsp;&nbsp;<strong>
-                {key}</strong>: """
-            if isinstance(value, dict) or isinstance(value, list):
-                html += "<br>" + json_to_html(value, indent + 1)
-            else:
-                html += f"{value},<br>"
-        html += f"{indent_space}}}<br>"
-    elif isinstance(json_obj, list):
-        html += f"{indent_space}[<br>"
-        for item in json_obj:
-            if isinstance(item, dict) or isinstance(item, list):
-                html += json_to_html(item, indent + 1)
-            else:
-                html += f"{indent_space}&nbsp;&nbsp;&nbsp;&nbsp;{item},<br>"
-        html += f"{indent_space}]<br>"
-    else:
-        html += f"{indent_space}{json_obj}<br>"
-    return html
+    def list_to_html(lst, indent):
+        """Convert a list to an HTML-formatted string."""
+        if not lst:
+            return f"{get_indent(indent)}[]"
+        html = f"{get_indent(indent)}[<br>"
+        for i, item in enumerate(lst):
+            html += convert_to_html(item, indent + 1)
+            if i < len(lst) - 1:
+                html += ","
+            html += "<br>" if i < len(lst) - 1 else ""
+        html += f"{get_indent(indent)}]"
+        return html
+
+    def get_indent(indent):
+        """Return a string of HTML spaces for indentation."""
+        return "&nbsp;&nbsp;" * indent
+
+    def convert_to_html(obj, indent):
+        """Convert a JSON object to an HTML-formatted string."""
+        if isinstance(obj, dict):
+            return dict_to_html(obj, indent)
+        elif isinstance(obj, list):
+            return list_to_html(obj, indent)
+        else:
+            return f"{get_indent(indent)}{obj}"
+
+    return convert_to_html(json_obj, indent)
 
 
 def get_light_experiment_data():
@@ -527,7 +550,7 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
         else:
             return None
     except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return None
 
 
@@ -546,8 +569,8 @@ def fix_json_format(json_string):
     except ValueError:
         pass
 
-    json_string = re.sub(r'\\\\"', r'"', json_string)
-    json_string = re.sub(r"'", r'"', json_string)
+    json_string = json_string.replace('\\\\\\"', '"')
+    json_string = json_string.replace("'", '"')
     json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)
     try:
         json.loads(json_string)
@@ -709,7 +732,7 @@ def clean_response(response_text):
         return {
             "result": None,
             "justification": (
-                f"An error occurred: {e}. "
+                f"{ErrorMessages.UNEXPECTED_ERROR}: {e}. "
                 f"Problematic snippet: {repr(snippet)}"
             )
         }, "FAILURE"
@@ -813,11 +836,13 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
             try:
                 score = float(score)
             except ValueError:
-                score = (
-                    1.0 if score.lower() == "true" else
-                    0.0 if score.lower() == "false" else
-                    score
-                )
+                score_lower = score.lower()
+                if score_lower == "true":
+                    score = 1.0
+                elif score_lower == "false":
+                    score = 0.0
+                else:
+                    pass
         else:
             log_message("error", f"Invalid score: {score}")
             return
@@ -837,8 +862,103 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         if not success:
             log_message("error", "Failed to insert result")
     except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
 
+
+def decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, index):
+    """Decode JSON string and log errors if any.
+
+    Args:
+        lesson_json_str (str): JSON string of the lesson.
+        lesson_plan_id (str): ID of the lesson plan.
+        lesson_id (str): ID of the lesson.
+        index (int): Index of the lesson in the list.
+
+    Returns:
+        dict: Decoded JSON content or None if decoding fails.
+    """
+    if not lesson_json_str:
+        log_message("error", f"Lesson JSON is None for lesson index {index}")
+        return None
+    
+    try:
+        return json.loads(lesson_json_str)
+    except json.JSONDecodeError as e:
+        error_position = e.pos
+        start_snippet = max(0, error_position - 40)
+        end_snippet = min(len(lesson_json_str), error_position + 40)
+        snippet = lesson_json_str[start_snippet:end_snippet]
+        log_message("error", f"Error decoding JSON for lesson index {index}:")
+        log_message("error", f"Lesson Plan ID: {lesson_plan_id}")
+        log_message("error", f"Lesson ID: {lesson_id}")
+        log_message("error", f"Error Message: {e}")
+        log_message("error", f"Problematic snippet: {repr(snippet)}")
+        return None
+
+
+def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
+        experiment_id, lesson_plan_id):
+    """Run inference and add results to the database.
+
+    Args:
+        content (dict): Content to run inference on.
+        prompt_id (str): ID of the prompt.
+        llm_model (str): Name of the LLM model.
+        llm_model_temp (float): Temperature parameter for LLM.
+        timeout (int): Timeout duration for inference.
+        experiment_id (int): ID of the experiment.
+        lesson_plan_id (str): ID of the lesson plan.
+
+    Returns:
+        dict: Inference output.
+    """
+    try:
+        output = run_inference(
+            content, prompt_id, llm_model, llm_model_temp, timeout=timeout
+        )
+        response = output.get("response")
+
+        if "status" not in output:
+            log_message("error", f"Key 'status' missing in output: {output}")
+            return None
+
+        if isinstance(response, dict) and all(
+            isinstance(v, dict) for v in response.values()
+        ):
+            for _, cycle_data in response.items():
+                result = cycle_data.get("result")
+                justification = cycle_data.get(
+                    "justification", "").replace("'", "")
+                add_results(
+                    experiment_id, prompt_id, lesson_plan_id, result, 
+                    justification, output["status"]
+                )
+        else:
+            result = response.get("result")
+            justification = response.get("justification", "").replace("'", "")
+            add_results(
+                experiment_id, prompt_id, lesson_plan_id, result, 
+                justification, output["status"]
+            )
+        return output
+
+    except KeyError as e:
+        log_message("error", f"KeyError: Missing key in output: {e}")
+        log_message("error", f"Output structure: {output}")
+        return None
+
+    except Exception as e:
+        log_message("error", f"Unexpected error when adding results: {e}")
+        log_message(
+            "error",
+            f"""
+            Lesson Plan ID: {lesson_plan_id}, 
+            Prompt ID: {prompt_id}, 
+            Output: {output}
+            """
+        )
+        return None
+    
 
 def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
         llm_model_temp, timeout=15):
@@ -870,89 +990,27 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
         lesson_id = lesson[1]
         lesson_json_str = lesson[2]
 
-        try:
-            if not lesson_json_str:
-                log_message(
-                    "error", f"Lesson JSON is None for lesson index {i}"
-                )
-                continue
-            content = json.loads(lesson_json_str)
-
-        except json.JSONDecodeError as e:
-            error_position = e.pos
-            json_str = lesson_json_str
-            start_snippet = max(0, error_position - 40)
-            end_snippet = min(len(json_str), error_position + 40)
-            snippet = json_str[start_snippet:end_snippet]
-            log_message("error", f"Error decoding JSON for lesson index {i}:")
-            log_message("error", f"Lesson Plan ID: {lesson_plan_id}")
-            log_message("error", f"Lesson ID: {lesson_id}")
-            log_message("error", f"Error Message: {e}")
-            log_message("error", f"Problematic snippet: {repr(snippet)}")
+        content = decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, i)
+        if content is None:
             continue
 
-        output = None
+        output = handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout, experiment_id, lesson_plan_id)
+        if output is None:
+            continue
 
-        try:
-            output = run_inference(
-                content, prompt_id, llm_model, llm_model_temp, timeout=timeout
-            )
-
-            response = output.get("response")
-
-            if "status" not in output:
-                log_message(
-                    "error", f"Key 'status' missing in output: {output}"
-                )
-                continue
-
-            if isinstance(response, dict) and all(
-                isinstance(v, dict) for v in response.values()
-            ):
-                for _, cycle_data in response.items():
-                    result = cycle_data.get("result")
-                    justification = cycle_data.get(
-                        "justification", "").replace("'", "")
-                    add_results(
-                        experiment_id, prompt_id, lesson_plan_id, result,
-                        justification, output["status"],
-                    )
-            else:
-                result = response.get("result")
-                justification = response.get(
-                    "justification", "").replace("'", "")
-                add_results(
-                    experiment_id, prompt_id, lesson_plan_id, result,
-                    justification, output["status"],
-                )
-
-                with placeholder1.container():
-                    st.write(f'Inference Status: {output["status"]}')
-                with placeholder2.container():
-                    st.write(response)
-                    log_message(
-                        "info",
-                        f"""
-                        result = {output.get('response')},
-                        status = {output.get('status')},
-                        lesson_plan_id = {lesson_plan_id},
-                        experiment_id = {experiment_id},
-                        prompt_id = {prompt_id}
-                        """
-                    )
-
-        except KeyError as e:
-            log_message("error", f"KeyError: Missing key in output: {e}")
-            log_message("error", f"Output structure: {output}")
-
-        except Exception as e:
-            log_message("error", f"Unexpected error when adding results: {e}")
+        response = output.get("response")
+        with placeholder1.container():
+            st.write(f'Inference Status: {output["status"]}')
+        with placeholder2.container():
+            st.write(response)
             log_message(
-                "error",
+                "info",
                 f"""
-                Lesson Plan ID: {lesson_plan_id}, 
-                Prompt ID: {prompt_id}, 
-                Output: {output}
+                result = {output.get('response')},
+                status = {output.get('status')},
+                lesson_plan_id = {lesson_plan_id},
+                experiment_id = {experiment_id},
+                prompt_id = {prompt_id}
                 """
             )
 
@@ -985,7 +1043,7 @@ def update_status(experiment_id, status):
             return False
         return True
     except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return False
 
 
@@ -1122,7 +1180,7 @@ def to_prompt_metadata_db(prompt_objective, lesson_plan_params, output_format,
         return duplicates[0][0]
 
     except Exception as e:
-        log_message("error", f"An unexpected error occurred: {e}")
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return None
 
 
