@@ -841,8 +841,6 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
                     score = 1.0
                 elif score_lower == "false":
                     score = 0.0
-                else:
-                    pass
         else:
             log_message("error", f"Invalid score: {score}")
             return
