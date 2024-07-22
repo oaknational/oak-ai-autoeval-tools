@@ -15,7 +15,7 @@ from utils import (
     clear_all_caches, get_prompts, get_samples, get_teachers,
     generate_experiment_placeholders, start_experiment
 )
-from constants import OptionConstants
+from constants import OptionConstants, ColumnLabels
 
 
 load_dotenv()
@@ -119,7 +119,7 @@ sample_ids = [
 # Create samples table
 samples_table = pd.DataFrame({
     'Sample': sample_options, 
-    'Number of Lessons': [
+    ColumnLabels.NUM_LESSONS: [
         samples_data[
             samples_data['samples_options'] == sample
         ]['number_of_lessons'].iloc[0] for sample in sample_options
@@ -130,11 +130,11 @@ st.dataframe(samples_table, hide_index=True, use_container_width=True)
 
 # Calculate time estimates and set limits
 max_lessons = (
-    samples_table['Number of Lessons'].max()
+    samples_table[ColumnLabels.NUM_LESSONS].max()
     if not samples_table.empty else 5
 )
 total_sample_count = (
-    samples_table['Number of Lessons'].sum()
+    samples_table[ColumnLabels.NUM_LESSONS].sum()
     if not samples_table.empty else 0
 )
 total_prompt_count = (

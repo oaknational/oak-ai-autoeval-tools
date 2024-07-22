@@ -25,8 +25,8 @@ class ErrorMessages:
         UNEXPECTED_ERROR (str): A generic error message for unexpected errors.
     """
     UNEXPECTED_ERROR = "An unexpected error occurred"
-    
-    
+
+
 class OptionConstants:
     """
     Option-related constants for menu selections.
@@ -34,5 +34,8 @@ class OptionConstants:
     Attributes:
         SELECT_TEACHER (str): Message to prompt selection of a teacher.
     """
-    SELECT_TEACHER = 'Select a teacher'
-    
+    SELECT_TEACHER = "Select a teacher"
+
+
+class ColumnLabels:
+    NUM_LESSONS = "Number of Lessons"
