@@ -15,6 +15,8 @@ from utils import (
     clear_all_caches, get_prompts, get_samples, get_teachers,
     generate_experiment_placeholders, start_experiment
 )
+from constants import OptionConstants
+
 
 load_dotenv()
 
@@ -45,7 +47,7 @@ if 'llm_model_temp' not in st.session_state:
 if 'limit' not in st.session_state:
     st.session_state.limit = 5
 if 'created_by' not in st.session_state:
-    st.session_state.created_by = 'Select a teacher'
+    st.session_state.created_by = OptionConstants.SELECT_TEACHER
 if 'experiment_run' not in st.session_state:
     st.session_state.experiment_run = False
 
@@ -177,7 +179,7 @@ st.session_state.llm_model_temp = st.number_input(
     help='Minimum value is 0.0, maximum value is 2.00.'
 )
 
-teachers_options = ['Select a teacher'] + teachers_data['name'].tolist()
+teachers_options = [OptionConstants.SELECT_TEACHER] + teachers_data['name'].tolist()
 
 st.session_state.created_by = st.selectbox(
     'Who is running the experiment?',
@@ -186,7 +188,7 @@ st.session_state.created_by = st.selectbox(
 )
 
 teacher_id = None
-if st.session_state.created_by != 'Select a teacher':
+if st.session_state.created_by != OptionConstants.SELECT_TEACHER:
     teacher_id = teachers_data[
         teachers_data['name'] == st.session_state.created_by
     ]['id'].iloc[0]
