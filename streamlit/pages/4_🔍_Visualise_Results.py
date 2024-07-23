@@ -519,6 +519,7 @@ if selected_experiment_id:
 
                 st.plotly_chart(fig)
 
+            else:
                 # Convert 'True' and 'False' strings to boolean values
                 # in the 'result' column
                 filtered_data['success'] = (
@@ -576,7 +577,7 @@ if selected_experiment_id:
                 st.plotly_chart(fig)
 
             # Display title and data table in the main area
-            st.title('Experiment Data Viewer')
+            st.subheader('Experiment Data Viewer')
 
             filtered_data = filtered_data[[
                 'result_id', 'result','sample_title', 'prompt_title',
