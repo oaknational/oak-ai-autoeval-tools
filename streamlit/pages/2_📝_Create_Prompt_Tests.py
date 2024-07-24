@@ -2,31 +2,18 @@
 This script is for creating and managing prompt tests using Streamlit.
 It allows users to either create new prompts from scratch with guidance or modify existing prompts.
 
-Modules and libraries used:
-- streamlit: For creating the web interface
-- psycopg2: For connecting to the PostgreSQL database
-- pandas: For data manipulation and analysis
-- os and dotenv: For loading environment variables
-- json: For handling JSON data
-- datetime: For working with dates and times
-- numpy: For numerical operations
-- jinja_funcs: Custom module with utility functions (get_teachers, to_prompt_metadata_db)
-- re: For regular expression operations
-
-The script sets up the Streamlit page configuration, loads environment variables,
-and initialises database connection parameters.
 """
-
-import streamlit as st
-import psycopg2
-import pandas as pd
 import os
-from dotenv import load_dotenv
 import json
-from datetime import datetime
+
+import pandas as pd
 import numpy as np
+import psycopg2
+import streamlit as st
+from dotenv import load_dotenv
+
 from jinja_funcs import get_teachers, to_prompt_metadata_db
-import re
+
 
 st.set_page_config(page_title="Create Prompt Tests", page_icon="📝")
 st.markdown("# 📝 Create Prompt Tests")
