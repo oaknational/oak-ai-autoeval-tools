@@ -7,18 +7,20 @@ import os
 import json
 
 import pandas as pd
-import numpy as np
 import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
 
+from utils import clear_all_caches, execute_single_query, get_teachers, to_prompt_metadata_db
 from jinja_funcs import get_teachers, to_prompt_metadata_db
 
 
-st.set_page_config(page_title="Create Prompt Tests", page_icon="📝")
-st.markdown("# 📝 Create Prompt Tests")
-
 load_dotenv()
+
+
+
+
+
 DATA_PATH = os.getenv("DATA_PATH")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
@@ -63,72 +65,65 @@ rating_instruction_sb_header = "### Provide Your Rating:"
 evaluation_instruction_sb_header = "### Provide Your Evaluation:"
 
 
-# Function to clear cache
-def clear_all_caches():
-    st.cache_data.clear()
-    st.cache_resource.clear()
+def get_all_prompts():
+    """ Retrieves all prompts from the 'm_prompts' table in the database.
+    The function returns the data as a pandas DataFrame and parses the 
+    'rating_criteria' column from JSON strings to Python dictionaries.
 
+    Returns:
+        pd.DataFrame: A DataFrame containing all the prompts from the 
+            'm_prompts' table.
+    """
+    query = """
+    SELECT id, prompt_objective, lesson_plan_params, output_format, 
+        rating_criteria, general_criteria_note, rating_instruction, 
+        encode(prompt_hash, 'hex'), prompt_title, experiment_description, 
+        objective_title, objective_desc, created_at, created_by, version
+    FROM public.m_prompts;
+    """
+    data = execute_single_query(query, return_dataframe=True)
+    if not data.empty:
+        # Parse JSON fields safely
+        data["rating_criteria"] = data["rating_criteria"].apply(
+            lambda x: json.loads(x) if x else {}
+        )
+    return data
+
+
+def check_prompt_title_exists(prompt_title):
+    """
+    Checks if a prompt title exists in the 'm_prompts' table.
+
+    Args:
+        prompt_title (str): Prompt title to check for in the database.
+
+    Returns:
+        bool: True if the prompt title exists, False otherwise.
+    """
+    query = """
+    SELECT COUNT(*)
+    FROM public.m_prompts
+    WHERE prompt_title = %s;
+    """
+    result = execute_single_query(query, params=(prompt_title,))
+    return result[0][0] > 0 if result else False
+
+
+# Set page configuration
+st.set_page_config(page_title="Create Prompt Tests", page_icon="📝")
 
 # Add a button to the sidebar to clear cache
 if st.sidebar.button("Clear Cache"):
     clear_all_caches()
     st.sidebar.success("Cache cleared!")
 
-
-def get_all_prompts():
-    """
-    Connects to the PostgreSQL database and retrieves all prompts from the 'm_prompts' table.
-    The function returns the data as a pandas DataFrame with appropriate column names and parses
-    the 'rating_criteria' column from JSON strings to Python dictionaries.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing all the prompts from the 'm_prompts' table.
-    """
-    conn = psycopg2.connect(
-        dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
-    )
-    query = """
-    SELECT id, prompt_objective, lesson_plan_params, output_format, rating_criteria, general_criteria_note, rating_instruction, encode(prompt_hash, 'hex'), prompt_title, experiment_description, objective_title, objective_desc, created_at, created_by, version
-    FROM public.m_prompts;
-    """
-    cur = conn.cursor()
-    cur.execute(query)
-    data = pd.DataFrame(cur.fetchall(), columns=[desc[0] for desc in cur.description])
-    cur.close()
-    conn.close()
-
-    # Parse JSON fields safely
-    data["rating_criteria"] = data["rating_criteria"].apply(
-        lambda x: json.loads(x) if x else {}
-    )
-
-    return data
+# Page header
+st.title("📝 Create Prompt Tests")
 
 
-def check_prompt_title_exists(prompt_title):
-    """
-    Checks if a prompt title exists in the 'm_prompts' table of the PostgreSQL database.
 
-    Args:
-        prompt_title (str): The prompt title to check for existence in the database.
 
-    Returns:
-        bool: True if the prompt title exists, False otherwise.
-    """
-    conn = psycopg2.connect(
-        dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
-    )
-    query = """
-    SELECT COUNT(*)
-    FROM public.m_prompts
-    WHERE prompt_title = %s;
-    """
-    cur = conn.cursor()
-    cur.execute(query, (prompt_title,))
-    exists = cur.fetchone()[0] > 0
-    cur.close()
-    conn.close()
-    return exists
+
 
 
 def show_rating_criteria_input(output_format, new=False, current_prompt=None):
