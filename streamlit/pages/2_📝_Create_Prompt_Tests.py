@@ -109,6 +109,87 @@ def check_prompt_title_exists(prompt_title):
     return result[0][0] > 0 if result else False
 
 
+def show_rating_criteria_input(output_format, new=False, current_prompt=None):
+    """ Displays input fields for rating criteria based on the given 
+    output format. The function initialises the criteria either as new 
+    or based on an existing prompt and allows the user to update the 
+    criteria through input fields.
+
+    Args:
+        output_format (str): The format of the output, either 'Score'
+            or 'Boolean'.
+        new (bool): Indicates whether the criteria are new or based on 
+            an existing prompt.
+        current_prompt (dict): The existing prompt data, used when new 
+            is False.
+
+    Returns:
+        dict: The updated rating criteria.
+    """
+    st.markdown(
+        "#### Rating Criteria"
+        if output_format == "Score"
+        else "#### Evaluation Criteria"
+    )
+    st.markdown(
+        "Please make 5 the ideal score and 1 the worst score."
+        if output_format == "Score" 
+        else "Please make TRUE the ideal output"
+    )
+    # Initialise placeholders for the rating criteria
+    rating_criteria_placeholder = st.empty()
+
+    if new:
+        if output_format == "Score":
+            label_5, desc_5, label_1, desc_1 = "", "", "", ""
+            rating_criteria = {"5 ()": "", "1 ()": ""}
+        else:
+            desc_t, desc_f = "", ""
+            rating_criteria = {"TRUE": "", "FALSE": ""}
+    else:
+        current_rating_criteria = current_prompt["rating_criteria"]
+        if output_format == "Score":
+            label_5 = list(
+                current_rating_criteria.keys()
+            )[0].split("(")[-1].strip(")")
+            desc_5 = list(current_rating_criteria.values())[0]
+            label_1 = list(
+                current_rating_criteria.keys()
+            )[1].split("(")[-1].strip(")")
+            desc_1 = list(current_rating_criteria.values())[1]
+        else:
+            desc_t = current_rating_criteria.get("TRUE", "")
+            desc_f = current_rating_criteria.get("FALSE", "")
+        rating_criteria = current_rating_criteria
+    
+    # Display the initial rating criteria
+    rating_criteria_placeholder.json(rating_criteria)
+
+    # Input fields for labels and descriptions
+    if output_format == "Score":
+        label_5 = st.text_input("Label for 5", value=label_5, key="label_5")
+        desc_5 = st.text_area(
+            description_5, value=desc_5, key="desc_5", height=50
+        )
+        label_1 = st.text_input("Label for 1", value=label_1, key="label_1")
+        desc_1 = st.text_area(
+            description_1, value=desc_1, key="desc_1", height=50
+        )
+        rating_criteria = {f"5 ({label_5})": desc_5, f"1 ({label_1})": desc_1}
+    else:
+        desc_t = st.text_area(
+            description_true, value=desc_t, key="desc_t", height=50
+        )
+        desc_f = st.text_area(
+            description_false, value=desc_f, key="desc_f", height=50
+        )
+        rating_criteria = {"TRUE": desc_t, "FALSE": desc_f}
+
+    # Update the rating criteria placeholder with the new values
+    rating_criteria_placeholder.json(rating_criteria)
+    return rating_criteria
+
+
 # Set page configuration
 st.set_page_config(page_title="Create Prompt Tests", page_icon="📝")
 
@@ -126,91 +207,7 @@ st.title("📝 Create Prompt Tests")
 
 
 
-def show_rating_criteria_input(output_format, new=False, current_prompt=None):
-    """
-    Displays input fields for rating criteria based on the given output format. The function
-    initialises the criteria either as new or based on an existing prompt and allows the user
-    to update the criteria through input fields.
 
-    Args:
-        output_format (str): The format of the output, either 'Score' or 'Boolean'.
-        new (bool): Indicates whether the criteria are new or based on an existing prompt.
-        current_prompt (dict): The existing prompt data, used when new is False.
-
-    Returns:
-        dict: The updated rating criteria.
-    """
-    if output_format == "Score":
-        st.markdown(rating_criteria_header)
-        st.markdown("Please make 5 the ideal score and 1 the worst score.")
-        # Initialise placeholders for the rating criteria
-        rating_criteria_placeholder = st.empty()
-
-        # Determine the initial values based on whether it's new or existing
-        if new:
-            rating_criteria = {"5 ()": "", "1 ()": ""}
-            label_5 = ""
-            desc_5 = ""
-            label_1 = ""
-            desc_1 = ""
-
-        else:
-            # Parse the current rating criteria
-            current_rating_criteria = current_prompt["rating_criteria"]
-            label_5 = list(current_rating_criteria.keys())[0].split("(")[-1].strip(")")
-            desc_5 = list(current_rating_criteria.values())[0]
-            label_1 = list(current_rating_criteria.keys())[1].split("(")[-1].strip(")")
-            desc_1 = list(current_rating_criteria.values())[1]
-            rating_criteria = current_rating_criteria
-
-        # Display the initial rating criteria
-        rating_criteria_placeholder.json(rating_criteria)
-
-        # Input fields for labels and descriptions
-        label_5 = st.text_input("Label for 5", value=label_5, key="label_5")
-        desc_5 = st.text_area(description_5, value=desc_5, key="desc_5", height=50)
-
-        label_1 = st.text_input("Label for 1", value=label_1, key="label_1")
-        desc_1 = st.text_area(description_1, value=desc_1, key="desc_1", height=50)
-
-        # Update the rating criteria based on user input
-        rating_criteria = {f"5 ({label_5})": desc_5, f"1 ({label_1})": desc_1}
-
-        # Update the rating criteria placeholder with the new values
-        rating_criteria_placeholder.json(rating_criteria)
-    elif output_format == "Boolean":
-        st.markdown(evaluation_criteria_header)
-        st.markdown("Please make TRUE the ideal output")
-
-        # Initialise placeholders for the rating criteria
-        rating_criteria_placeholder = st.empty()
-
-        # Determine the initial values based on whether it's new or existing
-        if new:
-            rating_criteria = {"TRUE": "", "FALSE": ""}
-            desc_t = ""
-            desc_f = ""
-        else:
-            # Parse the current rating criteria
-            current_rating_criteria = current_prompt["rating_criteria"]
-            desc_t = current_rating_criteria.get("TRUE", "")
-            desc_f = current_rating_criteria.get("FALSE", "")
-            rating_criteria = current_rating_criteria
-
-        # Display the initial rating criteria
-        rating_criteria_placeholder.json(rating_criteria)
-
-        # Input fields for labels and descriptions
-        desc_t = st.text_area(description_true, value=desc_t, key="desc_t", height=50)
-        desc_f = st.text_area(description_false, value=desc_f, key="desc_f", height=50)
-
-        # Update the rating criteria based on user input
-        rating_criteria = {"TRUE": desc_t, "FALSE": desc_f}
-
-        # Update the rating criteria placeholder with the new values
-        rating_criteria_placeholder.json(rating_criteria)
-
-    return rating_criteria
 
 
 def objective_title_select(new=False, current_prompt=None):
