@@ -494,7 +494,6 @@ def create_new_prompt(example_prompts):
         st.markdown("### Provide Your Rating:")
         st.markdown(f"{truncated_rating_instruction}")
 
-    #objective_title, objective_desc = objective_title_select(new=True)
     teachers = get_teachers()
     teachers_options = ["Select a teacher"] + teachers["name"].tolist()
     created_by = st.selectbox("Who is creating the prompt?", teachers_options)
@@ -567,33 +566,6 @@ def modify_existing_prompt():
         st.markdown("#### Prompt Title")
         st.markdown(f"{latest_prompt['prompt_title']}")
 
-        #st.markdown("#### Prompt Objective")
-        #prompt_objective = st.text_area("State what you want the LLM to check for", value=latest_prompt["prompt_objective"], height=100)
-        st.session_state["draft_prompt"]["prompt_objective"] = prompt_objective
-
-        #st.markdown("#### Relevant Lesson Plan Parts")
-        #st.markdown(f"{latest_prompt['lesson_plan_params']}")
-
-        #st.markdown("#### Output Format")
-        #output_format = st.selectbox(
-        #    "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for a TRUE/FALSE evaluation",
-        #    options=["Score", "Boolean"], index=["Score", "Boolean"].index(latest_prompt["output_format"])
-        #)
-
-        #if output_format == latest_prompt["output_format"]:
-        #    rating_criteria = show_rating_criteria_input(output_format, current_prompt=latest_prompt)
-            st.session_state["draft_prompt"]["rating_criteria"] = rating_criteria
-
-        #    st.markdown("#### General Criteria Note")
-        #    general_criteria_note = st.text_area(
-        #        "Either leave this section empty or add things you'd like the LLM to focus on",
-        #        value=latest_prompt["general_criteria_note"], height=100
-            )
-        #    st.markdown("#### Rating Instruction")
-        #    rating_instruction = st.text_area("Tell the LLM to actually do the evaluation", value=latest_prompt["rating_instruction"], height=100)
-        #    experiment_description = " "
-
-
         if st.button("View Your Prompt"):
             st.markdown(f"# *{prompt_title}* #")
             st.markdown("### Objective:")
@@ -613,30 +585,12 @@ def modify_existing_prompt():
             truncated_rating_instruction = get_first_ten_words(rating_instruction)
             st.markdown("### Provide Your Rating:")
             st.markdown(f"{truncated_rating_instruction}")
-            
-        objective_title, objective_desc = objective_title_select(current_prompt=latest_prompt)
         
         teachers = get_teachers()
         teachers_options = ["Select a teacher"] + teachers["name"].tolist()
         created_by = st.selectbox("Who is creating the prompt?", teachers_options)
         
         if st.button("Save Prompt", help="Save the prompt to the database."):
-            '''
-            DO I NEED THIS CODE:
-            # Retrieve updated prompt details from session state
-            prompt_objective = st.session_state["draft_prompt"]["prompt_objective"]
-            lesson_plan_params = st.session_state["draft_prompt"]["lesson_plan_params"]
-            output_format = st.session_state["draft_prompt"]["output_format"]
-            rating_criteria = st.session_state["draft_prompt"]["rating_criteria"]
-            general_criteria_note = st.session_state["draft_prompt"]["general_criteria_note"]
-            rating_instruction = st.session_state["draft_prompt"]["rating_instruction"]
-            prompt_title = st.session_state["draft_prompt"]["prompt_title"]
-            experiment_description = st.session_state["draft_prompt"]["experiment_description"]
-            objective_title = st.session_state["draft_prompt"]["objective_title"]
-            objective_desc = st.session_state["draft_prompt"]["objective_desc"]
-            prompt_created_by = st.session_state["draft_prompt"]["created_by"]
-            version = str(int(st.session_state["draft_prompt"]["version"]) + 1)
-            '''
             # Save the updated prompt to the database
             returned_id = to_prompt_metadata_db(
                 prompt_objective,
@@ -646,7 +600,7 @@ def modify_existing_prompt():
                 general_criteria_note,
                 rating_instruction,
                 prompt_title,
-                experiment_description,
+                " ",
                 objective_title,
                 objective_desc,
                 created_by,
@@ -682,7 +636,8 @@ def display_prompt_fields(prompt_data=None):
         value=prompt_data["prompt_objective"] if prompt_data else "",
         height=200
     )
-
+    st.session_state["draft_prompt"]["prompt_objective"] = prompt_objective
+    
     if not prompt_data:
         with st.expander("Example"):
             st.write(f"{example_prompts['score']['prompt_objective']}")
@@ -705,19 +660,15 @@ def display_prompt_fields(prompt_data=None):
         index=["Score", "Boolean"].index(prompt_data["output_format"]) if prompt_data else 0
     )
 
-    #rating_criteria = show_rating_criteria_input(
-    #    output_format,
-    #    new=not prompt_data,
-    #    current_prompt=prompt_data
-    )
-    
-    if output_format:
+    if not prompt_data:
         example_prompt = example_prompts["score"] if output_format == "Score" else example_prompts["boolean"]
         rating_criteria = show_rating_criteria_input(
             output_format,
             new=not prompt_data,
             current_prompt=prompt_data
         )
+        st.session_state["draft_prompt"]["rating_criteria"] = rating_criteria
+        
         if output_format == "Score":
             example_score_rating_criteria()
         elif output_format == "Boolean":
@@ -729,9 +680,8 @@ def display_prompt_fields(prompt_data=None):
             value=prompt_data["general_criteria_note"] if prompt_data else "",
             height=100
         )
-        if not prompt_data:
-            with st.expander("Example"):
-                st.write(f"{example_prompt['general_criteria_note']}")
+        with st.expander("Example"):
+            st.write(f"{example_prompt['general_criteria_note']}")
 
         st.markdown("#### Rating Instruction")
         rating_instruction = st.text_area(
@@ -795,3 +745,43 @@ if action == "Create a new prompt":
     create_new_prompt(example_prompts)
 elif action == "Modify an existing prompt":
     modify_existing_prompt()
+
+
+
+
+'''
+The code appears to be a part of a Streamlit application for creating and modifying prompts.
+The functions create_new_prompt() and modify_existing_prompt() seem to be the main functions 
+for creating new prompts and modifying existing ones, respectively.
+
+The code uses various helper functions like display_prompt_fields(), show_rating_criteria_input(), and objective_title_select().
+
+The structure and syntax of the code look correct overall.
+
+There are some potential issues or areas for improvement:
+
+a. In the modify_existing_prompt() function, there's a commented-out block of code that 
+retrieves updated prompt details from st.session_state. This might be necessary, but it's currently unused.
+
+b. In the same function, the experiment_description variable is used in the to_prompt_metadata_db() 
+call, but it's not defined earlier in the function.
+
+c. The display_prompt_fields() function returns 8 values, but when it's called in 
+create_new_prompt(), it's unpacked into 8 variables. However, in modify_existing_prompt(), it's only 
+unpacked into 7 variables (missing experiment_description). This could lead to issues.
+
+d. There are some inconsistencies in how the st.session_state["draft_prompt"] is used. It's updated for some fields but not for others.
+
+e. The lesson_plan_params variable in display_prompt_fields() is set differently depending on 
+whether prompt_data is provided, but it's not clear how this is used later.
+
+f. Some variables like example_prompts, lesson_params_plain_eng, and functions like get_lesson_plan_params(), 
+get_first_ten_words(), etc., are not defined in this code snippet. They're likely defined elsewhere in the application.
+
+g. The code uses a mix of f-strings and regular string concatenation. It might be more consistent to use f-strings throughout.
+
+While the overall structure looks correct, there are a few potential issues that could cause problems depending on how the 
+rest of the application is structured. To ensure 100% correctness, you would need to test the code thoroughly in the 
+context of the entire application, ensuring all dependencies are correctly imported and all variables are properly defined and used.
+
+'''
