@@ -597,25 +597,24 @@ def get_prompt(prompt_id):
         FROM m_prompts
         WHERE id = %s;
     """
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (prompt_id,))
-            result = cur.fetchone()
+    result = execute_single_query(query, (prompt_id,), return_dataframe=True)
 
-    if result:
-        clean_rating_criteria = fix_json_format(result[4])
+    if not result.empty:
+        prompt_data = result.iloc[0]
+        clean_rating_criteria = fix_json_format(prompt_data["rating_criteria"])
+
         return {
-            "prompt_id": result[0],
-            "prompt_objective": result[1],
-            "lesson_plan_params": result[2],
-            "output_format": result[3],
+            "prompt_id": prompt_data["id"],
+            "prompt_objective": prompt_data["prompt_objective"],
+            "lesson_plan_params": prompt_data["lesson_plan_params"],
+            "output_format": prompt_data["output_format"],
             "rating_criteria": clean_rating_criteria,
-            "general_criteria_note": result[5],
-            "rating_instruction": result[6],
-            "prompt_title": result[7],
-            "experiment_description": result[8],
-            "objective_title": result[9],
-            "objective_desc": result[10],
+            "general_criteria_note": prompt_data["general_criteria_note"],
+            "rating_instruction": prompt_data["rating_instruction"],
+            "prompt_title": prompt_data["prompt_title"],
+            "experiment_description": prompt_data["experiment_description"],
+            "objective_title": prompt_data["objective_title"],
+            "objective_desc": prompt_data["objective_desc"],
         }
     return None
 
