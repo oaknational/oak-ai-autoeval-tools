@@ -5,8 +5,8 @@ base="dark"
 # Primary accent color for interactive elements.
 primaryColor="#287C34"
 # Background color for the main content area.
-backgroundColor="#EBFBEB"
+backgroundColor="#FFFFFF"
 # Background color for sidebar and most interactive widgets.
-secondaryBackgroundColor="#DFF9DE"
+secondaryBackgroundColor="#BEF2BD"
 # Color used for almost all text.
 textColor="#000000"
