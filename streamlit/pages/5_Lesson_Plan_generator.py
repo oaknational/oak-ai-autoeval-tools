@@ -12,29 +12,14 @@ from openai import OpenAI
 from dataeditor import * 
 import plotly.graph_objects as go
 import uuid
-from utils import  log_message
+from utils import  log_message, get_db_connection
 from constants import ErrorMessages
+import requests
 
 # Load environment variables
 load_dotenv()
-def get_db_connection():
-    """ Establish a connection to the PostgreSQL database.
 
-    Returns:
-        conn: connection object to interact with the database.
-    """
-    try:
-        conn = psycopg2.connect(
-            dbname=get_env_variable("DB_NAME"),
-            user=get_env_variable("DB_USER"),
-            password=get_env_variable("DB_PASSWORD"),
-            host=get_env_variable("DB_HOST"),
-            port=get_env_variable("DB_PORT")
-        )
-        return conn
-    except psycopg2.Error as e:
-        log_message("error", f"Error connecting to the database: {e}")
-        return None
+
 
 def execute_single_query(query, params):
     try:
@@ -83,7 +68,6 @@ def insert_lesson_plan(json_data, key_stage, subject, lesson_id, geneartion_deta
 
 
 
-response = None
 
 
 
@@ -106,10 +90,31 @@ else:
 
 
 
-    
-
 file_path = os.path.join(os.path.dirname(__file__), 'prompt_raw.txt')
 
+if 'llm_model' not in st.session_state: 
+    st.session_state.llm_model = 'gpt-4o-mini'
+if 'llm_model_temp' not in st.session_state:
+    st.session_state.llm_model_temp = 0.3
+
+
+llm_model_options = ['llama','gpt-4o-mini','gpt-4o','gpt-4',  'gpt-4-turbo']
+
+st.session_state.llm_model = st.selectbox(
+    'Select a model:',
+    llm_model_options,
+    index=llm_model_options.index(st.session_state.llm_model)
+)
+
+
+st.session_state.llm_model_temp = st.number_input(
+    'Enter temperature:',
+    min_value=0.0, max_value=2.00,
+    value=st.session_state.llm_model_temp,
+    help='Minimum value is 0.0, maximum value is 2.00.'
+)
+
+response = None
 
 # Check if the file exists
 if not os.path.exists(file_path):
@@ -121,29 +126,8 @@ else:
 
 
 
-    llm_model = "gpt-4o-mini"
-    llm_model_temp = 0.3
-        
-    def log_message(level, message):
-        """ Log a message using Streamlit's log functions based on the level.
-
-        Args:
-            level (str): Log level ('error', 'warning', 'info').
-            message (str): Message to log.
-            
-        Returns:
-            None
-        """
-        if level == "error":
-            st.error(message)
-        elif level == "warning":
-            st.warning(message)
-        elif level == "info":
-            st.info(message)
-        elif level == "success":
-            st.success(message)
-        else:
-            st.write(message)
+    llm_model = st.session_state.llm_model
+    llm_model_temp = st.session_state.llm_model_temp
 
     # Define the clean_response function
     def clean_response(content):
@@ -161,7 +145,60 @@ else:
             return os.getenv(var_name)
         except KeyError:
             raise RuntimeError(f"Environment variable '{var_name}' not found")
+        
+    endpoint = get_env_variable("ENDPOINT")
+    username = get_env_variable("USERNAME")
+    credential = get_env_variable("CREDENTIAL")
+    def run_agent_llama_inference(prompt, llm_model, llm_model_temp):
 
+        
+        try:
+            # Define the headers for the request
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {credential}"
+            }
+
+            # Create the payload with the data you want to send to the model
+            data = {
+                "messages": [
+                    {"role": "user", "content": prompt},   # Adjust this structure based on API requirements
+                ],
+                "temperature": llm_model_temp,
+                # 'temperature': llm_model_temp,
+            }
+
+            # Make the POST request to the model endpoint
+            response = requests.post(endpoint, headers=headers, data=json.dumps(data))
+            
+
+            # Check the response status and content
+            if response.status_code == 200:
+                response_data = response.json()
+                message = response_data['choices'][0]['message']['content']
+                cleaned_content, status = clean_response(message)
+                return {
+                    "response": cleaned_content  # Add the elapsed time to the return value
+                }
+            else:
+                log_message("error", f"Failed with status code {response.status_code}: {response.text}")
+                return {
+                    "response": {
+                        "result": None,
+                        "justification": f"Failed with status code {response.status_code}: {response.text}",
+                    },
+                    "status": "FAILURE" 
+                }
+
+        except Exception as e:
+            log_message("error", f"Unexpected error during inference: {e}")
+            return {
+                "response": {
+                    "result": None,
+                    "justification": f"An error occurred: {e}",
+                },
+                "status": "FAILURE" # Include elapsed time even in case of failure
+            }
     def run_agent_inference(prompt, llm_model, llm_model_temp, timeout=150):
         client = OpenAI( api_key= os.environ.get("OPENAI_API_KEY"), timeout=timeout)
 
@@ -200,7 +237,11 @@ else:
                 prompt = prompt.replace("{{subject}}", row['Subject'])
                 prompt = prompt.replace("{{lesson_title}}", row['Lesson Title'])
 
-                response = run_agent_inference(prompt, llm_model, llm_model_temp)
+                if llm_model != 'llama':
+                    response = run_agent_inference(prompt, llm_model, llm_model_temp)
+                else:
+                    response = run_agent_llama_inference(prompt, llm_model, llm_model_temp)
+
                 st.write(f"Response for {row['Key Stage']} - {row['Subject']} - {row['Lesson Title']}:")
                 # Make response a string
                 response = response['response']
