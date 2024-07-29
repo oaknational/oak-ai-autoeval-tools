@@ -351,10 +351,45 @@ def insert_sample_prompt(csv_file_path):
     except Exception as e:
         log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return ErrorMessages.UNEXPECTED_ERROR
+
+def new_lesson_sets_table(csv_file_path):
+    """ Create a new table 'lesson_plan_sets' in the database and insert CSV data.
+
+    Args:
+        csv_file_path (str): Path to the CSV file containing lesson plan sets.
+    """
+    # Create table query
+    create_table_query = """
+        CREATE TABLE IF NOT EXISTS lesson_plan_sets (
+        lesson_number TEXT,
+        subject VARCHAR(50),
+        key_stage VARCHAR(10),
+        lesson_title TEXT
+    );
+    """
+    # Execute create table query
+    execute_single_query(create_table_query)
+
+    # Read CSV and insert data
+    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+        csvreader = csv.reader(csvfile)
+        next(csvreader)  # Skip the header row
+        for row in csvreader:
+            insert_query = """
+                INSERT INTO lesson_plan_sets (lesson_number, subject, key_stage, lesson_title) 
+                VALUES (%s, %s, %s, %s);
+            """
+            execute_single_query(insert_query, tuple(row))
+            
+
     
+
 
 def initialize_database(csv_file_path):
     """Initialize the database schema and populate it with data."""
+    
+    sample_lesson_set_path = csv_file_path + "sample_lesson_set.csv"
+    sample_prompts_path = csv_file_path + "sample_prompts.csv"
     new_experiments_table()
     new_results_table()
     new_prompts_table()
@@ -366,8 +401,9 @@ def initialize_database(csv_file_path):
     new_lesson_plans_table()
     insert_lesson_plan()
     add_teacher("John Doe")
-    insert_sample_prompt(csv_file_path)
+    insert_sample_prompt(sample_prompts_path)
+    new_lesson_sets_table(sample_lesson_set_path)
 
 
 if __name__ == "__main__":
-    initialize_database("data/sample_prompts.csv")
+    initialize_database("data/")

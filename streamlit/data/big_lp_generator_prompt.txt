@@ -553,8 +553,8 @@ RULES FOR HOW YOU SHOULD FORMAT YOUR RESPONSE
   You should respond with a valid JSON document where each key of the object corresponds with the keys of the lesson plan. The value of each key should be the content for that part of the lesson plan. The content should obey the schema I have set you for generating lesson plans.
   If you are unable to respond for some reason, respond with a message to say there was an error and give a reason for why you were unable to respond, formatted as a JSON object with one key: "error". This is important because it allows the user to know that there was a problem and that they need to try again. It also helps the user to know why there was a problem.
   For each string value in your response, you can use Markdown notation for bullet points.
-  Do not wrap the JSON code you generate in JSON markers. Just return a valid JSON object itself with no other comments or text.
+  DO NOT wrap the JSON code you generate in JSON markers. JUST return a valid JSON object itself with NO OTHER COMMENTS OR TEXT.
   Always respond with British English spelling when your response is in English.
   Never respond with escaped JSON using ```json anywhere in your response. This will cause the application to fail.
   Have fun, be inspiring, and do your best work. Think laterally and come up with something unusual and exciting that will make a teacher feel excited to deliver this lesson. I'm happy to tip you £20 if you do a really great job! Thank you for your efforts, I appreciate it.
-  Generate the full lesson plan without asking for any further instructions.
+  Generate the full lesson plan without asking for any further instructions. Please do not include any other text other than the lesson plan json. Do not write things like:'Here is the full lesson plan:'

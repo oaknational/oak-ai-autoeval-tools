@@ -68,29 +68,36 @@ def insert_lesson_plan(json_data, key_stage, subject, lesson_id, geneartion_deta
 
 
 
+def fetch_lesson_plan_sets():
+    """
+    Fetch the contents of the lesson_plan_sets table and load into a pandas DataFrame.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the lesson_plan_sets data.
+    """
+    try:
+        conn = get_db_connection()
+        query = "SELECT * FROM lesson_plan_sets;"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 
+selection = st.selectbox('Select a lesson plan set to generate lesson plans with:', ['HB_Test_Set'])
+# Fetch the data and load it into a DataFrame
 
-#read csv lessons.csv
+if selection == 'HB_Test_Set':
+    lessons_df = fetch_lesson_plan_sets()
+    lessons_df['key_stage'] = lessons_df['key_stage'].replace(['KS1', 'KS2', 'KS3', 'KS4'], ['Key Stage 1', 'Key Stage 2', 'Key Stage 3', 'Key Stage 4'])
 
-# Define the file path for lessons.csv
-lessons_path = os.path.join(os.path.dirname(__file__), 'lessons.csv')
-
-# Check if the lessons file exists
-if not os.path.exists(lessons_path):
-    st.error(f"File not found: {lessons_path}")
-else:
-    # Read lessons.csv into a dataframe
-    lessons_df = pd.read_csv(lessons_path)
-
-    #replave KS1, KS2, KS3, KS4 with Key Stage 1, Key Stage 2, Key Stage 3, Key Stage 4
-    lessons_df['Key Stage'] = lessons_df['Key Stage'].replace(['KS1', 'KS2', 'KS3', 'KS4'], ['Key Stage 1', 'Key Stage 2', 'Key Stage 3', 'Key Stage 4'])
-    
     st.write(lessons_df)
 
 
 
-file_path = os.path.join(os.path.dirname(__file__), 'prompt_raw.txt')
+
 
 if 'llm_model' not in st.session_state: 
     st.session_state.llm_model = 'gpt-4o-mini'
@@ -101,14 +108,14 @@ if 'llm_model_temp' not in st.session_state:
 llm_model_options = ['llama','gpt-4o-mini','gpt-4o','gpt-4',  'gpt-4-turbo']
 
 st.session_state.llm_model = st.selectbox(
-    'Select a model:',
+    'Select a model for lesson plan generation:',
     llm_model_options,
     index=llm_model_options.index(st.session_state.llm_model)
 )
 
 
 st.session_state.llm_model_temp = st.number_input(
-    'Enter temperature:',
+    'Enter temperature for the model:',
     min_value=0.0, max_value=2.00,
     value=st.session_state.llm_model_temp,
     help='Minimum value is 0.0, maximum value is 2.00.'
@@ -116,15 +123,27 @@ st.session_state.llm_model_temp = st.number_input(
 
 response = None
 
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Get the parent directory of the current script's directory
+base_dir = os.path.dirname(script_dir)
+
+# Define the file path for prompt_raw.txt in the data directory
+prompt_file_path = os.path.join(base_dir, 'data', 'big_lp_generator_prompt.txt')
+
+
 # Check if the file exists
-if not os.path.exists(file_path):
-    st.error(f"File not found: {file_path}")
+if not os.path.exists(prompt_file_path):
+    st.error(f"File not found: {prompt_file_path}")
 else:
     # Read the prompt from data/prompt_raw.txt
-    with open(file_path, 'r') as file:
+    with open(prompt_file_path, 'r') as file:
         prompt_template = file.read()
 
-
+    st.write('Review the Prompt for generations')
+    with st.expander("Prompt Template", expanded=False):
+        st.text_area("Generation Prompt", prompt_template, height=600)
 
     llm_model = st.session_state.llm_model
     llm_model_temp = st.session_state.llm_model_temp
@@ -149,6 +168,7 @@ else:
     endpoint = get_env_variable("ENDPOINT")
     username = get_env_variable("USERNAME")
     credential = get_env_variable("CREDENTIAL")
+
     def run_agent_llama_inference(prompt, llm_model, llm_model_temp):
 
         
@@ -199,7 +219,7 @@ else:
                 },
                 "status": "FAILURE" # Include elapsed time even in case of failure
             }
-    def run_agent_inference(prompt, llm_model, llm_model_temp, timeout=150):
+    def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
         client = OpenAI( api_key= os.environ.get("OPENAI_API_KEY"), timeout=timeout)
 
         
@@ -229,20 +249,20 @@ else:
                 "status": "FAILURE",
             }
     # Usage in Streamlit form
-    with st.form(key='experiment_form'):
-        if st.form_submit_button('Run Agent'):
+    with st.form(key='generation_form'):
+        if st.form_submit_button('Start Generation'):
             for index, row in lessons_df.iterrows():
                 # Replace placeholders with actual values in the prompt
-                prompt = prompt_template.replace("{{key_stage}}", row['Key Stage'])
-                prompt = prompt.replace("{{subject}}", row['Subject'])
-                prompt = prompt.replace("{{lesson_title}}", row['Lesson Title'])
+                prompt = prompt_template.replace("{{key_stage}}", row['key_stage'])
+                prompt = prompt.replace("{{subject}}", row['subject'])
+                prompt = prompt.replace("{{lesson_title}}", row['lesson_title'])
 
                 if llm_model != 'llama':
-                    response = run_agent_inference(prompt, llm_model, llm_model_temp)
+                    response = run_agent_openai_inference(prompt, llm_model, llm_model_temp)
                 else:
                     response = run_agent_llama_inference(prompt, llm_model, llm_model_temp)
 
-                st.write(f"Response for {row['Key Stage']} - {row['Subject']} - {row['Lesson Title']}:")
+                st.write(f"Response for {row['key_stage']} - {row['subject']} - {row['lesson_title']}:")
                 # Make response a string
                 response = response['response']
                 # response
@@ -252,7 +272,7 @@ else:
                 response_cleaned = re.sub(r'\\n|\\r', '', response)
                 # response_cleaned
                 # Insert lesson plan into database
-                lesson_id = 'HB_' + str(row['Lesson number'])
+                lesson_id = 'HB_' + str(row['lesson_number'])
                 generation_details_value =  llm_model+'_'+str(llm_model_temp)+'_'+'HB_Test_Set'
-                result = insert_lesson_plan(response_cleaned, row['Key Stage'], row['Subject'], lesson_id, generation_details_value)
+                result = insert_lesson_plan(response_cleaned, row['key_stage'], row['subject'], lesson_id, generation_details_value)
                 st.write(result)

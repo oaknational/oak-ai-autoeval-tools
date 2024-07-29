@@ -71,7 +71,7 @@ import os
 import re
 import json
 import hashlib
-
+import requests
 import pandas as pd
 import psycopg2
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -740,6 +740,8 @@ def clean_response(response_text):
 
 def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         timeout=15):
+    
+    
     """ Run inference using a lesson plan and a prompt ID.
 
     Args:
@@ -752,6 +754,9 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     Returns:
         dict: Inference result or error response.
     """
+    endpoint = get_env_variable("ENDPOINT")
+    username = get_env_variable("USERNAME")
+    credential = get_env_variable("CREDENTIAL")
     required_keys = ["title", "topic", "subject", "keyStage"]
     if not all(k in lesson_plan for k in required_keys):
         return {
@@ -784,37 +789,87 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             "status": "ABORTED",
         }
 
-    openai.api_key = get_env_variable("OPENAI_API_KEY")
-    client = OpenAI()
-    try:
-        response = client.chat.completions.create(
-            model=llm_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=llm_model_temp,
-            timeout=timeout,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-        )
+    if llm_model != "llama":
+        openai.api_key = get_env_variable("OPENAI_API_KEY")
+        client = OpenAI()
+        try:
+            response = client.chat.completions.create(
+                model=llm_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=llm_model_temp,
+                timeout=timeout,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+            )
 
-        cleaned_content, status = clean_response(
-            response.choices[0].message.content
-        )
-        return {
-            "response": cleaned_content,
-            "status": status,
-        }
+            cleaned_content, status = clean_response(
+                response.choices[0].message.content
+            )
+            return {
+                "response": cleaned_content,
+                "status": status,
+            }
 
-    except Exception as e:
-        log_message("error", f"Unexpected error during inference: {e}")
-        return {
-            "response": {
-                "result": None,
-                "justification": f"An error occurred: {e}",
-            },
-            "status": "FAILURE",
-        }
+        except Exception as e:
+            log_message("error", f"Unexpected error during inference: {e}")
+            return {
+                "response": {
+                    "result": None,
+                    "justification": f"An error occurred: {e}",
+                },
+                "status": "FAILURE",
+            }
+    else:
+        try:
+            # Define the headers for the request
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {credential}"
+            }
 
+            # Create the payload with the data you want to send to the model
+            data = {
+                "messages": [
+                    {"role": "user", "content": prompt},   # Adjust this structure based on API requirements
+                ],
+                "temperature": llm_model_temp,
+                # 'temperature': llm_model_temp,
+            }
+
+            # Make the POST request to the model endpoint
+            response = requests.post(endpoint, headers=headers, data=json.dumps(data))
+            
+
+            # Check the response status and content
+            if response.status_code == 200:
+                response_data = response.json()
+                message = response_data['choices'][0]['message']['content']
+                cleaned_content, status = clean_response(message)
+                return {
+                    "response": cleaned_content,
+                    "status": status,  
+                }
+            
+            else:
+                log_message("error", f"Failed with status code {response.status_code}: {response.text}")
+                return {
+                    "response": {
+                        "result": None,
+                        "justification": f"Failed with status code {response.status_code}: {response.text}",
+                    },
+                    "status": "FAILURE" 
+                }
+
+        except Exception as e:
+            log_message("error", f"Unexpected error during inference: {e}")
+            return {
+                "response": {
+                    "result": None,
+                    "justification": f"An error occurred: {e}",
+                },
+                "status": "FAILURE" # Include elapsed time even in case of failure
+            }
 
 def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         justification, status):
