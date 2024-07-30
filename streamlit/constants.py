@@ -42,8 +42,7 @@ class ColumnLabels:
     
     
 class ExamplePrompts:
-    PROMPT_OBJECTIVE = (
-        f"""
+    PROMPT_OBJECTIVE = """
         Evaluate whether the quiz questions from the Starter Quiz and 
         Exit Quiz require specific, explicit knowledge for correct 
         answers, or if they can be answered using general knowledge or 
@@ -57,7 +56,7 @@ class ExamplePrompts:
         required. Submissions that do not demonstrate a detailed 
         examination will be disregarded.
         """
-    )
+
     SCORE = """
         **Label for 1:** Don't Require Explicit Knowledge
         
