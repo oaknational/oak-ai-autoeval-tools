@@ -1,12 +1,23 @@
-"""
-This script is for creating and managing prompt tests using Streamlit.
-It allows users to either create new prompts from scratch with guidance 
-or modify existing prompts.
+""" Streamlit page for creating new prompt tests in the AutoEval app.
+    Enables creation of new subsets of lesson plans to run evaluations on.
+    It allows users to either create new prompts from scratch with guidance 
+    or to create new prompts by using existing prompts as a template.
 
+Functionality:
+
+- Creates new prompt tests from scratch.
+- Creates new prompt tests by modifying existing prompts (using them as 
+    a template). 
+    
+Note:
+    Prompts cannot be overwritten. 'Create Prompt' will warn the user if
+    a prompt with the same title already exists. 'Modify Prompt' 
+    will save the new prompt as a new version of the existing prompt.
 """
 import json
 
 import streamlit as st
+import pandas as pd
 
 from constants import ExamplePrompts
 from utils import (
@@ -235,15 +246,15 @@ def objective_title_select(new=False, current_prompt=None):
         tuple: A tuple containing the objective title and description.
     """
     objectives = {
-        "Sanity Checks - Check if the lesson is up to oak standards": 
+        "Sanity Checks - Check if the lesson is up to oak standards.": 
             ("Sanity Checks",
             "Check if the lesson is up to oak standards."),
-        "Low-quality Content - Check for low-quality content in the lesson plans": 
+        "Low-quality Content - Check for low-quality content in the lesson plans.": 
             ("Low-quality Content",
             "Check for low-quality content in the lesson plans."),
-        "Moderation Eval - Check for moderation flags in the lesson plans": 
+        "Moderation Eval - Check for moderation flags in the lesson plans.": 
             ("Moderation Eval",
-            "Check for moderation flags in the lesson plans"),
+            "Check for moderation flags in the lesson plans."),
         "New Group": (None, None)
     }
 
@@ -256,14 +267,16 @@ def objective_title_select(new=False, current_prompt=None):
                 current_prompt["objective_desc"].strip()
             }
         """
-        
+
+        default_objective = default_objective.strip()
+
         if default_objective not in objectives.keys():
             objectives[default_objective] = (
                 current_prompt["objective_title"],
                 current_prompt["objective_desc"]
             )
         default_index = list(objectives.keys()).index(default_objective)
-        
+
     objective = st.selectbox(
         "Select the group that the prompt belongs to",
         list(objectives.keys()),
@@ -288,14 +301,14 @@ def objective_title_select(new=False, current_prompt=None):
 
 def display_at_end_score_criteria(rating_criteria, truncated=True):
     """ This function presents the rating criteria for scores 5 and 1.
-    It extracts labels and descriptions from a global 'rating_criteria' 
+    Extracts labels and descriptions from the rating_criteria 
     dictionary and formats them for display.
     
     Args:
         rating_criteria (dict): A dictionary containing the rating
-            criteria truncated (bool, optional): If True, only the first
-            ten words of the descriptions are displayed. Defaults to
-            True.
+            criteria 
+        truncated (bool, optional): If True, only the first ten words of
+            the descriptions are displayed. Defaults to True.
     """
     st.markdown("### Rating Criteria:")
 
@@ -316,9 +329,9 @@ def display_at_end_score_criteria(rating_criteria, truncated=True):
 
 
 def display_at_end_boolean_criteria(rating_criteria, truncated=True):
-    """ Displays the rating criteria for TRUE and FALSE outcomes. It 
-    extracts descriptions from a global 'rating_criteria' dictionary and
-    formats them for display.
+    """ Displays the rating criteria for TRUE and FALSE outcomes.
+    Extracts labels and descriptions from the rating_criteria 
+    dictionary and formats them for display.
 
     Args:
         rating_criteria (dict): A dictionary containing the rating 
@@ -407,6 +420,27 @@ def get_first_ten_words(text):
 def prompt_details_inputs(prompt_title="", prompt_objective="",
         lesson_plan_params=[], output_format=" ", rating_criteria=None,
         general_criteria_note="", rating_instruction="", create=True):
+    """
+    Displays input fields for prompt creation or modification.
+
+    Args:
+        prompt_title (str, optional): The title of the prompt.
+        prompt_objective (str, optional): The objective of the prompt.
+        lesson_plan_params (list, optional): The lesson plan parameters.
+        output_format (str, optional): The output format, either 'Score'
+            or 'Boolean'.
+        rating_criteria (dict, optional): The rating criteria for the
+            prompt.
+        general_criteria_note (str, optional): General criteria note for
+            the prompt.
+        rating_instruction (str, optional): Instructions for rating the
+            prompt.
+        create (bool, optional): Indicates whether the prompt is being
+            created or modified. Defaults to True.
+
+    Returns:
+        tuple: A tuple containing the prompt details.
+    """
     st.markdown("#### Prompt Title")
     prompt_title = st.text_input(
         "Choose a unique title for your prompt",
@@ -421,22 +455,22 @@ def prompt_details_inputs(prompt_title="", prompt_objective="",
     if create:
         with st.expander("Example"):
             st.write(ExamplePrompts.PROMPT_OBJECTIVE)
-        
+
     st.markdown("#### Relevant Lesson Plan Parts")
-    
+
     lesson_param_mapping = dict(zip(lesson_params, lesson_params_plain_eng))
     filtered_lesson_plan_params = [
         lesson_param_mapping[param] for param in lesson_plan_params
         if param in lesson_param_mapping
     ]
-    
+
     lesson_plan_params_st = st.multiselect(
         "Choose the parts of the lesson plan that you're evaluating",
         options=lesson_params_plain_eng,
         default=filtered_lesson_plan_params if not create else []
     )
     lesson_plan_params = get_lesson_plan_params(lesson_plan_params_st)
-    
+
     st.markdown("#### Output Format")
     output_format = st.selectbox(
         "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for a "
@@ -484,17 +518,28 @@ def prompt_details_inputs(prompt_title="", prompt_objective="",
             elif output_format == "Boolean":
                 with st.expander("Example"):
                     st.write(ExamplePrompts.RATING_INSTRUCTION_BOOL)
-                
+
     return (
         prompt_title, prompt_objective, lesson_plan_params, output_format,
         rating_criteria, general_criteria_note, rating_instruction
     )
 
 
-def view_prompt_details(
-        prompt_title, prompt_objective, lesson_plan_params, output_format, 
-        rating_criteria, general_criteria_note, rating_instruction
-):
+def view_prompt_details(prompt_title, prompt_objective, lesson_plan_params,
+        output_format, rating_criteria, general_criteria_note,
+        rating_instruction):
+    """
+    Displays the details of a prompt.
+
+    Args:
+        prompt_title (str): The title of the prompt.
+        prompt_objective (str): The objective of the prompt.
+        lesson_plan_params (list): The lesson plan parameters.
+        output_format (str): The output format, either 'Score' or 'Boolean'.
+        rating_criteria (dict): The rating criteria for the prompt.
+        general_criteria_note (str): General criteria note for the prompt.
+        rating_instruction (str): Instructions for rating the prompt.
+    """
     st.markdown(f"# *{prompt_title}* #")
     st.markdown("### Objective:")
     truncated_prompt_objective = get_first_ten_words(prompt_objective)
@@ -511,18 +556,33 @@ def view_prompt_details(
         general_criteria_note
     )
     st.markdown(f"{truncated_general_criteria_note}")
-    
+
     truncated_rating_instruction = get_first_ten_words(rating_instruction)
     st.markdown("### Evaluation Instruction:")
     st.markdown(f"{truncated_rating_instruction}")
     st.markdown("---")
 
 
-def save_prompt(
-        prompt_objective, lesson_plan_params, output_format, rating_criteria,
-        general_criteria_note, rating_instruction, prompt_title,
-        objective_title, objective_desc, created_by, version="1"
-):
+def save_prompt(prompt_objective, lesson_plan_params, output_format,
+        rating_criteria, general_criteria_note, rating_instruction,
+        prompt_title, objective_title, objective_desc, created_by,
+        version="1"):
+    """
+    Saves a prompt to the database.
+
+    Args:
+        prompt_objective (str): The objective of the prompt.
+        lesson_plan_params (list): The lesson plan parameters.
+        output_format (str): The output format, either 'Score' or 'Boolean'.
+        rating_criteria (dict): The rating criteria for the prompt.
+        general_criteria_note (str): General criteria note for the prompt.
+        rating_instruction (str): Instructions for rating the prompt.
+        prompt_title (str): The title of the prompt.
+        objective_title (str): The objective title.
+        objective_desc (str): The objective description.
+        created_by (str): The name of the creator.
+        version (str, optional): The version of the prompt. Defaults to "1".
+    """
     returned_id = insert_prompt(
         prompt_objective,
         json.dumps(lesson_plan_params),
@@ -541,25 +601,36 @@ def save_prompt(
 
 
 def create_new_prompt():
+    """
+    Handles the creation of a new prompt.
+    Displays input fields for the new prompt and saves it to the database.
+    """
     (
         prompt_title, prompt_objective, lesson_plan_params, output_format,
         rating_criteria, general_criteria_note, rating_instruction
     ) = prompt_details_inputs()
-    
+
     if output_format != " ":
         if st.button("View Your Prompt"):
             view_prompt_details(
-                prompt_title, prompt_objective, lesson_plan_params, output_format,
-                rating_criteria, general_criteria_note, rating_instruction
+                prompt_title, prompt_objective, lesson_plan_params,
+                output_format, rating_criteria, general_criteria_note,
+                rating_instruction
             )
 
         objective_title, objective_desc = objective_title_select(new=True)
         teachers = get_teachers()
         teachers_options = teachers["name"].tolist()
         teacher_option = ["Select a teacher"] + teachers_options
-        created_by = st.selectbox("Who is creating the prompt?", teacher_option)
-        
-        if st.button("Save New Prompt", help="Save the new prompt to the database."):
+        created_by = st.selectbox(
+            "Who is creating the prompt?",
+            teacher_option
+        )
+
+        if st.button(
+            "Save New Prompt", 
+            help="Save the new prompt to the database."
+        ):
             if check_prompt_title_exists(prompt_title):
                 st.error("This name already exists. Choose another one.")
             else:
@@ -571,6 +642,11 @@ def create_new_prompt():
 
 
 def modify_existing_prompt():
+    """
+    Handles the modification of an existing prompt.
+    Allows the user to select an existing prompt, modify its details,
+    and save the changes to the database.
+    """
     data = get_all_prompts()
     prompt_title_options = [""] + data["prompt_title"].unique().tolist()
     prompt_title = st.selectbox(
@@ -593,7 +669,11 @@ def modify_existing_prompt():
             ]
 
             # Display the key details of the current prompt in a table
-            st.table(current_prompt[[
+            display_data = current_prompt.copy()
+            display_data['created_at'] = (
+                display_data['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            )
+            st.table(display_data[[
                 "created_at",
                 "prompt_title",
                 "prompt_objective",
@@ -656,7 +736,7 @@ def modify_existing_prompt():
                 general_criteria_note)
             st.session_state["draft_prompt"]["rating_instruction"] = (
                 rating_instruction)
-            
+
             if st.button("View Your Prompt"):
                 view_prompt_details(
                     prompt_title, prompt_objective, lesson_plan_params,
@@ -665,7 +745,7 @@ def modify_existing_prompt():
                 )
             objective_title, objective_desc = objective_title_select(
                 current_prompt=current_prompt)
-            
+
             teachers = get_teachers()
             teachers_options = teachers["name"].tolist()
             teacher_option = ["Select a teacher"] + teachers_options
