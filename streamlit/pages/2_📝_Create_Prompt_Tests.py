@@ -441,70 +441,95 @@ def prompt_details_inputs(prompt_title="", prompt_objective="",
     Returns:
         tuple: A tuple containing the prompt details.
     """
-    st.markdown("#### Prompt Title")
-    prompt_title = st.text_input(
-        "Choose a unique title for your prompt",
-        value=prompt_title
-    )
-    st.markdown("#### Prompt Objective")
-    prompt_objective = st.text_area(
-        "State what you want the LLM to check for",
-        value=prompt_objective,
-        height=200
-    )
-    if create:
-        with st.expander("Example"):
-            st.write(ExamplePrompts.PROMPT_OBJECTIVE)
+    def get_prompt_title(prompt_title):
+        st.markdown("#### Prompt Title")
+        return st.text_input(
+            "Choose a unique title for your prompt",
+            value=prompt_title
+        )
 
-    st.markdown("#### Relevant Lesson Plan Parts")
-
-    lesson_param_mapping = dict(zip(lesson_params, lesson_params_plain_eng))
-    filtered_lesson_plan_params = [
-        lesson_param_mapping[param] for param in lesson_plan_params
-        if param in lesson_param_mapping
-    ]
-
-    lesson_plan_params_st = st.multiselect(
-        "Choose the parts of the lesson plan that you're evaluating",
-        options=lesson_params_plain_eng,
-        default=filtered_lesson_plan_params if not create else []
-    )
-    lesson_plan_params = get_lesson_plan_params(lesson_plan_params_st)
-
-    st.markdown("#### Output Format")
-    output_format = st.selectbox(
-        "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for a "
-        "TRUE/FALSE evaluation",
-        options=[" ", "Score", "Boolean"],
-        index=[" ", "Score", "Boolean"].index(output_format)
-            if output_format in [" ", "Score", "Boolean"] else 0
-    )
-    if output_format != " ":
-        rating_criteria = show_rating_criteria_input(
-            output_format,
-            new=not rating_criteria,
-            current_prompt={"rating_criteria": rating_criteria}
-                if rating_criteria else None
+    def get_prompt_objective(prompt_objective, create):
+        st.markdown("#### Prompt Objective")
+        prompt_objective = st.text_area(
+            "State what you want the LLM to check for",
+            value=prompt_objective,
+            height=200
         )
         if create:
-            if output_format == "Score":
-                with st.expander("Example"):
-                    st.write(ExamplePrompts.SCORE)
-            elif output_format == "Boolean":
-                with st.expander("Example"):
-                    st.write(ExamplePrompts.BOOL)
+            with st.expander("Example"):
+                st.write(ExamplePrompts.PROMPT_OBJECTIVE)
+        return prompt_objective
 
+    def get_lesson_plan_params_input(lesson_plan_params, create):
+        st.markdown("#### Relevant Lesson Plan Parts")
+        lesson_param_mapping = dict(zip(
+            lesson_params, lesson_params_plain_eng
+        ))
+        filtered_lesson_plan_params = [
+            lesson_param_mapping[param] for param in lesson_plan_params
+            if param in lesson_param_mapping
+        ]
+        lesson_plan_params_st = st.multiselect(
+            "Choose the parts of the lesson plan that you're evaluating",
+            options=lesson_params_plain_eng,
+            default=filtered_lesson_plan_params if not create else []
+        )
+        return get_lesson_plan_params(lesson_plan_params_st)
+
+    def get_output_format_details(
+            output_format, rating_criteria, general_criteria_note,
+            rating_instruction, create):
+        st.markdown("#### Output Format")
+        output_format = st.selectbox(
+            "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for "
+            "a TRUE/FALSE evaluation",
+            options=[" ", "Score", "Boolean"],
+            index=[" ", "Score", "Boolean"].index(output_format)
+                if output_format in [" ", "Score", "Boolean"] else 0
+        )
+        if output_format != " ":
+            rating_criteria = show_rating_criteria_input(
+                output_format,
+                new=not rating_criteria,
+                current_prompt={"rating_criteria": rating_criteria}
+                    if rating_criteria else None
+            )
+            if create:
+                show_output_format_example(output_format)
+            general_criteria_note = get_general_criteria_note_input(
+                general_criteria_note, create
+            )
+            rating_instruction = get_rating_instruction_input(
+                rating_instruction, create, output_format
+            )
+        return (
+            output_format, rating_criteria, general_criteria_note,
+            rating_instruction
+        )
+
+    def show_output_format_example(output_format):
+        if output_format == "Score":
+            with st.expander("Example"):
+                st.write(ExamplePrompts.SCORE)
+        elif output_format == "Boolean":
+            with st.expander("Example"):
+                st.write(ExamplePrompts.BOOL)
+
+    def get_general_criteria_note_input(general_criteria_note, create):
         st.markdown("#### General Criteria Note")
         general_criteria_note = st.text_area(
-            "Either leave this section empty or add things you'd like the LLM "
-            "to focus on",
+            "Either leave this section empty or add things you'd like the "
+            "LLM to focus on",
             value=general_criteria_note,
             height=100
         )
         if create:
             with st.expander("Example"):
                 st.write(ExamplePrompts.GENERAL_CRITERIA_SCORE)
+        return general_criteria_note
 
+    def get_rating_instruction_input(
+            rating_instruction, create, output_format):
         st.markdown("#### Evaluation Instruction")
         rating_instruction = st.text_area(
             "Tell the LLM to actually do the evaluation",
@@ -518,7 +543,25 @@ def prompt_details_inputs(prompt_title="", prompt_objective="",
             elif output_format == "Boolean":
                 with st.expander("Example"):
                     st.write(ExamplePrompts.RATING_INSTRUCTION_BOOL)
+        return rating_instruction
 
+    prompt_title = get_prompt_title(prompt_title)
+    prompt_objective = get_prompt_objective(prompt_objective, create)
+    lesson_plan_params = (
+        get_lesson_plan_params_input(lesson_plan_params, create)
+    )
+    (
+        output_format,
+        rating_criteria,
+        general_criteria_note,
+        rating_instruction
+    ) = get_output_format_details(
+        output_format,
+        rating_criteria,
+        general_criteria_note,
+        rating_instruction,
+        create
+    )
     return (
         prompt_title, prompt_objective, lesson_plan_params, output_format,
         rating_criteria, general_criteria_note, rating_instruction
