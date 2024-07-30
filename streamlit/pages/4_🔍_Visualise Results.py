@@ -35,21 +35,29 @@ light_data['experiment_with_date'] = light_data['experiment_name'] + " (" + ligh
 experiment_description_options = light_data['experiment_with_date'].unique().tolist()
 experiment_description_options = ['Select'] + experiment_description_options
 
-experiment = st.selectbox('Select Experiment', experiment_description_options, help="Select an experiment to view more options.(Run Date is in YYYY-MM-DD format)")
+experiment = st.multiselect('Select Experiment', experiment_description_options, help="Select an experiment to view more options.(Run Date is in YYYY-MM-DD format)")
+# experiment
 
-# Extract the selected experiment_id
+selectected_experiments = []
 if experiment != 'Select':
-    selected_experiment_name = experiment.split(" (")[0]
-    selected_experiment_id = light_data[light_data['experiment_name'] == selected_experiment_name]['experiment_id'].iloc[0]
-    result_id_input =''
+    for experiment in experiment:
+
+        selected_experiment_name = experiment.split(" (")[0]
+        selected_experiment_id = light_data[light_data['experiment_name'] == selected_experiment_name]['experiment_id'].iloc[0]
+        selectected_experiments.append(selected_experiment_id)
+        result_id_input =''
 else:
     selected_experiment_id = None
 
-if selected_experiment_id:
-    
-    # Fetch full data
-    data = get_full_experiment_data(selected_experiment_id)
+if selectected_experiments:
+    #define empty df data
+    data = pd.DataFrame()
+    for selectected_experiment in selectected_experiments:
+        
+        #concat get_full_experiment_data(selected_experiment_id) to data
+        data = pd.concat([data, get_full_experiment_data(selectected_experiment)], ignore_index=True)
 
+    # data
     # Apply transformations on data
     
     data['key_stage_slug'] = data['key_stage_slug'].apply(standardize_key_stage)
@@ -265,22 +273,31 @@ if selected_experiment_id:
                 "Gen-gpt-4-turbo-0.7": "lightcoral"
                 # Add more mappings as needed
             }
+            # st.write(len(filtered_data))
+            common_prompt_titles = set(filtered_data[filtered_data['sample_title'] == filtered_data['sample_title'].iloc[0]]['prompt_title'])
+            for sample in filtered_data['sample_title'].unique():
+                sample_prompt_titles = set(filtered_data[filtered_data['sample_title'] == sample]['prompt_title'])
+                common_prompt_titles = common_prompt_titles.intersection(sample_prompt_titles)
 
-            # result_data
+            common_prompt_titles = sorted(list(common_prompt_titles))
+
+            # Step 2: Filter data to keep only the common prompt titles
+            filtered_radar_data = filtered_data[filtered_data['prompt_title'].isin(common_prompt_titles)]
+            # st.write(len(filtered_radar_data))
             # Assuming the ideal score is 5
             if output_selection == 'Score':
                 ideal_score = 5
                 # Calculate the percentage success for each result
-                filtered_data['result_percent'] = (filtered_data['result_numeric'] / ideal_score) * 100
+                filtered_radar_data['result_percent'] = (filtered_radar_data['result_numeric'] / ideal_score) * 100
                 
                 # Ensure result_percent is within 0 to 100
-                success_filtered_data = filtered_data[(filtered_data['result_percent'] >= 0) & (filtered_data['result_percent'] <= 100)]
+                success_filtered_radar_data = filtered_radar_data[(filtered_radar_data['result_percent'] >= 0) & (filtered_radar_data['result_percent'] <= 100)]
                 
                 # Calculate the average success rate for each prompt title and sample title
-                average_success_rate = success_filtered_data.groupby(['prompt_title', 'sample_title'])['result_percent'].mean().reset_index()
+                average_success_rate = success_filtered_radar_data.groupby(['prompt_title', 'sample_title'])['result_percent'].mean().reset_index()
 
                 # Calculate the overall average success rate for each prompt title
-                overall_success_rate = success_filtered_data.groupby('prompt_title')['result_percent'].mean().reset_index()
+                overall_success_rate = success_filtered_radar_data.groupby('prompt_title')['result_percent'].mean().reset_index()
 
                 # Display the diagnostics to ensure data is correct
                 with st.expander("Success Rate Diagnostics"):
