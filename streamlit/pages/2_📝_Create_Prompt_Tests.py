@@ -423,9 +423,17 @@ def prompt_details_inputs(prompt_title="", prompt_objective="",
             st.write(ExamplePrompts.PROMPT_OBJECTIVE)
         
     st.markdown("#### Relevant Lesson Plan Parts")
+    
+    lesson_param_mapping = dict(zip(lesson_params, lesson_params_plain_eng))
+    filtered_lesson_plan_params = [
+        lesson_param_mapping[param] for param in lesson_plan_params
+        if param in lesson_param_mapping
+    ]
+    
     lesson_plan_params_st = st.multiselect(
         "Choose the parts of the lesson plan that you're evaluating",
-        options=lesson_params_plain_eng
+        options=lesson_params_plain_eng,
+        default=filtered_lesson_plan_params if not create else []
     )
     lesson_plan_params = get_lesson_plan_params(lesson_plan_params_st)
     
