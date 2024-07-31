@@ -13,22 +13,22 @@ This page allows you to create and manage datasets by selecting and saving subse
 After clicking the "Get Lesson Plans" button, the retrieved lesson plans will be displayed in a table. You can review the lesson plans to ensure they meet your criteria.
 
 ### 4. Saving the Dataset
-- **Save Sample**: Click the "Save Sample with Selected Lesson Plans" button to save the selected lesson plans to a new or existing sample. The following actions will be performed:
-- **Creating a New Sample**: If you have provided a dataset title and your name, a new sample will be created.
-- **Linking Lesson Plans**: The selected lesson plans will be linked to the new sample.
+- **Save Dataset**: Click the "Save Sample with Selected Lesson Plans" button to save the selected lesson plans to a new or existing dataset. The following actions will be performed:
+- **Creating a New dataset**: If you have provided a dataset title and your name, a new dataset will be created.
+- **Linking Lesson Plans**: The selected lesson plans will be linked to the new dataset.
 - **Note**: Ensure that all required fields (dataset title and creator's name) are filled before saving.
 
 ### 5. Clearing the Cache
-- **Clear Cache**: Use the "Clear Cache" button in the sidebar to clear the application cache. This can help resolve any issues related to cached data.
+- **Clear Cache**: Use the "Clear Cache" button in the sidebar to clear the application cache. This can help resolve issues related to data loading or display.
 
 ### Example Workflow
 1. **Enter Dataset Title**: Enter "history_ks2" as the dataset title.
 2. **Enter Your Name**: Enter "John Doe".
 3. **Enter Keyword**: Enter "history" as the keyword.
 4. **Retrieve Lesson Plans**: Click the "Get Lesson Plans" button to display lesson plans related to "history".
-5. **Save Sample**: Click the "Save Sample with Selected Lesson Plans" button to save the retrieved lesson plans to a new sample.
+5. **Save dataset**: Click the "Save Sample with Selected Lesson Plans" button to save the retrieved lesson plans as a new dataset.
 
 ## Common Issues and Troubleshooting
 - **No Lesson Plans Found**: If no lesson plans are found with the given filters, ensure the keyword is correct and relevant to the generation details of the lesson plans.
-- **Missing Required Fields**: Ensure both the dataset title and creator's name are provided before saving the sample.
+- **Missing Required Fields**: Ensure both the dataset title and creator's name are provided before saving the dataset.
 - **Cache Issues**: If you encounter issues with outdated or incorrect data, use the "Clear Cache" button to reset.
