@@ -22,7 +22,7 @@ After clicking the "Get Lesson Plans" button, the retrieved lesson plans will be
 ### 5. Clearing the Cache
 - **Clear Cache**: Use the "Clear Cache" button in the sidebar to clear the application cache. This can help resolve issues related to data displayed that is outdated or incorrect.
 
-### Example Workflow
+## Example Workflow
 1. **Enter Dataset Title**: Enter "history_ks2" as the dataset title.
 2. **Enter Your Name**: Enter "John Doe".
 3. **Enter Keyword**: Enter "history" as the keyword.
