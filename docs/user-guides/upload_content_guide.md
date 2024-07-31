@@ -1,30 +1,26 @@
-# User Documentation: Upload Content
+# AutoEval User Documentation: Upload Content
 
-Welcome to the "Upload Content" screen of our application! This guide will help you understand how to upload and process your content data effectively.
-
-## Overview
-
-This screen allows you to upload a CSV file containing your lesson plan data, process the data to ensure it is in the correct format, and insert it into our database. Follow the steps below for a smooth experience.
-
-## Steps to Upload and Process Data
+This page allows you to upload data into the lesson_plans table. You can upload a CSV file with a column containing your lesson plans or other educational material.
 
 ### 1. Preparing Your CSV File
 
 Ensure your CSV file adheres to the following format:
-- **Columns**: Include columns with data that need to be converted to JSON format.
-- **JSON Data**: If any column contains JSON data, ensure it is correctly formatted.
-- **String Data**: If the data is plain text, it will be converted to a JSON object with the text stored under the key `text`.
+- **Columns**: Include a column containing your lesson plans data, in either JSON or plain text format.
+- **JSON Data**: If the data is in JSON format, ensure it is correctly formatted.
+- **Plain Text Data**: If the data is plain text, it will be converted to JSON format with the text stored under the key `text`.
 
 ### 2. Uploading Your CSV File
 
-1. **Open the File Uploader**: Click on the "Upload your CSV file" button.
-2. **Select Your File**: Choose the CSV file from your local machine.
+1. **Upload CSV File**: Go to the "Upload your CSV file" section.
+2. **Select Your File**: Choose the CSV file from your local machine, or 'drag and drop' the CSV file onto the file loader.
 
 ### 3. Viewing and Selecting Data
 
 Once the file is uploaded, the data will be displayed in a table. You can then:
-1. **View the Data**: Inspect the uploaded data to ensure it is correctly read.
-2. **Select the Column for Conversion**: Choose the column that contains JSON data or data that needs to be converted to JSON.
+1. **View the Data**: Inspect the uploaded data to ensure it is correct.
+2. **Select the Column for Conversion**: Choose the column that contains JSON data or plain text that needs to be converted to JSON format.
+
+![Viewing and Selecting Data](images/upload-content-1.png)
 
 ### 4. Entering Generation Details
 
