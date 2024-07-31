@@ -842,6 +842,11 @@ if st.sidebar.button("Clear Cache"):
     st.sidebar.success("Cache cleared!")
 
 st.title("📝 Create Prompt Tests")
+st.write("""
+Welcome to the Prompt Test Creator! Here you can:
+- **Create a new prompt**: Start from scratch and build a completely new prompt.
+- **Modify an existing prompt**: Select an existing prompt to create a new version, tweaking the wording or changing the output format to improve performance.
+""")
 action = st.selectbox(
     "What would you like to do?",
     [" ", "Create a new prompt", "Modify an existing prompt"],
