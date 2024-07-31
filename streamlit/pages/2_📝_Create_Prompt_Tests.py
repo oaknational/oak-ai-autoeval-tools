@@ -460,6 +460,9 @@ def get_output_format_details(
         Called by prompt_details_inputs.
     """
     st.markdown("#### Output Format")
+    
+    previous_output_format = output_format
+    
     output_format = st.selectbox(
         "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for "
         "a TRUE/FALSE evaluation",
@@ -467,6 +470,12 @@ def get_output_format_details(
         index=[" ", "Score", "Boolean"].index(output_format)
             if output_format in [" ", "Score", "Boolean"] else 0
     )
+    
+    if previous_output_format != output_format:
+        rating_criteria = None
+        general_criteria_note = rating_instruction = ""
+        create = True
+    
     if output_format != " ":
         rating_criteria = show_rating_criteria_input(
             output_format,
@@ -502,7 +511,7 @@ def show_output_format_example(output_format):
 
 def get_general_criteria_note_input(general_criteria_note, create):
     """ Helper function to get the general criteria note input field.
-        Called by prompt_details_inputs.
+        Called by get_output_format_details.
     """
     st.markdown("#### General Criteria Note")
     general_criteria_note = st.text_area(
@@ -520,7 +529,7 @@ def get_general_criteria_note_input(general_criteria_note, create):
 def get_rating_instruction_input(
         rating_instruction, create, output_format):
     """ Helper function to get the rating instruction input field.
-        Called by prompt_details_inputs.
+        Called by get_output_format_details.
     """
     st.markdown("#### Evaluation Instruction")
     rating_instruction = st.text_area(
