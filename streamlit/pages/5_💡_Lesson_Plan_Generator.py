@@ -11,8 +11,7 @@ import openai
 from openai import OpenAI
 from dataeditor import * 
 import plotly.graph_objects as go
-import uuid
-from utils import  log_message, get_db_connection
+from utils import  log_message, get_db_connection, insert_single_lesson_plan
 from constants import ErrorMessages
 import requests
 
@@ -34,35 +33,6 @@ def execute_single_query(query, params):
         log_message("error", f"Unexpected error executing query: {e}")
         return False
     
-
-def insert_lesson_plan(json_data, key_stage, subject, lesson_id, geneartion_details):
-    try:
-        id_value = str(uuid.uuid4())
-        lesson_id_value = lesson_id
-        json_value = json_data
-        generation_details_value = geneartion_details
-        key_stage_value = key_stage
-        subject_value = subject
-
-        query = """
-            INSERT INTO lesson_plans (
-                id, lesson_id, json, generation_details, created_at,
-                key_stage, subject)
-            VALUES (%s, %s, %s, %s, now(), %s, %s);
-        """
-        params = (
-            id_value, lesson_id_value, json_value, generation_details_value,
-            key_stage_value, subject_value
-        )
-
-        success = execute_single_query(query, params)
-        return (
-            "Lesson plan inserted successfully." if success else 
-            "Unexpected error occurred while inserting the lesson plan."
-        )
-    except Exception as e:
-        log_message("error", f"Unexpected error occurred while inserting the lesson plan: {e}")
-        return "Unexpected error occurred while inserting the lesson plan."
 
 
 
@@ -274,5 +244,5 @@ else:
                 # Insert lesson plan into database
                 lesson_id = 'HB_' + str(row['lesson_number'])
                 generation_details_value =  llm_model+'_'+str(llm_model_temp)+'_'+'HB_Test_Set'
-                result = insert_lesson_plan(response_cleaned, row['key_stage'], row['subject'], lesson_id, generation_details_value)
-                st.write(result)
+                lesson_plan_id = insert_single_lesson_plan(response_cleaned, row['key_stage'], row['subject'], lesson_id, generation_details_value)
+                st.write(lesson_plan_id)

@@ -14,37 +14,12 @@ from dotenv import load_dotenv
 import pandas as pd
 import streamlit as st
 
-from utils import clear_all_caches, execute_single_query, execute_multi_query
+
+from utils import clear_all_caches, execute_single_query, execute_multi_query, new_sample
 
 load_dotenv()
 
 
-def new_sample(sample_title, created_by):
-    """ Create a new sample and insert it into the m_samples table.
-
-    Args:
-        sample_title (str): Title of the sample.
-        created_by (str): The name of the creator of the sample.
-
-    Returns:
-        str: ID of the created sample if successful, None otherwise.
-    """
-    query = """
-        INSERT INTO public.m_samples (
-            id, created_at, updated_at, sample_title, created_by)
-        VALUES (gen_random_uuid(), NOW(), NOW(), %s, %s)
-        RETURNING id;
-    """
-    params = (sample_title, created_by)
-    result = execute_single_query(query, params)
-    if result and result[0]:
-        sample_id = result[0][0]
-        st.session_state.sample_id = sample_id
-        st.info(f"Sample created with ID: {sample_id}")
-        return sample_id
-    else:
-        st.error("Failed to create a new sample.")
-        return None
 
 
 def get_lesson_plans(keyword=None):
