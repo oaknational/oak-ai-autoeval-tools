@@ -26,11 +26,10 @@ After selecting the column and entering the generation details:
 3. **Confirmation**: A confirmation message will appear once the data is successfully inserted.
 
 ## Notes
-1. **Handling Missing Values**: Rows with missing (NaN) values in the selected column will be skipped during the conversion process to ensure data integrity.
-2. **Manual Data Insertion**: Alternatively, you can manually insert data into the lesson plans table using SQL.
+- **Handling Missing Values**: Rows with missing (NaN) values in the selected column will be skipped during the conversion process to ensure data integrity.
+- **Manual Data Insertion**: Alternatively, you can manually insert data into the lesson plans table using SQL.
 
-## Troubleshooting
-### Common Issues
+## Common Issues and Troubleshooting
 - **Incorrect File Format**: Ensure your CSV file follows the specified format.
 - **Invalid JSON Data**: Check that JSON data is correctly formatted.
 - **Missing Generation Details**: Provide a unique identifier or description for your dataset.
