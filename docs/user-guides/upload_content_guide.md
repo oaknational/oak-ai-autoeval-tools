@@ -8,22 +8,22 @@ Ensure your CSV file adheres to the following format:
 - **Plain Text Data**: If the data is plain text, it will be converted to JSON format with the text stored under the key `text`.
 
 ### 2. Uploading Your CSV File
-1. **Upload CSV File**: Go to the "Upload your CSV file" section.
-2. **Select Your File**: Choose the CSV file from your local machine, or 'drag and drop' the CSV file onto the file loader.
+- **Upload CSV File**: Go to the "Upload your CSV file" section.
+- **Select Your File**: Choose the CSV file from your local machine, or 'drag and drop' the CSV file onto the file loader.
 
 ### 3. Viewing and Selecting Data
 Once the file is uploaded, the data will be displayed in a table. You can then:
-1. **View the Data**: Inspect the uploaded data to ensure it is correct.
-2. **Select the Column for Conversion**: Choose the column that contains JSON data or plain text that needs to be converted to JSON format.
+- **View the Data**: Inspect the uploaded data to ensure it is correct.
+- **Select the Column for Conversion**: Choose the column that contains JSON data or plain text that needs to be converted to JSON format.
 
 ### 4. Entering Generation Details
 Provide a unique identifier or description for your dataset. This helps differentiate your data from other entries in the lesson plans table when creating a dataset.
 
 ### 5. Inserting Data into the Database
 After selecting the column and entering the generation details:
-1. **Assign Unique IDs**: Each entry will be assigned a unique ID.
-2. **Insert Data**: Click on the "Insert Data into Database" button to insert the processed data into the lesson plans table.
-3. **Confirmation**: A confirmation message will appear once the data is successfully inserted.
+- **Assign Unique IDs**: Each entry will be assigned a unique ID.
+- **Insert Data**: Click on the "Insert Data into Database" button to insert the processed data into the lesson plans table.
+- **Confirmation**: A confirmation message will appear once the data is successfully inserted.
 
 ## Notes
 - **Handling Missing Values**: Rows with missing (NaN) values in the selected column will be skipped during the conversion process to ensure data integrity.
