@@ -62,17 +62,6 @@ This screen allows you to:
 
 ## Common Issues and Troubleshooting
 
-### No Lesson Plans Found
-
-- **Issue**: No lesson plans are found with the given filters.
-- **Solution**: Ensure the keyword is correct and relevant to the generation details of the lesson plans.
-
-### Missing Required Fields
-
-- **Issue**: Trying to save the sample without filling in all required fields.
-- **Solution**: Ensure both the dataset title and creator's name are provided before saving.
-
-### Cache Issues
-
-- **Issue**: Encountering issues with outdated or incorrect data.
-- **Solution**: Use the "Clear Cache" button to clear the application cache.
+- **No Lesson Plans Found**: If no lesson plans are found with the given filters, ensure the keyword is correct and relevant to the generation details of the lesson plans.
+- **Missing Required Fields**: Ensure both the dataset title and creator's name are provided before saving the sample.
+- **Cache Issues**: If you encounter issues with outdated or incorrect data, use the "Clear Cache" button to reset.
