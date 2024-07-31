@@ -6,15 +6,25 @@ This module contains constants used throughout the application.
 Classes:
     ErrorMessages: Error message constants used for exception handling.
     OptionConstants: Option-related constants for menu selections.
+    ColumnLabels: Labels used for column headers in data tables.
+    ExamplePrompts: Example prompt texts to help users create new prompts.
 
 Usage:
-    from constants import ErrorMessages, OptionConstants
+    from constants import (ErrorMessages, OptionConstants,
+        ColumnLabels, ExamplePrompts
+    )
 
     # Example usage of ErrorMessages
     log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
 
     # Example usage of OptionConstants
     display_message(OptionConstants.SELECT_TEACHER)
+
+    # Example usage of ColumnLabels
+    df.rename(columns={df.columns[0]: ColumnLabels.NUM_LESSONS}, inplace=True)
+
+    # Example usage of ExamplePrompts
+    st.text_area("Prompt Objective", ExamplePrompts.PROMPT_OBJECTIVE)
 """
 
 class ErrorMessages:
@@ -38,12 +48,34 @@ class OptionConstants:
 
 
 class ColumnLabels:
+    """
+    Labels used for column headers in data tables.
+
+    Attributes:
+        NUM_LESSONS (str): Label for the number of lessons column.
+    """
     NUM_LESSONS = "Number of Lessons"
     
     
 class ExamplePrompts:
-    PROMPT_OBJECTIVE = (
-        f"""
+    """
+    Example prompt texts used for evaluation guidance.
+
+    Attributes:
+        PROMPT_OBJECTIVE (str): Example prompt objective.
+        SCORE (str): Example scoring criteria for a 1-5 Likert rating 
+            scale.
+        BOOL (str): Example true/false criteria for boolean evaluation.
+        GENERAL_CRITERIA_SCORE (str): Example general criteria note for 
+            scoring.
+        GENERAL_CRITERIA_BOOL (str): Example general criteria note for 
+            boolean evaluation.
+        RATING_INSTRUCTION_SCORE (str): Example instructions for 
+            scoring evaluation.
+        RATING_INSTRUCTION_BOOL (str): Example instructions for 
+        boolean evaluation.
+    """
+    PROMPT_OBJECTIVE = """
         Evaluate whether the quiz questions from the Starter Quiz and 
         Exit Quiz require specific, explicit knowledge for correct 
         answers, or if they can be answered using general knowledge or 
@@ -57,7 +89,7 @@ class ExamplePrompts:
         required. Submissions that do not demonstrate a detailed 
         examination will be disregarded.
         """
-    )
+
     SCORE = """
         **Label for 1:** Don't Require Explicit Knowledge
         
