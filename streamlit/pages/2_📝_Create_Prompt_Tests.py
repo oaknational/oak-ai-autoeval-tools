@@ -260,43 +260,31 @@ def objective_title_select(new=False, current_prompt=None):
 
     st.markdown("#### Prompt Group")
 
-    default_index = 0
-    if not new and "objective_title" in current_prompt:
-        default_objective = f"""
-            {current_prompt["objective_title"].strip()} - {
-                current_prompt["objective_desc"].strip()
-            }
-        """
+    if new:
+        objective = st.selectbox(
+            "Select the group that the prompt belongs to",
+            list(objectives.keys())
+        )
 
-        default_objective = default_objective.strip()
-
-        if default_objective not in objectives.keys():
-            objectives[default_objective] = (
-                current_prompt["objective_title"],
-                current_prompt["objective_desc"]
+        if objective == "New Group":
+            objective_title = st.text_input(
+                "Enter the new group name", value=""
             )
-        default_index = list(objectives.keys()).index(default_objective)
+            objective_desc = st.text_area(
+                "Enter the description for the new group e.g. Check if the "
+                "lesson is up to oak standards",
+                value="",
+                height=100,
+            )
+        else:
+            objective_title, objective_desc = objectives[objective]
 
-    objective = st.selectbox(
-        "Select the group that the prompt belongs to",
-        list(objectives.keys()),
-        index=default_index
-    )
-
-    if objective == "New Group":
-        objective_title = st.text_input(
-            "Enter the new group name", value=""
-        )
-        objective_desc = st.text_area(
-            "Enter the description for the new group e.g. Check if the lesson "
-            "is up to oak standards",
-            value="",
-            height=100,
-        )
+        return objective_title, objective_desc
     else:
-        objective_title, objective_desc = objectives[objective]
-
-    return objective_title, objective_desc
+        objective_title = current_prompt["objective_title"]
+        objective_desc = current_prompt["objective_desc"]
+        st.markdown(f"{objective_title} - {objective_desc}")
+        return objective_title, objective_desc
 
 
 def display_at_end_score_criteria(rating_criteria, truncated=True):
@@ -417,15 +405,25 @@ def get_first_ten_words(text):
     return first_ten_words
 
 
-def get_prompt_title(prompt_title):
+def get_prompt_title(prompt_title, create):
+    """ Helper function to get the prompt title input field.
+        Called by prompt_details_inputs.
+    """
     st.markdown("#### Prompt Title")
-    return st.text_input(
-        "Choose a unique title for your prompt",
-        value=prompt_title
-    )
+    if create:
+        return st.text_input(
+            "Choose a unique title for your prompt",
+            value=prompt_title
+        )
+    else:
+        st.markdown(prompt_title)
+        return prompt_title
 
 
 def get_prompt_objective(prompt_objective, create):
+    """ Helper function to get the prompt objective input field.
+        Called by prompt_details_inputs.
+    """
     st.markdown("#### Prompt Objective")
     prompt_objective = st.text_area(
         "State what you want the LLM to check for",
@@ -439,25 +437,28 @@ def get_prompt_objective(prompt_objective, create):
 
 
 def get_lesson_plan_params_input(lesson_plan_params, create):
+    """ Helper function to get the lesson plan parameters input field.
+        Called by prompt_details_inputs.
+    """
     st.markdown("#### Relevant Lesson Plan Parts")
-    lesson_param_mapping = dict(zip(
-        lesson_params, lesson_params_plain_eng
-    ))
-    filtered_lesson_plan_params = [
-        lesson_param_mapping[param] for param in lesson_plan_params
-        if param in lesson_param_mapping
-    ]
-    lesson_plan_params_st = st.multiselect(
-        "Choose the parts of the lesson plan that you're evaluating",
-        options=lesson_params_plain_eng,
-        default=filtered_lesson_plan_params if not create else []
-    )
-    return get_lesson_plan_params(lesson_plan_params_st)
+    
+    if create:
+        lesson_plan_params_st = st.multiselect(
+            "Choose the parts of the lesson plan that you're evaluating",
+            options=lesson_params_plain_eng
+        )
+        return get_lesson_plan_params(lesson_plan_params_st)
+    else:
+        st.markdown(lesson_plan_params)
+        return lesson_plan_params
 
 
 def get_output_format_details(
         output_format, rating_criteria, general_criteria_note,
         rating_instruction, create):
+    """ Helper function to get the output format details.
+        Called by prompt_details_inputs.
+    """
     st.markdown("#### Output Format")
     output_format = st.selectbox(
         "Choose 'Score' for a Likert scale rating (1-5) or 'Boolean' for "
@@ -488,6 +489,9 @@ def get_output_format_details(
 
 
 def show_output_format_example(output_format):
+    """ Helper function to show an example of the output format.
+        Called by get_output_format_details.
+    """
     if output_format == "Score":
         with st.expander("Example"):
             st.write(ExamplePrompts.SCORE)
@@ -497,6 +501,9 @@ def show_output_format_example(output_format):
 
 
 def get_general_criteria_note_input(general_criteria_note, create):
+    """ Helper function to get the general criteria note input field.
+        Called by prompt_details_inputs.
+    """
     st.markdown("#### General Criteria Note")
     general_criteria_note = st.text_area(
         "Either leave this section empty or add things you'd like the "
@@ -512,6 +519,9 @@ def get_general_criteria_note_input(general_criteria_note, create):
 
 def get_rating_instruction_input(
         rating_instruction, create, output_format):
+    """ Helper function to get the rating instruction input field.
+        Called by prompt_details_inputs.
+    """
     st.markdown("#### Evaluation Instruction")
     rating_instruction = st.text_area(
         "Tell the LLM to actually do the evaluation",
@@ -552,7 +562,7 @@ def prompt_details_inputs(prompt_title="", prompt_objective="",
     Returns:
         tuple: A tuple containing the prompt details.
     """
-    prompt_title = get_prompt_title(prompt_title)
+    prompt_title = get_prompt_title(prompt_title, create)
     prompt_objective = get_prompt_objective(prompt_objective, create)
     lesson_plan_params = (
         get_lesson_plan_params_input(lesson_plan_params, create)
