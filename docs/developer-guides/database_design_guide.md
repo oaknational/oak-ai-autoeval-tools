@@ -2,7 +2,7 @@
 
 ### PostgreSQL Database Schema
 
-![Database Schema](../images/database-schema.png)
+![Database Schema](../../images/database-schema.png)
 
 ### PostgreSQL Database Tables
 
