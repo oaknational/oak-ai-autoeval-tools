@@ -17,7 +17,7 @@ load_dotenv()
         
 def fetch_bad_lesson_plans():
     try:
-        conn = get_db_connection()
+        conn = get_db_connection()  # Assuming your existing function works correctly
         query = """SELECT 
             r.prompt_id, 
             r.lesson_plan_id, 
@@ -43,11 +43,12 @@ def fetch_bad_lesson_plans():
         AND COUNT(CASE WHEN CAST(r.result AS numeric) = 5 THEN 1 END) = 0 
         AND COUNT(r.justification) > 2
         ORDER BY score_1_count DESC, justification_count DESC, max_result ASC;"""
+        
         df = pd.read_sql_query(query, conn)
         conn.close()
         return df
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred while fetching lesson plans: {e}")
         return None
     
 def fetch_result_data(lesson_plan_id, prompt_id, result):
@@ -68,7 +69,7 @@ def fetch_result_data(lesson_plan_id, prompt_id, result):
         conn.close()
         return df
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred while fetching result data: {e}")
         return None
 
 
@@ -121,10 +122,17 @@ def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
             }
 # Fetch the data
 lessons_df = fetch_bad_lesson_plans()
-
+if lessons_df is None or lessons_df.empty:
+    st.error("Failed to fetch lesson plans. Please check the database connection or query.")
+    st.stop()  # Stop further execution if DataFrame is invalid
 
 
 if lessons_df is not None:
+    lessons_df = lessons_df.astype({
+    'min_result': 'float64',
+    'max_result': 'float64',
+
+    })
     st.write("Select a row to perform an action:")
 
     # Display the data frame
