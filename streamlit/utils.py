@@ -858,11 +858,9 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     Returns:
         dict: Inference result or error response.
     """
-    endpoint = get_env_variable("ENDPOINT")
-    username = get_env_variable("USERNAME")
-    credential = get_env_variable("CREDENTIAL")
+    
     required_keys = ["title", "topic", "subject", "keyStage"]
-    if not all(k in lesson_plan for k in required_keys):
+    if set(lesson_plan.keys()) == set(required_keys):
         return {
             "response": {
                 "result": None, 
@@ -925,6 +923,9 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
                 "status": "FAILURE",
             }
     else:
+        endpoint = get_env_variable("ENDPOINT")
+        username = get_env_variable("USERNAME")
+        credential = get_env_variable("CREDENTIAL")
         try:
             # Define the headers for the request
             headers = {
