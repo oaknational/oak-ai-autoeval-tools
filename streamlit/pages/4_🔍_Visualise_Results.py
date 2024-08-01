@@ -7,13 +7,11 @@ Functionality:
 - Filter data based on various parameters.
 - Display specific details for selected runs.
 """
-
 import json
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from dotenv import load_dotenv
 import streamlit as st
 
 from dataeditor import standardize_key_stage, standardize_subject
@@ -24,8 +22,6 @@ from utils import (
     get_light_experiment_data,
     get_full_experiment_data
 )
-
-load_dotenv()
 
 
 def fetch_and_preprocess_light_data():

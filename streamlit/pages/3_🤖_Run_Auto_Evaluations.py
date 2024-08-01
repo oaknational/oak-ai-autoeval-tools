@@ -6,9 +6,7 @@ Functionality:
 - Results are stored in the database and can be viewed in the
     Visualise Results page.
 """
-
 import pandas as pd
-from dotenv import load_dotenv
 import streamlit as st
 
 from utils import (
@@ -16,9 +14,6 @@ from utils import (
     generate_experiment_placeholders, start_experiment
 )
 from constants import OptionConstants, ColumnLabels
-
-
-load_dotenv()
 
 
 # Set page configuration

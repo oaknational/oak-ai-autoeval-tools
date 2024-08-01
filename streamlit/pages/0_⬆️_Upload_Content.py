@@ -6,17 +6,13 @@ Functionality:
 - Convert string data to JSON format.
 - Insert the processed data into a PostgreSQL database.
 """
-
 import json
 import uuid
 
 import pandas as pd
-from dotenv import load_dotenv
 import streamlit as st
 
 from utils import convert_to_json, log_message, execute_multi_query
-
-load_dotenv()
 
 
 # Set page configuration

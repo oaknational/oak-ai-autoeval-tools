@@ -9,15 +9,11 @@ Functionality:
 - Allows saving selected lesson plans to a new or existing sample.
 - Includes a button to clear the cache.
 """
-
-from dotenv import load_dotenv
 import pandas as pd
 import streamlit as st
 
 
 from utils import clear_all_caches, execute_single_query, execute_multi_query, new_sample, add_lesson_plans_to_sample
-
-load_dotenv()
 
 
 
