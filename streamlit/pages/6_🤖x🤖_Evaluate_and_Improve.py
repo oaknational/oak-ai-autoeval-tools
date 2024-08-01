@@ -165,8 +165,8 @@ if lessons_df is not None:
     justifications = fetch_result_data(selected_row['lesson_plan_id'], selected_row['prompt_id'], selected_row['min_result'])
 
     if justifications is not None:
-        with st.expander('Justifications'):
-            st.write("Justifications:", justifications['justification'].values[0])
+        with st.expander('Models Justification for low score'):
+            st.write("Justification:", justifications['justification'].values[0])
 
     llm_model = 'gpt-4o'
     llm_model_temp = 0.5
@@ -238,5 +238,8 @@ if lessons_df is not None:
                             st.write(selected_row['min_result'])
                             st.write('Justification:')
                             st.write(justifications['justification'].values[0])
+
+                            if result['result'].values[0] > selected_row['min_result']:
+                                st.success("Lesson plan improved successfully!")
 
        
