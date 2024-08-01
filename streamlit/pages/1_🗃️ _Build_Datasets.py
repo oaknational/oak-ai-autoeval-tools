@@ -15,7 +15,7 @@ import pandas as pd
 import streamlit as st
 
 
-from utils import clear_all_caches, execute_single_query, execute_multi_query, new_sample
+from utils import clear_all_caches, execute_single_query, execute_multi_query, new_sample, add_lesson_plans_to_sample
 
 load_dotenv()
 
@@ -47,28 +47,6 @@ def get_lesson_plans(keyword=None):
     return execute_single_query(query, params, return_dataframe=True)
 
 
-def add_lesson_plans_to_sample(sample_id, lesson_plan_ids):
-    """ Link lesson plans to a sample in the m_sample_lesson_plans table.
-
-    Args:
-        sample_id (str): ID of the sample.
-        lesson_plan_ids (list): List of lesson plan IDs to link.
-
-    Returns:
-        bool: True if successful, False otherwise.
-    """
-    queries = [
-        (
-            """
-            INSERT INTO public.m_sample_lesson_plans (
-                sample_id, lesson_plan_id
-            )
-            VALUES (%s, %s);
-            """,
-            (sample_id, lesson_plan_id)
-        ) for lesson_plan_id in lesson_plan_ids
-    ]
-    return execute_multi_query(queries)
 
 
 # Set page configuration

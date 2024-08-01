@@ -382,9 +382,6 @@ def new_lesson_sets_table(csv_file_path):
             execute_single_query(insert_query, tuple(row))
             
 
-    
-
-
 def initialize_database(csv_file_path):
     """Initialize the database schema and populate it with data."""
     
