@@ -2,7 +2,7 @@
 This page allows you to run evaluations on a dataset using selected prompts. Results are stored in the database that can then be reviewed on the Visualise Results page.
 
 ### 1. Set Up Environment
-- **Clear Cache**: Use the "Clear Cache" button in the sidebar to clear the application cache. This can help resolve any issues related to cached data.
+- **Clear Cache**: Use the "Clear Cache" button in the sidebar to clear the application cache. This can help resolve issues related to data displayed that is outdated or incorrect.
 
 ### 2. Select Prompts
 - **Prompt Selection**: Use the "Select prompts" multiselect box to choose the prompts you want to run evaluations on. You can select multiple prompts.
