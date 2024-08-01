@@ -17,7 +17,7 @@ load_dotenv()
         
 def fetch_bad_lesson_plans():
     try:
-        conn = get_db_connection()  # Assuming your existing function works correctly
+        conn = get_db_connection()  
         query = """SELECT 
             r.prompt_id, 
             r.lesson_plan_id, 
@@ -133,13 +133,15 @@ if lessons_df is not None:
     'max_result': 'float64',
 
     })
-    st.write("Select a row to perform an action:")
+
+    st.header("Evaluate and Improve Lesson Plans")
+    st.write("This page allows you to evaluate and improve lesson plans that have received low scores. Below are the lesson plans that have received low scores. Select a row to view the details and improve the lesson plan.")
 
     # Display the data frame
     st.dataframe(lessons_df[['generation_details', 'prompt_title', 'min_result', 'max_result', 'justification_count', 'score_1_count', 'score_2_count', 'score_3_count', 'score_4_count', 'score_5_count']])
 
-    # Allow user to select a row
-    selected_index = st.selectbox("Select a row", lessons_df.index, index=1)
+
+    selected_index = st.selectbox("Select a row to perform an action", lessons_df.index, index=1)
     selected_row = lessons_df.loc[selected_index]
 
     st.write("You selected:")
@@ -150,10 +152,12 @@ if lessons_df is not None:
     
     prompt_details =None
     justifications = None
+
     prompt_id = selected_row['prompt_id']
     prompt_details = get_prompt(prompt_id)
     # st.write("Lesson Plan:", lesson_plan)
     if prompt_details is not None:
+        
        
         with st.expander('Prompt Details'):
             st.write("Prompt Details:", prompt_details)
