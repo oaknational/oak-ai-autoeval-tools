@@ -97,11 +97,7 @@ To install AutoEval, follow the following steps:
 
 A high-level overview of AutoEval functionality is included here.  
 
-More detailed documentation is available in the `documentation` directory as follows:
-
-- [Prompt Creation Guide (Jinja2)](documentation/prompt-creation-guide.md)
-- [Database Design Guide (PostgreSQL)](documentation/database-design-guide.md)
-- [AutoEval User Guide](documentation/autoeval-user-guide.md)
+More detailed documentation is available in the [documentation directory](docs/).
 
 Overview of the user interface:
 
