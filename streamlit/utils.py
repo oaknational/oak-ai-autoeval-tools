@@ -70,8 +70,10 @@ This module provides the following functions:
 import os
 import re
 import json
+import uuid
 import hashlib
-
+import requests
+from datetime import datetime
 import pandas as pd
 import psycopg2
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -326,6 +328,109 @@ def json_to_html(json_obj, indent=0):
             return f"{get_indent(indent)}{obj}"
 
     return convert_to_html(json_obj, indent)
+
+
+def new_sample(sample_title, created_by):
+    """ Create a new sample and insert it into the m_samples table.
+
+    Args:
+        sample_title (str): Title of the sample.
+        created_by (str): The name of the creator of the sample.
+
+    Returns:
+        str: ID of the created sample if successful, None otherwise.
+    """
+    query = """
+        INSERT INTO public.m_samples (
+            id, created_at, updated_at, sample_title, created_by)
+        VALUES (gen_random_uuid(), NOW(), NOW(), %s, %s)
+        RETURNING id;
+    """
+    params = (sample_title, created_by)
+    result = execute_single_query(query, params)
+    if result and result[0]:
+        sample_id = result[0][0]
+        st.session_state.sample_id = sample_id
+        st.info(f"Sample created with ID: {sample_id}")
+        return sample_id
+    else:
+        st.error("Failed to create a new sample.")
+        return None
+    
+
+
+def add_lesson_plans_to_sample(sample_id, lesson_plan_ids):
+    """ Link lesson plans to a sample in the m_sample_lesson_plans table.
+
+    Args:
+        sample_id (str): ID of the sample.
+        lesson_plan_ids (list): List of lesson plan IDs to link.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    queries = [
+        (
+            """
+            INSERT INTO public.m_sample_lesson_plans (
+                sample_id, lesson_plan_id
+            )
+            VALUES (%s, %s);
+            """,
+            (sample_id, lesson_plan_id)
+        ) for lesson_plan_id in lesson_plan_ids
+    ]
+    return execute_multi_query(queries)
+
+def add_lesson_plan_to_sample(sample_id, lesson_plan_id):
+    """ Link a lesson plan to a sample in the m_sample_lesson_plans table.
+
+    Args:
+        sample_id (str): ID of the sample.
+        lesson_plan_id (str): ID of the lesson plan.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    query = """
+    INSERT INTO public.m_sample_lesson_plans (
+        sample_id, lesson_plan_id, created_at, updated_at
+    )
+    VALUES (%s, %s, %s, %s);
+    """
+    now = datetime.now()
+    return execute_single_query(query, (sample_id, lesson_plan_id, now, now))
+
+
+def insert_single_lesson_plan(json_data, lesson_id=None,key_stage=None, subject=None,  generation_details=None):
+    try:
+        id_value = str(uuid.uuid4())
+        lesson_id_value = lesson_id
+        json_value = json_data
+        generation_details_value = generation_details
+        key_stage_value = key_stage
+        subject_value = subject
+
+        query = """
+            INSERT INTO lesson_plans (
+                id, lesson_id, json, generation_details, created_at,
+                key_stage, subject)
+            VALUES (%s, %s, %s, %s, now(), %s, %s);
+        """
+        params = (
+            id_value, lesson_id_value, json_value, generation_details_value,
+            key_stage_value, subject_value
+        )
+
+        success = execute_single_query(query, params)
+        if success:
+            print("Lesson plan inserted successfully.")  
+        else: 
+            print("Unexpected error occurred while inserting the lesson plan.")
+        return id_value
+    except Exception as e:
+        log_message("error", f"Unexpected error occurred while inserting the lesson plan: {e}")
+        return None
 
 
 def get_light_experiment_data():
@@ -726,7 +831,7 @@ def clean_response(response_text):
     except json.JSONDecodeError as e:
         error_position = e.pos
         start_snippet = max(0, error_position - 40)
-        end_snippet = min(len(json_str), error_position + 40)
+        end_snippet = min(len(response_text), error_position + 40)
         snippet = response_text[start_snippet:end_snippet]
         return {
             "result": None,
@@ -739,6 +844,8 @@ def clean_response(response_text):
 
 def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         timeout=15):
+    
+    
     """ Run inference using a lesson plan and a prompt ID.
 
     Args:
@@ -751,6 +858,9 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     Returns:
         dict: Inference result or error response.
     """
+    endpoint = get_env_variable("ENDPOINT")
+    username = get_env_variable("USERNAME")
+    credential = get_env_variable("CREDENTIAL")
     required_keys = ["title", "topic", "subject", "keyStage"]
     if not all(k in lesson_plan for k in required_keys):
         return {
@@ -783,37 +893,87 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             "status": "ABORTED",
         }
 
-    openai.api_key = get_env_variable("OPENAI_API_KEY")
-    client = OpenAI()
-    try:
-        response = client.chat.completions.create(
-            model=llm_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=llm_model_temp,
-            timeout=timeout,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-        )
+    if llm_model != "llama":
+        openai.api_key = get_env_variable("OPENAI_API_KEY")
+        client = OpenAI()
+        try:
+            response = client.chat.completions.create(
+                model=llm_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=llm_model_temp,
+                timeout=timeout,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+            )
 
-        cleaned_content, status = clean_response(
-            response.choices[0].message.content
-        )
-        return {
-            "response": cleaned_content,
-            "status": status,
-        }
+            cleaned_content, status = clean_response(
+                response.choices[0].message.content
+            )
+            return {
+                "response": cleaned_content,
+                "status": status,
+            }
 
-    except Exception as e:
-        log_message("error", f"Unexpected error during inference: {e}")
-        return {
-            "response": {
-                "result": None,
-                "justification": f"An error occurred: {e}",
-            },
-            "status": "FAILURE",
-        }
+        except Exception as e:
+            log_message("error", f"Unexpected error during inference: {e}")
+            return {
+                "response": {
+                    "result": None,
+                    "justification": f"An error occurred: {e}",
+                },
+                "status": "FAILURE",
+            }
+    else:
+        try:
+            # Define the headers for the request
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {credential}"
+            }
 
+            # Create the payload with the data you want to send to the model
+            data = {
+                "messages": [
+                    {"role": "user", "content": prompt},   # Adjust this structure based on API requirements
+                ],
+                "temperature": llm_model_temp,
+                # 'temperature': llm_model_temp,
+            }
+
+            # Make the POST request to the model endpoint
+            response = requests.post(endpoint, headers=headers, data=json.dumps(data))
+            
+
+            # Check the response status and content
+            if response.status_code == 200:
+                response_data = response.json()
+                message = response_data['choices'][0]['message']['content']
+                cleaned_content, status = clean_response(message)
+                return {
+                    "response": cleaned_content,
+                    "status": status,  
+                }
+            
+            else:
+                log_message("error", f"Failed with status code {response.status_code}: {response.text}")
+                return {
+                    "response": {
+                        "result": None,
+                        "justification": f"Failed with status code {response.status_code}: {response.text}",
+                    },
+                    "status": "FAILURE" 
+                }
+
+        except Exception as e:
+            log_message("error", f"Unexpected error during inference: {e}")
+            return {
+                "response": {
+                    "result": None,
+                    "justification": f"An error occurred: {e}",
+                },
+                "status": "FAILURE" # Include elapsed time even in case of failure
+            }
 
 def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         justification, status):
@@ -1002,13 +1162,10 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
             st.write(response)
             log_message(
                 "info",
-                f"""
-                result = {output.get('response')},
-                status = {output.get('status')},
-                lesson_plan_id = {lesson_plan_id},
-                experiment_id = {experiment_id},
-                prompt_id = {prompt_id}
-                """
+                f"status = {output.get('status')},\n"
+                f"lesson_plan_id = {lesson_plan_id},\n"
+                f"experiment_id = {experiment_id},\n"
+                f"prompt_id = {prompt_id}\n"
             )
 
         progress.progress((i + 1) / total_lessons)
@@ -1095,7 +1252,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 
         if update_status(experiment_id, "COMPLETE"):
             st.write("Experiment Completed!")
-            return True
+            return experiment_id
         else:
             return False
     except Exception as e:
