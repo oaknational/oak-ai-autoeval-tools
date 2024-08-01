@@ -159,7 +159,7 @@ st.session_state.limit = st.number_input(
     help='Minimum value is 1.'
 )
 
-llm_model_options = ['gpt-4', 'gpt-4o', 'gpt-4-turbo']
+llm_model_options = ['gpt-4o-mini','llama','gpt-4', 'gpt-4o', 'gpt-4-turbo']
 
 st.session_state.llm_model = st.selectbox(
     'Select a model:',
