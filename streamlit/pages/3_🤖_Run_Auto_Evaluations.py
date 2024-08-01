@@ -6,9 +6,7 @@ Functionality:
 - Results are stored in the database and can be viewed in the
     Visualise Results page.
 """
-
 import pandas as pd
-from dotenv import load_dotenv
 import streamlit as st
 
 from utils import (
@@ -16,9 +14,6 @@ from utils import (
     generate_experiment_placeholders, start_experiment
 )
 from constants import OptionConstants, ColumnLabels
-
-
-load_dotenv()
 
 
 # Set page configuration
@@ -164,7 +159,7 @@ st.session_state.limit = st.number_input(
     help='Minimum value is 1.'
 )
 
-llm_model_options = ['gpt-4', 'gpt-4o', 'gpt-4-turbo']
+llm_model_options = ['gpt-4o-mini','llama','gpt-4', 'gpt-4o', 'gpt-4-turbo']
 
 st.session_state.llm_model = st.selectbox(
     'Select a model:',
