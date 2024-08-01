@@ -188,27 +188,34 @@ experiment_description_options = (
     ['Select'] + light_data['experiment_with_date'].unique().tolist()
 )
 
-experiment = st.selectbox(
+experiment = st.multiselect(
     'Select Experiment',
     experiment_description_options,
     help=(
-        "Select an experiment to view more options."
+        "Select experiments to view more options."
         "(Run Date is in YYYY-MM-DD format)"
     )
 )
 
 # Extract the selected experiment_id
-selected_experiment_id = None
+selectected_experiments = []
 if experiment != 'Select':
-    selected_experiment_name = experiment.split(" (")[0]
-    selected_experiment_id = light_data[
-        light_data['experiment_name'] == selected_experiment_name
-    ]['experiment_id'].iloc[0]
-    result_id_input =""
+    for experiment in experiment:
+        selected_experiment_name = experiment.split(" (")[0]
+        selected_experiment_id = light_data[
+            light_data['experiment_name'] == selected_experiment_name
+        ]['experiment_id'].iloc[0]
+        selectected_experiments.append(selected_experiment_id)
+        result_id_input =""
+else:
+    selected_experiment_id = None
 
-if selected_experiment_id:
+if selectected_experiments:
     # Fetch full data
-    data = fetch_and_preprocess_full_data(selected_experiment_id)
+    data = pd.DataFrame()
+    for selectected_experiment in selectected_experiments:
+        data = pd.concat([data, fetch_and_preprocess_full_data(selectected_experiment)], ignore_index=True)
+
 
     # Filter data
     if st.checkbox('Filter Experiment Data'):
