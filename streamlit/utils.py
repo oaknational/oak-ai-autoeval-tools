@@ -843,7 +843,7 @@ def clean_response(response_text):
 
 
 def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
-        timeout=15):
+        top_p=1 ,timeout=15):
     
     
     """ Run inference using a lesson plan and a prompt ID.
@@ -900,7 +900,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=llm_model_temp,
                 timeout=timeout,
-                top_p=1,
+                top_p=top_p,
                 frequency_penalty=0,
                 presence_penalty=0,
             )
@@ -1055,7 +1055,7 @@ def decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, index):
 
 
 def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
-        experiment_id, lesson_plan_id):
+        experiment_id, lesson_plan_id, top_p=1):
     """Run inference and add results to the database.
 
     Args:
@@ -1072,7 +1072,7 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
     """
     try:
         output = run_inference(
-            content, prompt_id, llm_model, llm_model_temp, timeout=timeout
+            content, prompt_id, llm_model, llm_model_temp,top_p, timeout=timeout
         )
         response = output.get("response")
 
@@ -1119,7 +1119,7 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
     
 
 def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
-        llm_model_temp, timeout=15):
+        llm_model_temp, top_p=1, timeout=15):
     """ Run a test for each lesson plan associated with a sample and add 
     results to the database.
 
@@ -1152,7 +1152,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
         if content is None:
             continue
 
-        output = handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout, experiment_id, lesson_plan_id)
+        output = handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout, experiment_id, lesson_plan_id,top_p)
         if output is None:
             continue
 
@@ -1203,7 +1203,7 @@ def update_status(experiment_id, status):
 
 
 def start_experiment(experiment_name, exp_description, sample_ids, created_by,
-        prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5):
+        prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5, top_p=1):
     """ Start a new experiment, run tests for each sample and prompt, 
     and update status.
 
@@ -1247,7 +1247,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
                 )
                 run_test(
                     sample_id, prompt_id, experiment_id, limit, llm_model,
-                    llm_model_temp
+                    llm_model_temp, top_p
                 )
             st.write(f"Sample {sample_index + 1} Completed!")
 

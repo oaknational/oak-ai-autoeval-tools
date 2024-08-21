@@ -193,9 +193,21 @@ experiment = st.multiselect(
     )
 )
 
-# Extract the selected experiment_id
+# initilize query parameters experiment_id
+experiment_id = None
+
 selectected_experiments = []
-if experiment != 'Select':
+
+# Retrieve query parameters
+if st.query_params["experiment_id"] is not None:
+    experiment_id = st.query_params["experiment_id"]
+
+    st.write(f"Experiment ID provided in URL: {experiment_id}")
+    
+    selected_experiment_id =experiment_id
+    selectected_experiments.append(selected_experiment_id)
+
+elif experiment != 'Select':
     for experiment in experiment:
         selected_experiment_name = experiment.split(" (")[0]
         selected_experiment_id = light_data[
@@ -206,9 +218,12 @@ if experiment != 'Select':
 else:
     selected_experiment_id = None
 
+data = pd.DataFrame()
+
+
+
 if selectected_experiments:
     # Fetch full data
-    data = pd.DataFrame()
     for selectected_experiment in selectected_experiments:
         data = pd.concat([data, fetch_and_preprocess_full_data(selectected_experiment)], ignore_index=True)
 
