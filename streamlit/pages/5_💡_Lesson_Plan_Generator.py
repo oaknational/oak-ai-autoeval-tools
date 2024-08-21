@@ -229,20 +229,17 @@ llm_model_options = ['llama','gpt-4o-mini-2024-07-18',
                      'gpt-4o-2024-05-13','gpt-4o-2024-08-06','chatgpt-4o-latest',
                      'gpt-4-turbo-2024-04-09','gpt-4-0125-preview','gpt-4-1106-preview']
 
-if selection != 'Model_Compare_Set_10':
-    st.session_state.llm_model = st.selectbox(
-        'Select a model for lesson plan generation:',
-        llm_model_options,
-        index=llm_model_options.index(st.session_state.llm_model)
-    )
-    st.session_state.llm_model
-else:
-    st.session_state.llm_model = st.multiselect(
-        'Select models for lesson plan generation:',
-        llm_model_options,
-        default=[st.session_state.llm_model] if isinstance(st.session_state.llm_model, str) else st.session_state.llm_model
-    )
-    st.session_state.llm_model
+
+st.session_state.llm_model = st.multiselect(
+    'Select models for lesson plan generation:',
+    llm_model_options,
+    default=[st.session_state.llm_model] if isinstance(st.session_state.llm_model, str) else st.session_state.llm_model
+)
+st.session_state.llm_model
+
+# todo: add number of lesson plans that will be generated for each model 
+
+
 
 st.session_state.llm_model_temp = st.number_input(
     'Enter temperature for the model:',
