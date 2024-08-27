@@ -18,7 +18,7 @@ from utils import (
     generate_experiment_placeholders,
     start_experiment,
 )
-from constants import OptionConstants, ColumnLabels
+from constants import OptionConstants, ColumnLabels, RecommendedPrompts
 
 # Set page configuration
 st.set_page_config(page_title="Run Auto Evaluations", page_icon="🤖")
@@ -87,6 +87,9 @@ for selected_prompt_title in selected_prompt_titles:
         prompts_data["prompt_title"] == selected_prompt_title
     ].copy()
 
+    # Get the recommended best version number
+    recommended_version_number = RecommendedPrompts.get_best_version(selected_prompt_title)
+
     # Combine relevant metadata for display using .loc to avoid SettingWithCopyWarning
     filtered_prompts.loc[:, "prompt_version_info"] = (
         "v"
@@ -98,6 +101,12 @@ for selected_prompt_title in selected_prompt_titles:
         + " | Created at: "
         + filtered_prompts["created_at"].astype(str)
     )
+
+    # Append " 🌟 (recommended)" to the recommended version
+    if recommended_version_number:
+        filtered_prompts.loc[
+            filtered_prompts['version'] == recommended_version_number, 'prompt_version_info'
+        ] += " 🌟 (recommended)"
 
     # Step 3: Version Selection for Each Selected Prompt
     st.subheader(f"Select Version for '{selected_prompt_title}'")
