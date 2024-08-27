@@ -860,7 +860,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     """
     
     required_keys = ["title", "topic", "subject", "keyStage"]
-    if not all(k in lesson_plan for k in required_keys):
+    if set(lesson_plan.keys()) == set(required_keys):
         return {
             "response": {
                 "result": None, 
