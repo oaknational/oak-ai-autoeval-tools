@@ -85,20 +85,20 @@ from constants import ErrorMessages
 
 
 def get_env_variable(var_name, default_value=None):
-    """ Retrieve the value of an environment variable with an optional 
+    """Retrieve the value of an environment variable with an optional
     default, or raises an error.
 
     Args:
         var_name (str): The name of the environment variable to retrieve.
-            default_value (any, optional): The value to return if the 
+            default_value (any, optional): The value to return if the
             environment variable is not set. Defaults to None.
 
     Returns:
-        any: The value of the environment variable, or the default value 
+        any: The value of the environment variable, or the default value
             if the environment variable is not set.
 
     Raises:
-        EnvironmentError: If the environment variable is not set and no 
+        EnvironmentError: If the environment variable is not set and no
             default value is provided.
     """
     value = os.getenv(var_name, default_value)
@@ -112,12 +112,12 @@ def get_env_variable(var_name, default_value=None):
 
 
 def log_message(level, message):
-    """ Log a message using Streamlit's log functions based on the level.
+    """Log a message using Streamlit's log functions based on the level.
 
     Args:
         level (str): Log level ('error', 'warning', 'info').
         message (str): Message to log.
-        
+
     Returns:
         None
     """
@@ -134,13 +134,13 @@ def log_message(level, message):
 
 
 def clear_all_caches():
-    """ Clear all caches in the application."""
+    """Clear all caches in the application."""
     st.cache_data.clear()
     st.cache_resource.clear()
 
 
 def get_db_connection():
-    """ Establish a connection to the PostgreSQL database.
+    """Establish a connection to the PostgreSQL database.
 
     Returns:
         conn: connection object to interact with the database.
@@ -151,7 +151,7 @@ def get_db_connection():
             user=get_env_variable("DB_USER"),
             password=get_env_variable("DB_PASSWORD"),
             host=get_env_variable("DB_HOST"),
-            port=get_env_variable("DB_PORT")
+            port=get_env_variable("DB_PORT"),
         )
         return conn
     except psycopg2.Error as e:
@@ -160,7 +160,7 @@ def get_db_connection():
 
 
 def execute_single_query(query, params=None, return_dataframe=False):
-    """ Execute a given SQL query using a PostgreSQL database connection.
+    """Execute a given SQL query using a PostgreSQL database connection.
 
     This function handles the connection, cursor management, and error
     handling for executing a SQL query. It supports both parameterized
@@ -190,14 +190,13 @@ def execute_single_query(query, params=None, return_dataframe=False):
                 cur.execute(query, params or ())
                 if return_dataframe:
                     return pd.DataFrame(
-                        cur.fetchall(),
-                        columns=[desc[0] for desc in cur.description]
+                        cur.fetchall(), columns=[desc[0] for desc in cur.description]
                     )
                 elif cur.description:
                     return cur.fetchall()
                 return True
 
-    except (psycopg2.DatabaseError) as db_err:
+    except psycopg2.DatabaseError as db_err:
         log_message("error", f"Error executing query: {db_err}")
         conn.rollback()
     except Exception as e:
@@ -205,41 +204,39 @@ def execute_single_query(query, params=None, return_dataframe=False):
         conn.rollback()
     finally:
         conn.close()
-        
+
     return pd.DataFrame() if return_dataframe else False
 
 
 def execute_multi_query(queries_and_params, return_results=False):
-    """ Execute a list of SQL queries using a PostgreSQL database 
+    """Execute a list of SQL queries using a PostgreSQL database
     connection with rollback on failure.
 
     This function handles the connection, cursor management, and error
-    handling for executing a list of SQL queries. It supports both 
+    handling for executing a list of SQL queries. It supports both
     parameterized queries and fetching results from SELECT queries.
 
     Args:
-        queries_and_params (list of tuples): A list where each element 
-            is a tuple containing the SQL query as a string and the 
+        queries_and_params (list of tuples): A list where each element
+            is a tuple containing the SQL query as a string and the
             parameters as a tuple.
-        return_results (bool, optional): If True, returns the results 
+        return_results (bool, optional): If True, returns the results
             of the SELECT queries. Defaults to False.
 
     Returns:
-        list or bool: Returns a list of results if return_results is 
-            True, otherwise True if all queries were executed and 
+        list or bool: Returns a list of results if return_results is
+            True, otherwise True if all queries were executed and
             committed successfully, or False if an error occurred.
 
     Raises:
-        psycopg2.Error: If a database error occurs during the execution 
+        psycopg2.Error: If a database error occurs during the execution
             of the query.
-        Exception: If any other unexpected error occurs during the 
+        Exception: If any other unexpected error occurs during the
             execution of the query.
     """
     results = []
     for query, params in queries_and_params:
-        result = execute_single_query(
-            query, params, return_dataframe=return_results
-        )
+        result = execute_single_query(query, params, return_dataframe=return_results)
         if return_results:
             results.append(result)
     return results if return_results else True
@@ -249,19 +246,19 @@ def convert_to_json(text):
     """
     Convert text to JSON format.
 
-    If the text is already in JSON format, it is returned as a dictionary. 
-    If the text is not in JSON format or an error occurs during parsing, 
-    the text is converted to a JSON object with the text stored under the 
+    If the text is already in JSON format, it is returned as a dictionary.
+    If the text is not in JSON format or an error occurs during parsing,
+    the text is converted to a JSON object with the text stored under the
     key 'text'.
 
     Args:
         text (str): The input text to be converted to JSON.
 
     Returns:
-        dict: A dictionary representing the JSON object. If the input 
-            text is valid JSON, it returns the parsed JSON. If the input 
-            is not valid JSON, it returns a dictionary with the original 
-            text under the key 'text'. If the input is NaN, it returns 
+        dict: A dictionary representing the JSON object. If the input
+            text is valid JSON, it returns the parsed JSON. If the input
+            is not valid JSON, it returns a dictionary with the original
+            text under the key 'text'. If the input is NaN, it returns
             None.
     """
     if pd.isna(text):
@@ -277,7 +274,7 @@ def convert_to_json(text):
 
 
 def json_to_html(json_obj, indent=0):
-    """ Convert a JSON object to an HTML-formatted string recursively.
+    """Convert a JSON object to an HTML-formatted string recursively.
 
     Args:
         json_obj (dict or list): JSON object to convert.
@@ -286,6 +283,7 @@ def json_to_html(json_obj, indent=0):
     Returns:
         str: HTML-formatted string representing the JSON object.
     """
+
     def dict_to_html(d, indent):
         """Convert a dictionary to an HTML-formatted string."""
         if not d:
@@ -331,7 +329,7 @@ def json_to_html(json_obj, indent=0):
 
 
 def new_sample(sample_title, created_by):
-    """ Create a new sample and insert it into the m_samples table.
+    """Create a new sample and insert it into the m_samples table.
 
     Args:
         sample_title (str): Title of the sample.
@@ -356,11 +354,10 @@ def new_sample(sample_title, created_by):
     else:
         st.error("Failed to create a new sample.")
         return None
-    
 
 
 def add_lesson_plans_to_sample(sample_id, lesson_plan_ids):
-    """ Link lesson plans to a sample in the m_sample_lesson_plans table.
+    """Link lesson plans to a sample in the m_sample_lesson_plans table.
 
     Args:
         sample_id (str): ID of the sample.
@@ -377,13 +374,15 @@ def add_lesson_plans_to_sample(sample_id, lesson_plan_ids):
             )
             VALUES (%s, %s);
             """,
-            (sample_id, lesson_plan_id)
-        ) for lesson_plan_id in lesson_plan_ids
+            (sample_id, lesson_plan_id),
+        )
+        for lesson_plan_id in lesson_plan_ids
     ]
     return execute_multi_query(queries)
 
+
 def add_lesson_plan_to_sample(sample_id, lesson_plan_id):
-    """ Link a lesson plan to a sample in the m_sample_lesson_plans table.
+    """Link a lesson plan to a sample in the m_sample_lesson_plans table.
 
     Args:
         sample_id (str): ID of the sample.
@@ -402,7 +401,9 @@ def add_lesson_plan_to_sample(sample_id, lesson_plan_id):
     return execute_single_query(query, (sample_id, lesson_plan_id, now, now))
 
 
-def insert_single_lesson_plan(json_data, lesson_id=None,key_stage=None, subject=None,  generation_details=None):
+def insert_single_lesson_plan(
+    json_data, lesson_id=None, key_stage=None, subject=None, generation_details=None
+):
     try:
         id_value = str(uuid.uuid4())
         lesson_id_value = lesson_id
@@ -418,23 +419,29 @@ def insert_single_lesson_plan(json_data, lesson_id=None,key_stage=None, subject=
             VALUES (%s, %s, %s, %s, now(), %s, %s);
         """
         params = (
-            id_value, lesson_id_value, json_value, generation_details_value,
-            key_stage_value, subject_value
+            id_value,
+            lesson_id_value,
+            json_value,
+            generation_details_value,
+            key_stage_value,
+            subject_value,
         )
 
         success = execute_single_query(query, params)
         if success:
-            print("Lesson plan inserted successfully.")  
-        else: 
+            print("Lesson plan inserted successfully.")
+        else:
             print("Unexpected error occurred while inserting the lesson plan.")
         return id_value
     except Exception as e:
-        log_message("error", f"Unexpected error occurred while inserting the lesson plan: {e}")
+        log_message(
+            "error", f"Unexpected error occurred while inserting the lesson plan: {e}"
+        )
         return None
 
 
 def get_light_experiment_data():
-    """ Retrieve light experiment data from the database.
+    """Retrieve light experiment data from the database.
 
     Returns:
         pd.DataFrame: DataFrame with light experiment data.
@@ -457,7 +464,7 @@ def get_light_experiment_data():
 
 
 def get_full_experiment_data(selected_experiment_id):
-    """ Retrieve full data for a selected experiment ID from the database.
+    """Retrieve full data for a selected experiment ID from the database.
 
     Args:
         selected_experiment_id (str): ID of experiment to fetch data for.
@@ -511,10 +518,10 @@ def get_full_experiment_data(selected_experiment_id):
 
 
 def get_prompts():
-    """ Retrieve prompts data from the database.
+    """Retrieve all versions of prompts data from the database.
 
     Returns:
-        pd.DataFrame: DataFrame with prompts data.
+        pd.DataFrame: DataFrame with all versions of prompts data.
     """
     query = """
         WITH RankedPrompts AS (
@@ -529,6 +536,7 @@ def get_prompts():
                 objective_title,
                 objective_desc, 
                 version,
+                created_by,
                 created_at,
                 ROW_NUMBER() OVER (
                     PARTITION BY prompt_title 
@@ -549,17 +557,18 @@ def get_prompts():
             experiment_description, 
             objective_title,
             objective_desc, 
-            version
+            version,
+            created_by,
+            created_at,
+            row_num
         FROM 
-            RankedPrompts
-        WHERE 
-            row_num = 1;
+            RankedPrompts;
     """
     return execute_single_query(query, return_dataframe=True)
 
 
 def get_samples():
-    """ Retrieve samples data from the database.
+    """Retrieve samples data from the database.
 
     Returns:
         pd.DataFrame: DataFrame with samples data.
@@ -582,7 +591,7 @@ def get_samples():
 
 
 def get_teachers():
-    """ Retrieve teachers data from the database.
+    """Retrieve teachers data from the database.
 
     Returns:
         pd.DataFrame: DataFrame with teachers data.
@@ -592,7 +601,7 @@ def get_teachers():
 
 
 def get_lesson_plans_by_id(sample_id, limit=None):
-    """ Retrieve lesson plans based on a sample ID.
+    """Retrieve lesson plans based on a sample ID.
 
     Args:
         sample_id (str): ID of the sample.
@@ -616,10 +625,17 @@ def get_lesson_plans_by_id(sample_id, limit=None):
     return execute_single_query(query, params)
 
 
-def add_experiment(experiment_name, sample_ids, created_by, tracked,
-        llm_model="gpt-4", llm_model_temp=0.5, description="None",
-        status="PENDING"):
-    """ Add a new experiment to the database.
+def add_experiment(
+    experiment_name,
+    sample_ids,
+    created_by,
+    tracked,
+    llm_model="gpt-4",
+    llm_model_temp=0.5,
+    description="None",
+    status="PENDING",
+):
+    """Add a new experiment to the database.
 
     Args:
         experiment_name (str): Name of the experiment.
@@ -644,8 +660,14 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
         RETURNING id;
     """
     params = (
-        experiment_name, sample_ids_str, llm_model, llm_model_temp,
-        description, created_by, status, tracked
+        experiment_name,
+        sample_ids_str,
+        llm_model,
+        llm_model_temp,
+        description,
+        created_by,
+        status,
+        tracked,
     )
 
     try:
@@ -660,7 +682,7 @@ def add_experiment(experiment_name, sample_ids, created_by, tracked,
 
 
 def fix_json_format(json_string):
-    """ Fix JSON formatting issues in a given JSON string.
+    """Fix JSON formatting issues in a given JSON string.
 
     Args:
         json_string (str): JSON string to fix.
@@ -685,13 +707,13 @@ def fix_json_format(json_string):
 
 
 def get_prompt(prompt_id):
-    """ Retrieve prompt details based on a prompt ID.
+    """Retrieve prompt details based on a prompt ID.
 
     Args:
         Prompt_id (str): ID of the prompt.
 
     Returns:
-        dict: Dictionary containing prompt details, 
+        dict: Dictionary containing prompt details,
             or None if prompt is not found.
     """
     query = """
@@ -725,7 +747,7 @@ def get_prompt(prompt_id):
 
 
 def process_prompt(prompt_details):
-    """ Process prompt details, ensuring correct formatting.
+    """Process prompt details, ensuring correct formatting.
 
     Args:
         prompt_details (dict): Dictionary containing prompt details.
@@ -735,9 +757,7 @@ def process_prompt(prompt_details):
     """
     if isinstance(prompt_details.get("rating_criteria"), str):
         try:
-            cleaned_criteria = (
-                prompt_details["rating_criteria"].replace('\\"', '"')
-            )
+            cleaned_criteria = prompt_details["rating_criteria"].replace('\\"', '"')
             prompt_details["rating_criteria"] = json.loads(cleaned_criteria)
         except json.JSONDecodeError as e:
             log_message("error", f"Error decoding JSON: {e}")
@@ -763,17 +783,17 @@ def process_prompt(prompt_details):
 
 
 def render_prompt(lesson_plan, prompt_details):
-    """ Render a prompt template using lesson plan and prompt details.
+    """Render a prompt template using lesson plan and prompt details.
 
     Args:
         lesson_plan (dict): Dictionary containing lesson plan details.
         prompt_details (dict): Dictionary containing prompt details.
 
     Returns:
-        str: Rendered prompt template or error message if template 
+        str: Rendered prompt template or error message if template
             cannot be loaded.
     """
-    jinja_path = get_env_variable('JINJA_TEMPLATE_PATH')
+    jinja_path = get_env_variable("JINJA_TEMPLATE_PATH")
     jinja_env = Environment(
         loader=FileSystemLoader(jinja_path),
         autoescape=select_autoescape(["html", "xml"]),
@@ -799,25 +819,25 @@ def render_prompt(lesson_plan, prompt_details):
 
 
 def clean_response(response_text):
-    """ Clean and process a JSON response text by removing extraneous 
+    """Clean and process a JSON response text by removing extraneous
     characters and decoding the JSON content.
 
-    The function strips the input text, removes enclosing triple 
-    backticks if they exist, and then removes any newline, 
-    carriage return, tab, and backslash characters. It attempts to 
-    decode the cleaned text into a JSON object. If successful, it 
-    returns the decoded JSON object and a success status. If a JSON 
-    decoding error occurs, it identifies the error position, extracts a 
-    snippet around the problematic area, and returns an error message 
+    The function strips the input text, removes enclosing triple
+    backticks if they exist, and then removes any newline,
+    carriage return, tab, and backslash characters. It attempts to
+    decode the cleaned text into a JSON object. If successful, it
+    returns the decoded JSON object and a success status. If a JSON
+    decoding error occurs, it identifies the error position, extracts a
+    snippet around the problematic area, and returns an error message
     and failure status.
 
     Args:
-        response_text (str): The raw response text to be cleaned and 
+        response_text (str): The raw response text to be cleaned and
             decoded.
 
     Returns:
-        Tuple[Union[Dict, Any], str]: A tuple containing the cleaned and 
-            decoded JSON object or an error message in case of failure, 
+        Tuple[Union[Dict, Any], str]: A tuple containing the cleaned and
+            decoded JSON object or an error message in case of failure,
             and a status string ("SUCCESS" or "FAILURE").
     """
     try:
@@ -838,15 +858,12 @@ def clean_response(response_text):
             "justification": (
                 f"{ErrorMessages.UNEXPECTED_ERROR}: {e}. "
                 f"Problematic snippet: {repr(snippet)}"
-            )
+            ),
         }, "FAILURE"
 
 
-def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
-        timeout=15):
-    
-    
-    """ Run inference using a lesson plan and a prompt ID.
+def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp, timeout=15):
+    """Run inference using a lesson plan and a prompt ID.
 
     Args:
         lesson_plan (dict): Dictionary containing lesson plan details.
@@ -858,13 +875,13 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     Returns:
         dict: Inference result or error response.
     """
-    
+
     required_keys = ["title", "topic", "subject", "keyStage"]
     if set(lesson_plan.keys()) == set(required_keys):
         return {
             "response": {
-                "result": None, 
-                "justification": "Lesson data is missing for this check."
+                "result": None,
+                "justification": "Lesson data is missing for this check.",
             },
             "status": "ABORTED",
         }
@@ -874,7 +891,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         return {
             "response": {
                 "result": None,
-                "justification": "Prompt details not found for the given ID."
+                "justification": "Prompt details not found for the given ID.",
             },
             "status": "ABORTED",
         }
@@ -930,13 +947,16 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             # Define the headers for the request
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {credential}"
+                "Authorization": f"Bearer {credential}",
             }
 
             # Create the payload with the data you want to send to the model
             data = {
                 "messages": [
-                    {"role": "user", "content": prompt},   # Adjust this structure based on API requirements
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },  # Adjust this structure based on API requirements
                 ],
                 "temperature": llm_model_temp,
                 # 'temperature': llm_model_temp,
@@ -944,26 +964,28 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
 
             # Make the POST request to the model endpoint
             response = requests.post(endpoint, headers=headers, data=json.dumps(data))
-            
 
             # Check the response status and content
             if response.status_code == 200:
                 response_data = response.json()
-                message = response_data['choices'][0]['message']['content']
+                message = response_data["choices"][0]["message"]["content"]
                 cleaned_content, status = clean_response(message)
                 return {
                     "response": cleaned_content,
-                    "status": status,  
+                    "status": status,
                 }
-            
+
             else:
-                log_message("error", f"Failed with status code {response.status_code}: {response.text}")
+                log_message(
+                    "error",
+                    f"Failed with status code {response.status_code}: {response.text}",
+                )
                 return {
                     "response": {
                         "result": None,
                         "justification": f"Failed with status code {response.status_code}: {response.text}",
                     },
-                    "status": "FAILURE" 
+                    "status": "FAILURE",
                 }
 
         except Exception as e:
@@ -973,12 +995,12 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
                     "result": None,
                     "justification": f"An error occurred: {e}",
                 },
-                "status": "FAILURE" # Include elapsed time even in case of failure
+                "status": "FAILURE",  # Include elapsed time even in case of failure
             }
 
-def add_results(experiment_id, prompt_id, lesson_plan_id, score,
-        justification, status):
-    """ Add results of an experiment to the database.
+
+def add_results(experiment_id, prompt_id, lesson_plan_id, score, justification, status):
+    """Add results of an experiment to the database.
 
     Args:
         experiment_id (int): ID of the experiment.
@@ -987,7 +1009,7 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         score (float or str): Score or boolean as float (1.0 or 0.0).
         justification (str): Justification for the result.
         status (str): Status of the result (e.g., 'COMPLETE', 'ABORTED').
-        
+
     Returns:
         None
     """
@@ -1012,8 +1034,12 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
             VALUES (now(), now(), %s, %s, %s, %s, %s, %s);
         """
         params = (
-            experiment_id, prompt_id, lesson_plan_id, score, justification,
-            status
+            experiment_id,
+            prompt_id,
+            lesson_plan_id,
+            score,
+            justification,
+            status,
         )
 
         success = execute_multi_query([(insert_query, params)])
@@ -1038,7 +1064,7 @@ def decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, index):
     if not lesson_json_str:
         log_message("error", f"Lesson JSON is None for lesson index {index}")
         return None
-    
+
     try:
         return json.loads(lesson_json_str)
     except json.JSONDecodeError as e:
@@ -1054,8 +1080,15 @@ def decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, index):
         return None
 
 
-def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
-        experiment_id, lesson_plan_id):
+def handle_inference(
+    content,
+    prompt_id,
+    llm_model,
+    llm_model_temp,
+    timeout,
+    experiment_id,
+    lesson_plan_id,
+):
     """Run inference and add results to the database.
 
     Args:
@@ -1085,18 +1118,25 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
         ):
             for _, cycle_data in response.items():
                 result = cycle_data.get("result")
-                justification = cycle_data.get(
-                    "justification", "").replace("'", "")
+                justification = cycle_data.get("justification", "").replace("'", "")
                 add_results(
-                    experiment_id, prompt_id, lesson_plan_id, result, 
-                    justification, output["status"]
+                    experiment_id,
+                    prompt_id,
+                    lesson_plan_id,
+                    result,
+                    justification,
+                    output["status"],
                 )
         else:
             result = response.get("result")
             justification = response.get("justification", "").replace("'", "")
             add_results(
-                experiment_id, prompt_id, lesson_plan_id, result, 
-                justification, output["status"]
+                experiment_id,
+                prompt_id,
+                lesson_plan_id,
+                result,
+                justification,
+                output["status"],
             )
         return output
 
@@ -1113,14 +1153,15 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
             Lesson Plan ID: {lesson_plan_id}, 
             Prompt ID: {prompt_id}, 
             Output: {output}
-            """
+            """,
         )
         return None
-    
 
-def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
-        llm_model_temp, timeout=15):
-    """ Run a test for each lesson plan associated with a sample and add 
+
+def run_test(
+    sample_id, prompt_id, experiment_id, limit, llm_model, llm_model_temp, timeout=15
+):
+    """Run a test for each lesson plan associated with a sample and add
     results to the database.
 
     Args:
@@ -1138,7 +1179,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
     lesson_plans = get_lesson_plans_by_id(sample_id, limit)
     total_lessons = len(lesson_plans)
     log_message("info", f"Total lessons: {total_lessons}")
-    
+
     progress = st.progress(0)
     placeholder1 = st.empty()
     placeholder2 = st.empty()
@@ -1152,7 +1193,15 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
         if content is None:
             continue
 
-        output = handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout, experiment_id, lesson_plan_id)
+        output = handle_inference(
+            content,
+            prompt_id,
+            llm_model,
+            llm_model_temp,
+            timeout,
+            experiment_id,
+            lesson_plan_id,
+        )
         if output is None:
             continue
 
@@ -1166,7 +1215,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
                 f"status = {output.get('status')},\n"
                 f"lesson_plan_id = {lesson_plan_id},\n"
                 f"experiment_id = {experiment_id},\n"
-                f"prompt_id = {prompt_id}\n"
+                f"prompt_id = {prompt_id}\n",
             )
 
         progress.progress((i + 1) / total_lessons)
@@ -1176,12 +1225,12 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
 
 
 def update_status(experiment_id, status):
-    """ Update the status of an experiment in the database.
+    """Update the status of an experiment in the database.
 
     Args:
         experiment_id (int): ID of the experiment.
         status (str): New status to update.
-        
+
     Returns:
         bool: True if the status was updated successfully, False otherwise.
     """
@@ -1202,9 +1251,18 @@ def update_status(experiment_id, status):
         return False
 
 
-def start_experiment(experiment_name, exp_description, sample_ids, created_by,
-        prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5):
-    """ Start a new experiment, run tests for each sample and prompt, 
+def start_experiment(
+    experiment_name,
+    exp_description,
+    sample_ids,
+    created_by,
+    prompt_ids,
+    limit,
+    llm_model,
+    tracked,
+    llm_model_temp=0.5,
+):
+    """Start a new experiment, run tests for each sample and prompt,
     and update status.
 
     Args:
@@ -1222,8 +1280,13 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         bool: True if the experiment completes successfully, False otherwise.
     """
     experiment_id = add_experiment(
-        experiment_name, sample_ids, created_by, tracked, llm_model,
-        llm_model_temp, description=exp_description
+        experiment_name,
+        sample_ids,
+        created_by,
+        tracked,
+        llm_model,
+        llm_model_temp,
+        description=exp_description,
     )
 
     if not experiment_id:
@@ -1237,17 +1300,17 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 
     try:
         for sample_index, sample_id in enumerate(sample_ids):
-            st.write(
-                f"Working on sample {sample_index + 1} of {total_samples}"
-            )
+            st.write(f"Working on sample {sample_index + 1} of {total_samples}")
 
             for prompt_index, prompt_id in enumerate(prompt_ids):
-                st.write(
-                    f"Working on prompt {prompt_index + 1} of {total_prompts}"
-                )
+                st.write(f"Working on prompt {prompt_index + 1} of {total_prompts}")
                 run_test(
-                    sample_id, prompt_id, experiment_id, limit, llm_model,
-                    llm_model_temp
+                    sample_id,
+                    prompt_id,
+                    experiment_id,
+                    limit,
+                    llm_model,
+                    llm_model_temp,
                 )
             st.write(f"Sample {sample_index + 1} Completed!")
 
@@ -1262,11 +1325,21 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         return False
 
 
-def insert_prompt(prompt_objective, lesson_plan_params, output_format,
-        rating_criteria, general_criteria_note, rating_instruction,
-        prompt_title, experiment_description, objective_title, objective_desc,
-        prompt_created_by, version,):
-    """ Add or update prompt in the database.
+def insert_prompt(
+    prompt_objective,
+    lesson_plan_params,
+    output_format,
+    rating_criteria,
+    general_criteria_note,
+    rating_instruction,
+    prompt_title,
+    experiment_description,
+    objective_title,
+    objective_desc,
+    prompt_created_by,
+    version,
+):
+    """Add or update prompt in the database.
 
     Args:
         prompt_objective (str): Objective of the prompt.
@@ -1312,7 +1385,7 @@ def insert_prompt(prompt_objective, lesson_plan_params, output_format,
         objective_title,
         objective_desc,
         prompt_created_by,
-        version
+        version,
     )
     try:
         result = execute_single_query(insert_query, params)
@@ -1325,9 +1398,10 @@ def insert_prompt(prompt_objective, lesson_plan_params, output_format,
         return None
 
 
-def generate_experiment_placeholders(model_name, temperature, limit,
-        prompt_count, sample_count, teacher_name):
-    """ Generate placeholders for an experiment based on specified parameters.
+def generate_experiment_placeholders(
+    model_name, temperature, limit, prompt_count, sample_count, teacher_name
+):
+    """Generate placeholders for an experiment based on specified parameters.
 
     Args:
         model_name (str): Name of the LLM model.
