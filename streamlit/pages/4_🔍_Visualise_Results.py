@@ -194,12 +194,13 @@ experiment = st.multiselect(
 )
 
 # initilize query parameters experiment_id
-experiment_id = None
+experiment_id =st.query_params
+experiment_id = st.query_params.get("experiment_id", None)
 
 selectected_experiments = []
 
 # Retrieve query parameters
-if st.query_params["experiment_id"] is not None:
+if experiment_id is not None:
     experiment_id = st.query_params["experiment_id"]
 
     st.write(f"Experiment ID provided in URL: {experiment_id}")
@@ -214,6 +215,7 @@ elif experiment != 'Select':
             light_data['experiment_name'] == selected_experiment_name
         ]['experiment_id'].iloc[0]
         selectected_experiments.append(selected_experiment_id)
+        selectected_experiments
         result_id_input =""
 else:
     selected_experiment_id = None

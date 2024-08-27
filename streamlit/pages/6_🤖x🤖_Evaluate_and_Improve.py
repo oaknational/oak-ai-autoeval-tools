@@ -46,7 +46,7 @@ def fetch_test_lesson_plans():
         FROM public.m_results r
         INNER JOIN m_prompts p ON p.id = r.prompt_id
         INNER JOIN lesson_plans lp ON lp.id = r.lesson_plan_id
-        WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\.]+$' AND p.output_format = 'Score' 
+        WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\\.]+$' AND p.output_format = 'Score' 
         AND p.prompt_title <> 'Answers Are Minimally Different'
         AND lp.generation_details LIKE '%gpt-4o%' 
         GROUP BY r.lesson_plan_id, r.prompt_id, p.prompt_title, lp.generation_details, lp.json
@@ -83,7 +83,7 @@ def fetch_bad_lesson_plans():
         FROM public.m_results r
         INNER JOIN m_prompts p ON p.id = r.prompt_id
         INNER JOIN lesson_plans lp ON lp.id = r.lesson_plan_id
-        WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\.]+$' AND p.output_format = 'Score' 
+        WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\\.]+$' AND p.output_format = 'Score' 
         AND p.prompt_title <> 'Answers Are Minimally Different'
         AND lp.generation_details LIKE '%gpt-4o%' 
         GROUP BY r.lesson_plan_id, r.prompt_id, p.prompt_title, lp.generation_details, lp.json
@@ -237,6 +237,7 @@ def calculate_success_failure_rate(test_df):
 lessons_df =fetch_bad_lesson_plans()
 
 lessons_df_backup = lessons_df
+lessons_df_backup
 
 # lessons_df = fetch_bad_lesson_plans()
 lessons_df =fetch_test_lesson_plans()
@@ -449,12 +450,15 @@ if prompt_title_selection is not None:
                 
 
         lessons_df=st.session_state.selected_filtered_df
-
+        lessons_df
 
         if st.session_state.selected_plan is not None:
+            st.session_state.selected_plan
         # Fetch the selected row using session_state.selected_plan
             selected_row = lessons_df_backup[lessons_df_backup['lesson_plan_id'] == st.session_state.selected_plan]
+            selected_row
             selected_row = selected_row.iloc[0]
+            selected_row
 
             lesson_plan = json.loads(selected_row['lesson_plan_json'])
 
