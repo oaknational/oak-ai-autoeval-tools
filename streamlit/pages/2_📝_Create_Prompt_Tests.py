@@ -19,96 +19,12 @@ import json
 import streamlit as st
 import pandas as pd
 
-from constants import ExamplePrompts
+from constants import ExamplePrompts, LessonPlanParameters
 from utils import (
-    clear_all_caches, execute_single_query, get_teachers, insert_prompt
+    clear_all_caches, execute_single_query, get_teachers, insert_prompt,
+    lesson_plan_parts_at_end, get_first_ten_words, display_at_end_score_criteria,
+    display_at_end_boolean_criteria
 )
-
-# Lesson parameters and their corresponding titles (for 'View Your
-# Prompt' display purposes) and plain English descriptions
-lesson_params = [
-    "lesson",
-    "title",
-    "topic",
-    "subject",
-    "cycles",
-    "cycle_titles",
-    "cycle_feedback",
-    "cycle_practice",
-    "cycle_explanations",
-    "cycle_spokenexplanations",
-    "cycle_accompanyingslidedetails",
-    "cycle_imageprompts",
-    "cycle_slidetext",
-    "cycle_durationinmins",
-    "cycle_checkforunderstandings",
-    "cycle_scripts",
-    "exitQuiz",
-    "keyStage",
-    "starterQuiz",
-    "learningCycles",
-    "misconceptions",
-    "priorKnowledge",
-    "learningOutcome",
-    "keyLearningPoints",
-    "additionalMaterials",
-]
-
-lesson_params_titles = [
-    "Lesson",
-    "Title",
-    "Topic",
-    "Subject",
-    "Cycles",
-    "Titles",
-    "Feedback",
-    "Practice Tasks",
-    "Explanations",
-    "Spoken Explanations",
-    "Accompanying Slide Details",
-    "Image Prompts",
-    "Slide Text",
-    "Duration in Minutes",
-    "Check for Understandings",
-    "Scripts",
-    "Exit Quiz",
-    "Key Stage",
-    "Starter Quiz",
-    "Learning Cycles",
-    "Misconceptions",
-    "Prior Knowledge",
-    "Learning Outcome",
-    "Key Learning Points",
-    "Additional Materials",
-]
-
-lesson_params_plain_eng = [
-    "Whole lesson",
-    "Title",
-    "Topic",
-    "Subject",
-    "All content from all cycles",
-    "All cycle titles",
-    "All cycle feedback",
-    "All cycle practice",
-    "Entire explanations from all cycles",
-    "All spoken explanations from all cycles",
-    "All accompanying slide details from all cycles",
-    "All image prompts from all cycles",
-    "All slide text from all cycles",
-    "All durations in minutes from all cycles",
-    "All check for understandings from all cycles",
-    "All scripts from all cycles",
-    "Exit Quiz",
-    "Key Stage",
-    "Starter Quiz",
-    "Learning cycles",
-    "Misconceptions",
-    "Prior knowledge",
-    "Learning outcomes",
-    "Key learning points",
-    "Additional materials",
-]
 
 
 def get_all_prompts():
@@ -287,59 +203,6 @@ def objective_title_select(new=False, current_prompt=None):
         return objective_title, objective_desc
 
 
-def display_at_end_score_criteria(rating_criteria, truncated=True):
-    """ This function presents the rating criteria for scores 5 and 1.
-    Extracts labels and descriptions from the rating_criteria 
-    dictionary and formats them for display.
-    
-    Args:
-        rating_criteria (dict): A dictionary containing the rating
-            criteria 
-        truncated (bool, optional): If True, only the first ten words of
-            the descriptions are displayed. Defaults to True.
-    """
-    st.markdown("### Rating Criteria:")
-
-    label_5 = list(rating_criteria.keys())[0].split("(")[-1].strip(")")
-    desc_5 = list(rating_criteria.values())[0]
-    desc_5_short = get_first_ten_words(desc_5)
-
-    label_1 = list(rating_criteria.keys())[1].split("(")[-1].strip(")")
-    desc_1 = list(rating_criteria.values())[1]
-    desc_1_short = get_first_ten_words(desc_1)
-
-    if truncated:
-        st.markdown(f"**5 ({label_5}):** {desc_5_short}")
-        st.markdown(f"**1 ({label_1}):** {desc_1_short}")
-    else:
-        st.markdown(f"**5 ({label_5}):** {desc_5}")
-        st.markdown(f"**1 ({label_1}):** {desc_1}")
-
-
-def display_at_end_boolean_criteria(rating_criteria, truncated=True):
-    """ Displays the rating criteria for TRUE and FALSE outcomes.
-    Extracts labels and descriptions from the rating_criteria 
-    dictionary and formats them for display.
-
-    Args:
-        rating_criteria (dict): A dictionary containing the rating 
-            criteria
-        truncated (bool, optional): If True, only the first ten words of
-            the descriptions are displayed. Defaults to True.
-    """
-    st.markdown("### Evaluation Criteria:")
-
-    desc_true_short = get_first_ten_words(rating_criteria["TRUE"])
-    desc_false_short = get_first_ten_words(rating_criteria["FALSE"])
-
-    if truncated:
-        st.markdown(f"TRUE: {desc_true_short}")
-        st.markdown(f"FALSE: {desc_false_short}")
-    else:
-        st.markdown(f"TRUE: {rating_criteria['TRUE']}")
-        st.markdown(f"FALSE: {rating_criteria['FALSE']}")
-
-
 def get_lesson_plan_params(plain_eng_list):
     """ Maps a list of plain English lesson plan parameter names to
         their corresponding keys used in the system.
@@ -352,57 +215,12 @@ def get_lesson_plan_params(plain_eng_list):
         list of str: A list of corresponding keys for the lesson plan 
             parameters.
     """
-    lesson_params_to_titles = dict(zip(lesson_params_plain_eng, lesson_params))
+    lesson_params_to_titles = dict(zip(LessonPlanParameters.LESSON_PARAMS_PLAIN_ENG, LessonPlanParameters.LESSON_PARAMS))
     return [
         lesson_params_to_titles[item]
         for item in plain_eng_list
         if item in lesson_params_to_titles
     ]
-
-
-def lesson_plan_parts_at_end(lesson_plan_params):
-    """ Generates a formatted string for displaying lesson plan parts 
-        after users click 'View Your Prompt'. The function maps lesson 
-        plan parameters to their titles and formats them for display.
-
-    Args:
-        lesson_plan_params (list or str): A list of lesson plan 
-            parameters or a JSON string representing the list.
-
-    Returns:
-        str: A formatted string with lesson plan parts for display.
-    """
-    lesson_params_to_titles = dict(zip(lesson_params, lesson_params_titles))
-
-    if isinstance(lesson_plan_params, str):
-        lesson_plan_params = json.loads(lesson_plan_params)
-
-    return "\n".join(
-        f"""
-            ### {lesson_params_to_titles.get(param, param)}:\n
-            *insert {param} here*\n
-            ### *(End of {lesson_params_to_titles.get(param, param)})*\n
-        """
-        for param in lesson_plan_params
-    )
-
-
-def get_first_ten_words(text):
-    """ Extracts the first ten words from a given text and appends an 
-        ellipsis ('...') if there are more than ten words.
-
-    Args:
-        text (str): The input text from which to extract the first ten 
-            words.
-
-    Returns:
-        str: A string containing the first ten words followed by an 
-            ellipsis if the original text has more than ten words, 
-            otherwise returns the original text.
-    """
-    words = text.split()
-    first_ten_words = " ".join(words[:10]) + "..." if len(words) > 10 else text
-    return first_ten_words
 
 
 def get_prompt_title(prompt_title, create):
@@ -445,7 +263,7 @@ def get_lesson_plan_params_input(lesson_plan_params, create):
     if create:
         lesson_plan_params_st = st.multiselect(
             "Choose the parts of the lesson plan that you're evaluating",
-            options=lesson_params_plain_eng
+            options=LessonPlanParameters.LESSON_PARAMS_PLAIN_ENG
         )
         return get_lesson_plan_params(lesson_plan_params_st)
     else:
@@ -608,7 +426,7 @@ def view_prompt_details(prompt_title, prompt_objective, lesson_plan_params,
     st.markdown("### Objective:")
     truncated_prompt_objective = get_first_ten_words(prompt_objective)
     st.markdown(f"{truncated_prompt_objective}")
-    output = lesson_plan_parts_at_end(lesson_plan_params)
+    output = lesson_plan_parts_at_end(lesson_plan_params, LessonPlanParameters.LESSON_PARAMS, LessonPlanParameters.LESSON_PARAMS_TITLES)
     st.markdown(output)
 
     if output_format == "Score":
@@ -751,7 +569,7 @@ def modify_existing_prompt():
                 st.markdown("### Objective:")
                 st.markdown(f"{current_prompt['prompt_objective']}")
                 output = lesson_plan_parts_at_end(
-                    current_prompt["lesson_plan_params"]
+                    current_prompt["lesson_plan_params"], LessonPlanParameters.LESSON_PARAMS, LessonPlanParameters.LESSON_PARAMS_TITLES
                 )
                 st.markdown(output)
 
