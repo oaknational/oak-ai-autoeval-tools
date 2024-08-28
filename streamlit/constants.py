@@ -155,13 +155,13 @@ class RecommendedPrompts:
 
     BEST_VERSIONS = {
         # Example: 'Prompt Title': 'best_version_id'
-        "20-Minute Explanation and Task Completion Feasibility": "1", #only one
+        "20-Minute Explanation and Task Completion Feasibility": "1",
         "Americanisms": "3",
-        "Answers Are Minimally Different": '1', #only one
+        "Answers Are Minimally Different": '1',
         "Appropriate Level for Age": "2",
-        "CFUs Align with Explanations and Key Learning Points": "1", #only one
-        "Correct Answer Detail Balance": "1", #only one
-        "Cultural Bias": "1", #only one
+        "CFUs Align with Explanations and Key Learning Points": "1",
+        "Correct Answer Detail Balance": "1",
+        "Cultural Bias": "1",
         "Cycles and Learning Cycles Coincide": "1",
         "Exit Quiz Contains Vocabulary Question": "1",
         "Exit Quiz Tests Key Learning Points": "1",

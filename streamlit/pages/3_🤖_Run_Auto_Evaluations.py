@@ -90,7 +90,7 @@ for selected_prompt_title in selected_prompt_titles:
     # Get the recommended best version number
     recommended_version_number = RecommendedPrompts.get_best_version(selected_prompt_title)
 
-    # Combine relevant metadata for display using .loc to avoid SettingWithCopyWarning
+    # Combine relevant metadata for display
     filtered_prompts.loc[:, "prompt_version_info"] = (
         "v"
         + filtered_prompts["version"].astype(str)
@@ -102,30 +102,43 @@ for selected_prompt_title in selected_prompt_titles:
         + filtered_prompts["created_at"].astype(str)
     )
 
-    # Append " 🌟 (recommended)" to the recommended version
-    if recommended_version_number:
-        filtered_prompts.loc[
+    # Check if there are multiple versions available
+    if len(filtered_prompts) > 1:
+        # Display the recommended version by default
+        st.markdown(f"**Recommended Version for '{selected_prompt_title}':**")
+        recommended_prompt_info = filtered_prompts.loc[
             filtered_prompts['version'] == recommended_version_number, 'prompt_version_info'
-        ] += " 🌟 (recommended)"
+        ].values[0]
+        st.write(recommended_prompt_info)
 
-    # Step 3: Version Selection for Each Selected Prompt
-    st.subheader(f"Select Version for '{selected_prompt_title}'")
-    prompt_version_options = st.multiselect(
-        f"Choose versions for {selected_prompt_title}:",
-        filtered_prompts["prompt_version_info"].tolist(),
-        help=f"You can select specific versions of {selected_prompt_title} to run evaluations on.",
-    )
+        # Ask the user if they want to choose a different version
+        use_different_version = st.checkbox(f"Use a different version for '{selected_prompt_title}'?")
+
+        if use_different_version:
+            # Display a multiselect box with all available versions
+            selected_versions = st.multiselect(
+                f"Choose versions for {selected_prompt_title}:",
+                filtered_prompts["prompt_version_info"].tolist(),
+                default=[recommended_prompt_info],
+                help=f"You can select specific versions of {selected_prompt_title} to run evaluations on."
+            )
+        else:
+            # Default to using the recommended version
+            selected_versions = [recommended_prompt_info]
+    else:
+        # Only one version available, so automatically select it
+        selected_versions = filtered_prompts["prompt_version_info"].tolist()
 
     # Filter the selected versions
-    selected_versions = filtered_prompts.loc[
-        filtered_prompts["prompt_version_info"].isin(prompt_version_options)
+    selected_versions_df = filtered_prompts.loc[
+        filtered_prompts["prompt_version_info"].isin(selected_versions)
     ]
 
     # Collect selected prompt IDs for further processing
-    prompt_ids.extend(selected_versions["id"].tolist())
+    prompt_ids.extend(selected_versions_df["id"].tolist())
 
     # Collecting selected prompt information for the table
-    for _, current_prompt in selected_versions.iterrows():
+    for _, current_prompt in selected_versions_df.iterrows():
         selected_prompts_info.append(
             {
                 "Prompt": f"{current_prompt['prompt_title']} v{current_prompt['version']}",
