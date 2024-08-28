@@ -144,3 +144,152 @@ class ExamplePrompts:
     """
 
 
+class RecommendedPrompts:
+    """
+    This class contains a manually curated list of the recommended prompt 
+    versions based on their IDs.
+    
+    Attributes:
+        BEST_VERSIONS (dict): A dictionary mapping prompt titles to 
+        their best version IDs.
+    """
+
+    BEST_VERSIONS = {
+        # Example: 'Prompt Title': 'best_version_id'
+        "20-Minute Explanation and Task Completion Feasibility": "1",
+        "Americanisms": "3",
+        "Answers Are Minimally Different": '1',
+        "Appropriate Level for Age": "2",
+        "CFUs Align with Explanations and Key Learning Points": "1",
+        "Correct Answer Detail Balance": "1",
+        "Cultural Bias": "1",
+        "Cycles and Learning Cycles Coincide": "1",
+        "Exit Quiz Contains Vocabulary Question": "1",
+        "Exit Quiz Tests Key Learning Points": "1",
+        "Explanations Address Misconceptions": "1",
+        "General Appropriateness and Sensitivity": "1",
+        "Health and Safety Considerations Addressed": "1",
+        "Internal Consistency": "1",
+        "Keywords Necessary and Pertinent to Key Learning Points": "1",
+        "Learning Cycles Achieve Learning Outcome": "1",
+        "Learning Cycles Increase in Challenge": "1",
+        "Learning Styles Check ": "1",
+        "Legal and Ethical Compliance": "1",
+        "Meaningful Misconceptions": "1",
+        "No Negative Phrasing in Quiz Questions": "1",
+        "Out of Scope Evaluation": "1",
+        "Practice and Feedback are Student-Facing": "3",
+        "Practice Tasks are Linked to Explanations and Key Learning Points": "1",
+        "Practice Tasks Assess Explanation Understanding": "1",
+        "Progressive Complexity in Quiz Questions": "1",
+        "Quiz Distractor Quality": "1",
+        "Quiz Questions Require Explicit Knowledge": "1",
+        "Repeated Questions in Quizzes": "1",
+        "Single Subject Focus": "1",
+        "Starter Quiz Contains Vocabulary Question": "1",
+        "Starter Quiz Doesn't Test Lesson Content": "1",
+        "Starter Quiz Tests Prior Knowledge": "1",
+        "Technical and Content Restrictions": "1",
+        "Testing Misconceptions": "1"
+
+        
+    }
+
+    @classmethod
+    def get_best_version(cls, prompt_title):
+        """
+        Returns the best version number for a given prompt title.
+
+        Args:
+            prompt_title (str): The title of the prompt.
+
+        Returns:
+            str: The best version number of the prompt, or None if not found.
+        """
+        return cls.BEST_VERSIONS.get(prompt_title)
+
+
+class LessonPlanParameters:
+    LESSON_PARAMS = [
+    "lesson",
+    "title",
+    "topic",
+    "subject",
+    "cycles",
+    "cycle_titles",
+    "cycle_feedback",
+    "cycle_practice",
+    "cycle_explanations",
+    "cycle_spokenexplanations",
+    "cycle_accompanyingslidedetails",
+    "cycle_imageprompts",
+    "cycle_slidetext",
+    "cycle_durationinmins",
+    "cycle_checkforunderstandings",
+    "cycle_scripts",
+    "exitQuiz",
+    "keyStage",
+    "starterQuiz",
+    "learningCycles",
+    "misconceptions",
+    "priorKnowledge",
+    "learningOutcome",
+    "keyLearningPoints",
+    "additionalMaterials",
+]
+
+    LESSON_PARAMS_TITLES = [
+    "Lesson",
+    "Title",
+    "Topic",
+    "Subject",
+    "Cycles",
+    "Titles",
+    "Feedback",
+    "Practice Tasks",
+    "Explanations",
+    "Spoken Explanations",
+    "Accompanying Slide Details",
+    "Image Prompts",
+    "Slide Text",
+    "Duration in Minutes",
+    "Check for Understandings",
+    "Scripts",
+    "Exit Quiz",
+    "Key Stage",
+    "Starter Quiz",
+    "Learning Cycles",
+    "Misconceptions",
+    "Prior Knowledge",
+    "Learning Outcome",
+    "Key Learning Points",
+    "Additional Materials",
+]
+
+    LESSON_PARAMS_PLAIN_ENG =   [
+    "Whole lesson",
+    "Title",
+    "Topic",
+    "Subject",
+    "All content from all cycles",
+    "All cycle titles",
+    "All cycle feedback",
+    "All cycle practice",
+    "Entire explanations from all cycles",
+    "All spoken explanations from all cycles",
+    "All accompanying slide details from all cycles",
+    "All image prompts from all cycles",
+    "All slide text from all cycles",
+    "All durations in minutes from all cycles",
+    "All check for understandings from all cycles",
+    "All scripts from all cycles",
+    "Exit Quiz",
+    "Key Stage",
+    "Starter Quiz",
+    "Learning cycles",
+    "Misconceptions",
+    "Prior knowledge",
+    "Learning outcomes",
+    "Key learning points",
+    "Additional materials",
+]

@@ -511,10 +511,10 @@ def get_full_experiment_data(selected_experiment_id):
 
 
 def get_prompts():
-    """ Retrieve prompts data from the database.
+    """Retrieve all versions of prompts data from the database.
 
     Returns:
-        pd.DataFrame: DataFrame with prompts data.
+        pd.DataFrame: DataFrame with all versions of prompts data.
     """
     query = """
         WITH RankedPrompts AS (
@@ -524,11 +524,14 @@ def get_prompts():
                 lesson_plan_params, 
                 output_format, 
                 rating_criteria, 
+                general_criteria_note,
+                rating_instruction,
                 prompt_title, 
                 experiment_description, 
                 objective_title,
                 objective_desc, 
                 version,
+                created_by,
                 created_at,
                 ROW_NUMBER() OVER (
                     PARTITION BY prompt_title 
@@ -545,15 +548,18 @@ def get_prompts():
             lesson_plan_params, 
             output_format, 
             rating_criteria, 
+            general_criteria_note,
+            rating_instruction,
             prompt_title, 
             experiment_description, 
             objective_title,
             objective_desc, 
-            version
+            version,
+            created_by,
+            created_at,
+            row_num
         FROM 
-            RankedPrompts
-        WHERE 
-            row_num = 1;
+            RankedPrompts;
     """
     return execute_single_query(query, return_dataframe=True)
 
@@ -1350,3 +1356,102 @@ def generate_experiment_placeholders(model_name, temperature, limit,
         f"{limit} lesson plans per sample. Run by {teacher_name}."
     )
     return placeholder_name, placeholder_description
+
+
+def lesson_plan_parts_at_end(selected_lesson_plan_params, all_lesson_params, all_lesson_params_titles):
+    """ Generates a formatted string for displaying lesson plan parts 
+        after users click 'View Your Prompt'. The function maps lesson 
+        plan parameters to their titles and formats them for display.
+
+    Args:
+        selected_lesson_plan_params (list or str): A list of lesson plan 
+            parameters or a JSON string representing the list.
+
+    Returns:
+        str: A formatted string with lesson plan parts for display.
+    """
+    lesson_params_to_titles = dict(zip(all_lesson_params, all_lesson_params_titles))
+
+    if isinstance(selected_lesson_plan_params, str):
+        selected_lesson_plan_params = json.loads(selected_lesson_plan_params)
+
+    return "\n".join(
+        f"""
+            ### {lesson_params_to_titles.get(param, param)}:\n
+            *insert {param} here*\n
+            ### *(End of {lesson_params_to_titles.get(param, param)})*\n
+        """
+        for param in selected_lesson_plan_params
+    )
+
+
+def get_first_ten_words(text):
+    """ Extracts the first ten words from a given text and appends an 
+        ellipsis ('...') if there are more than ten words.
+
+    Args:
+        text (str): The input text from which to extract the first ten 
+            words.
+
+    Returns:
+        str: A string containing the first ten words followed by an 
+            ellipsis if the original text has more than ten words, 
+            otherwise returns the original text.
+    """
+    words = text.split()
+    first_ten_words = " ".join(words[:10]) + "..." if len(words) > 10 else text
+    return first_ten_words
+
+
+def display_at_end_score_criteria(rating_criteria, truncated=True):
+    """ This function presents the rating criteria for scores 5 and 1.
+    Extracts labels and descriptions from the rating_criteria 
+    dictionary and formats them for display.
+    
+    Args:
+        rating_criteria (dict): A dictionary containing the rating
+            criteria 
+        truncated (bool, optional): If True, only the first ten words of
+            the descriptions are displayed. Defaults to True.
+    """
+    st.markdown("### Rating Criteria:")
+
+    label_5 = list(rating_criteria.keys())[0].split("(")[-1].strip(")")
+    desc_5 = list(rating_criteria.values())[0]
+    desc_5_short = get_first_ten_words(desc_5)
+
+    label_1 = list(rating_criteria.keys())[1].split("(")[-1].strip(")")
+    desc_1 = list(rating_criteria.values())[1]
+    desc_1_short = get_first_ten_words(desc_1)
+
+    if truncated:
+        st.markdown(f"**5 ({label_5}):** {desc_5_short}")
+        st.markdown(f"**1 ({label_1}):** {desc_1_short}")
+    else:
+        st.markdown(f"**5 ({label_5}):** {desc_5}")
+        st.markdown(f"**1 ({label_1}):** {desc_1}")
+
+
+def display_at_end_boolean_criteria(rating_criteria, truncated=True):
+    """ Displays the rating criteria for TRUE and FALSE outcomes.
+    Extracts labels and descriptions from the rating_criteria 
+    dictionary and formats them for display.
+
+    Args:
+        rating_criteria (dict): A dictionary containing the rating 
+            criteria
+        truncated (bool, optional): If True, only the first ten words of
+            the descriptions are displayed. Defaults to True.
+    """
+    st.markdown("### Evaluation Criteria:")
+
+    desc_true_short = get_first_ten_words(rating_criteria["TRUE"])
+    desc_false_short = get_first_ten_words(rating_criteria["FALSE"])
+
+    if truncated:
+        st.markdown(f"TRUE: {desc_true_short}")
+        st.markdown(f"FALSE: {desc_false_short}")
+    else:
+        st.markdown(f"TRUE: {rating_criteria['TRUE']}")
+        st.markdown(f"FALSE: {rating_criteria['FALSE']}")
+        
