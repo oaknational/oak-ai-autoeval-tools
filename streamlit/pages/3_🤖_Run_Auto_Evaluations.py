@@ -39,9 +39,9 @@ st.write(
 )
 
 # Initialize session state
-if "llm_model" not in st.session_state:
-    st.session_state.llm_model = "gpt-4"
-if "llm_model_temp" not in st.session_state:
+if 'llm_model' not in st.session_state: 
+    st.session_state.llm_model = 'gpt-4o'
+if 'llm_model_temp' not in st.session_state:
     st.session_state.llm_model_temp = 0.5
 if "limit" not in st.session_state:
     st.session_state.limit = 5
@@ -215,7 +215,9 @@ st.session_state.limit = st.number_input(
     help="Minimum value is 1.",
 )
 
-llm_model_options = ["gpt-4o-mini", "llama", "gpt-4", "gpt-4o", "gpt-4-turbo"]
+llm_model_options = ['gpt-4o','gpt-4o-mini-2024-07-18',
+                     'gpt-4o-2024-05-13','gpt-4o-2024-08-06','chatgpt-4o-latest',
+                     'gpt-4-turbo-2024-04-09','gpt-4-0125-preview','gpt-4-1106-preview','llama',]
 
 st.session_state.llm_model = st.selectbox(
     "Select a model:",
@@ -228,7 +230,19 @@ st.session_state.llm_model_temp = st.number_input(
     min_value=0.0,
     max_value=2.00,
     value=st.session_state.llm_model_temp,
-    help="Minimum value is 0.0, maximum value is 2.00.",
+    help='Minimum value is 0.0, maximum value is 2.00.'
+)
+
+if 'top_p' not in st.session_state:
+    st.session_state.top_p = 1.0  
+
+
+st.session_state.top_p = st.number_input(
+    'Enter top_p for the model:',
+    min_value=0.0, max_value=1.0,  
+    value=float(st.session_state.top_p),  
+    step=0.01,  
+    help='Minimum value is 0.0, maximum value is 1.00.'
 )
 
 teachers_options = [OptionConstants.SELECT_TEACHER] + teachers_data["name"].tolist()
@@ -271,15 +285,9 @@ with st.form(key="experiment_form"):
     if st.form_submit_button("Run evaluation"):
         st.warning("Please do not close the page until the evaluation is complete.")
         experiment_complete = start_experiment(
-            experiment_name,
-            exp_description,
-            sample_ids,
-            teacher_id,
-            prompt_ids,
-            st.session_state.limit,
-            st.session_state.llm_model,
-            tracked,
-            st.session_state.llm_model_temp,
+            experiment_name, exp_description, sample_ids, teacher_id,
+            prompt_ids, st.session_state.limit, st.session_state.llm_model,
+            tracked, st.session_state.llm_model_temp, st.session_state.top_p
         )
 
         if experiment_complete:
@@ -290,6 +298,6 @@ with st.form(key="experiment_form"):
             )
 
 if st.session_state.experiment_run:
-    st.write("**Click the button to view insights.**")
-    if st.button("View Insights"):
-        st.switch_page("pages/4_🔍_Visualise_Results.py")
+    st.write('**Click the button to view insights.**')
+    if st.button('View Insights'):
+        st.switch_page('pages/4_🔍_Visualise_Results.py')

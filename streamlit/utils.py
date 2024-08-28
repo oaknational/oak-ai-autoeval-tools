@@ -862,8 +862,11 @@ def clean_response(response_text):
         }, "FAILURE"
 
 
-def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp, timeout=15):
-    """Run inference using a lesson plan and a prompt ID.
+def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
+        top_p=1 ,timeout=15):
+    
+    
+    """ Run inference using a lesson plan and a prompt ID.
 
     Args:
         lesson_plan (dict): Dictionary containing lesson plan details.
@@ -917,7 +920,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp, timeout=15)
                 messages=[{"role": "user", "content": prompt}],
                 temperature=llm_model_temp,
                 timeout=timeout,
-                top_p=1,
+                top_p=top_p,
                 frequency_penalty=0,
                 presence_penalty=0,
             )
@@ -1080,15 +1083,8 @@ def decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, index):
         return None
 
 
-def handle_inference(
-    content,
-    prompt_id,
-    llm_model,
-    llm_model_temp,
-    timeout,
-    experiment_id,
-    lesson_plan_id,
-):
+def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
+        experiment_id, lesson_plan_id, top_p=1):
     """Run inference and add results to the database.
 
     Args:
@@ -1105,7 +1101,7 @@ def handle_inference(
     """
     try:
         output = run_inference(
-            content, prompt_id, llm_model, llm_model_temp, timeout=timeout
+            content, prompt_id, llm_model, llm_model_temp,top_p, timeout=timeout
         )
         response = output.get("response")
 
@@ -1158,10 +1154,9 @@ def handle_inference(
         return None
 
 
-def run_test(
-    sample_id, prompt_id, experiment_id, limit, llm_model, llm_model_temp, timeout=15
-):
-    """Run a test for each lesson plan associated with a sample and add
+def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
+        llm_model_temp, top_p=1, timeout=15):
+    """ Run a test for each lesson plan associated with a sample and add 
     results to the database.
 
     Args:
@@ -1193,15 +1188,7 @@ def run_test(
         if content is None:
             continue
 
-        output = handle_inference(
-            content,
-            prompt_id,
-            llm_model,
-            llm_model_temp,
-            timeout,
-            experiment_id,
-            lesson_plan_id,
-        )
+        output = handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout, experiment_id, lesson_plan_id,top_p)
         if output is None:
             continue
 
@@ -1251,18 +1238,9 @@ def update_status(experiment_id, status):
         return False
 
 
-def start_experiment(
-    experiment_name,
-    exp_description,
-    sample_ids,
-    created_by,
-    prompt_ids,
-    limit,
-    llm_model,
-    tracked,
-    llm_model_temp=0.5,
-):
-    """Start a new experiment, run tests for each sample and prompt,
+def start_experiment(experiment_name, exp_description, sample_ids, created_by,
+        prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5, top_p=1):
+    """ Start a new experiment, run tests for each sample and prompt, 
     and update status.
 
     Args:
@@ -1305,12 +1283,8 @@ def start_experiment(
             for prompt_index, prompt_id in enumerate(prompt_ids):
                 st.write(f"Working on prompt {prompt_index + 1} of {total_prompts}")
                 run_test(
-                    sample_id,
-                    prompt_id,
-                    experiment_id,
-                    limit,
-                    llm_model,
-                    llm_model_temp,
+                    sample_id, prompt_id, experiment_id, limit, llm_model,
+                    llm_model_temp, top_p
                 )
             st.write(f"Sample {sample_index + 1} Completed!")
 
