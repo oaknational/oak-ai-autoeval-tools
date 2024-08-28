@@ -511,10 +511,10 @@ def get_full_experiment_data(selected_experiment_id):
 
 
 def get_prompts():
-    """ Retrieve prompts data from the database.
+    """Retrieve all versions of prompts data from the database.
 
     Returns:
-        pd.DataFrame: DataFrame with prompts data.
+        pd.DataFrame: DataFrame with all versions of prompts data.
     """
     query = """
         WITH RankedPrompts AS (
@@ -524,11 +524,14 @@ def get_prompts():
                 lesson_plan_params, 
                 output_format, 
                 rating_criteria, 
+                general_criteria_note,
+                rating_instruction,
                 prompt_title, 
                 experiment_description, 
                 objective_title,
                 objective_desc, 
                 version,
+                created_by,
                 created_at,
                 ROW_NUMBER() OVER (
                     PARTITION BY prompt_title 
@@ -545,15 +548,18 @@ def get_prompts():
             lesson_plan_params, 
             output_format, 
             rating_criteria, 
+            general_criteria_note,
+            rating_instruction,
             prompt_title, 
             experiment_description, 
             objective_title,
             objective_desc, 
-            version
+            version,
+            created_by,
+            created_at,
+            row_num
         FROM 
-            RankedPrompts
-        WHERE 
-            row_num = 1;
+            RankedPrompts;
     """
     return execute_single_query(query, return_dataframe=True)
 
