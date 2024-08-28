@@ -9,6 +9,7 @@ Functionality:
 
 import pandas as pd
 import streamlit as st
+import json
 
 from utils import (
     clear_all_caches,
@@ -17,8 +18,10 @@ from utils import (
     get_teachers,
     generate_experiment_placeholders,
     start_experiment,
+    lesson_plan_parts_at_end, get_first_ten_words, display_at_end_score_criteria,
+    display_at_end_boolean_criteria
 )
-from constants import OptionConstants, ColumnLabels, RecommendedPrompts
+from constants import OptionConstants, ColumnLabels, RecommendedPrompts, LessonPlanParameters
 
 # Set page configuration
 st.set_page_config(page_title="Run Auto Evaluations", page_icon="🤖")
@@ -110,6 +113,36 @@ for selected_prompt_title in selected_prompt_titles:
             filtered_prompts['version'] == recommended_version_number, 'prompt_version_info'
         ].values[0]
         st.write(recommended_prompt_info)
+
+        # Provide option to view full prompt details
+        current_prompt = filtered_prompts.loc[
+            filtered_prompts['version'] == recommended_version_number
+        ].iloc[0]
+
+        with st.expander("View Full Prompt"):
+            st.markdown(f'# *{current_prompt["prompt_title"]}* #')
+            st.markdown("### Objective:")
+            st.markdown(f"{current_prompt['prompt_objective']}")
+            output = lesson_plan_parts_at_end(
+                current_prompt["lesson_plan_params"], LessonPlanParameters.LESSON_PARAMS, LessonPlanParameters.LESSON_PARAMS_TITLES
+            )
+            st.markdown(output)
+
+            rating_criteria = json.loads(current_prompt["rating_criteria"])
+            if current_prompt["output_format"] == "Score":
+                display_at_end_score_criteria(
+                    rating_criteria,
+                    truncated=False
+                )
+            elif current_prompt["output_format"] == "Boolean":
+                display_at_end_boolean_criteria(
+                    rating_criteria,
+                    truncated=False
+                )
+
+            st.markdown(f"{current_prompt['general_criteria_note']}")
+            st.markdown("### Evaluation Instruction:")
+            st.markdown(f"{current_prompt['rating_instruction']}")
 
         # Ask the user if they want to choose a different version
         use_different_version = st.checkbox(f"Use a different version for '{selected_prompt_title}'?")
