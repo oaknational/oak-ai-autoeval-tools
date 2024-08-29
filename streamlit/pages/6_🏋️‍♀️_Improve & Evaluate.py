@@ -48,7 +48,6 @@ def fetch_bad_lesson_plans():
         INNER JOIN lesson_plans lp ON lp.id = r.lesson_plan_id
         WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\\.]+$' AND p.output_format = 'Score' 
         AND p.prompt_title <> 'Answers Are Minimally Different'
-        AND lp.generation_details LIKE '%gpt-4o%' 
         GROUP BY r.lesson_plan_id, r.prompt_id, p.prompt_title, lp.generation_details, lp.json
         
 		-- min(CAST(r.result AS numeric)) < 4.0 AND
