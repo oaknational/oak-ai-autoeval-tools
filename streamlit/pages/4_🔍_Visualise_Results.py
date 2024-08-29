@@ -82,6 +82,9 @@ def fetch_and_preprocess_full_data(selected_experiment_id):
     data = get_full_experiment_data(selected_experiment_id)
     data['key_stage_slug'] = data['key_stage_slug'].apply(standardize_key_stage)
     data['subject_slug'] = data['subject_slug'].apply(standardize_subject)
+    data['prompt_title_version'] = (
+        data['prompt_title'] + " v" + data['prompt_version'].astype(str)
+    )
     data = data.sort_values(by='run_date', ascending=False)
     data['run_date'] = pd.to_datetime(data['run_date']).dt.strftime('%Y-%m-%d')
     return data
@@ -106,11 +109,17 @@ def apply_filters(data):
         options=data['teacher_name'].unique(),
         help="Select one or more teachers to filter the experiments."
     )
+
+    data['prompt_title_version'] = (
+        data['prompt_title'] + " v" + data['prompt_version'].astype(str)
+    )
+
     selected_prompts = st.multiselect(
         'Select Prompt',
-        options=data['prompt_title'].unique(),
-        help="Select one or more prompts to filter the experiments."
+        options=data['prompt_title_version'].unique(),
+        help="Select one or more prompts (with version) to filter the experiments."
     )
+
     selected_samples = st.multiselect(
         'Select Sample',
         options=data['sample_title'].unique(),
@@ -119,7 +128,7 @@ def apply_filters(data):
     if selected_teachers:
         data = data[data['teacher_name'].isin(selected_teachers)]
     if selected_prompts:
-        data = data[data['prompt_title'].isin(selected_prompts)]
+        data = data[data['prompt_title_version'].isin(selected_prompts)]
     if selected_samples:
         data = data[data['sample_title'].isin(selected_samples)]
 
@@ -212,7 +221,6 @@ if selectected_experiments:
     for selectected_experiment in selectected_experiments:
         data = pd.concat([data, fetch_and_preprocess_full_data(selectected_experiment)], ignore_index=True)
 
-
     # Filter data
     if st.checkbox('Filter Experiment Data'):
         data = apply_filters(data)
@@ -257,7 +265,7 @@ if selectected_experiments:
                 (exp_data['prompt_output_format'] == output_selection)
             ]
 
-            prompt_title_options = exp_data['prompt_title'].unique().tolist()
+            prompt_title_options = exp_data['prompt_title_version'].unique().tolist()
             result_status_options = exp_data['result_status'].unique().tolist()
             result_status = st.multiselect(
                 'Select Experiment Status',
@@ -269,7 +277,7 @@ if selectected_experiments:
                 (exp_data['result_status'].isin(result_status))
             ]
             prompt_title = st.multiselect(
-                'Select Prompt Title',
+                'Select Prompt Title (with Version)',
                 prompt_title_options,
                 default=prompt_title_options[:]
             )
@@ -305,7 +313,7 @@ if selectected_experiments:
                 (exp_data['key_stage_slug'].isin(key_stage))
                 & (exp_data['subject_slug'].isin(subject))
                 & (exp_data['result_status'].isin(result_status_options))
-                & (exp_data['prompt_title'].isin(prompt_title))
+                & (exp_data['prompt_title_version'].isin(prompt_title))
                 & (exp_data['result'].isin(outcome))
             ]
 
@@ -436,13 +444,13 @@ if selectected_experiments:
                 # Calculate the average success rate for each prompt
                 # title and sample title
                 average_success_rate = success_filtered_data.groupby(
-                    ['prompt_title', 'sample_title']
+                    ['prompt_title_version', 'sample_title']
                 )['result_percent'].mean().reset_index()
 
                 # Calculate the overall average success rate for each
                 # prompt title
                 overall_success_rate = (
-                    success_filtered_data.groupby('prompt_title')
+                    success_filtered_data.groupby('prompt_title_version')
                     ['result_percent'].mean().reset_index()
                 )
 
@@ -466,7 +474,7 @@ if selectected_experiments:
                     sample_data = average_success_rate[
                         average_success_rate['sample_title'] == sample
                     ]
-                    categories = sample_data['prompt_title'].tolist()
+                    categories = sample_data['prompt_title_version'].tolist()
                     values = sample_data['result_percent'].tolist()
 
                     # Append the first value to the end to close the
@@ -488,7 +496,7 @@ if selectected_experiments:
 
                 # Add overall success rate as a dotted line plot
                 overall_categories = (
-                    overall_success_rate['prompt_title'].tolist()
+                    overall_success_rate['prompt_title_version'].tolist()
                 )
                 overall_values = (
                     overall_success_rate['result_percent'].tolist()
@@ -533,7 +541,7 @@ if selectected_experiments:
                 # to the total number of results per prompt title and
                 # sample title
                 count_of_results = (
-                    filtered_data.groupby(['prompt_title', 'sample_title'])
+                    filtered_data.groupby(['prompt_title_version', 'sample_title'])
                     ['success'].value_counts().unstack(fill_value=0)
                     .reset_index()
                 )
@@ -565,7 +573,7 @@ if selectected_experiments:
                     count_of_results,
                     x='sample_title',
                     y='success_ratio',
-                    color='prompt_title',
+                    color='prompt_title_version',
                     title="Success Ratio by Sample Title and Prompt Title",
                     text='success_ratio'
                 )
@@ -583,7 +591,7 @@ if selectected_experiments:
             st.subheader('Experiment Data Viewer')
 
             filtered_data = filtered_data[[
-                'result_id', 'result','sample_title', 'prompt_title',
+                'result_id', 'result','sample_title', 'prompt_title_version',
                 'result_status','justification','key_stage_slug',
                 'subject_slug','lesson_plan_id', 'run_date','prompt_lp_params'
             ]]
