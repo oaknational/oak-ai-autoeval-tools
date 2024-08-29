@@ -490,6 +490,7 @@ def get_full_experiment_data(selected_experiment_id):
             ex.description as experiment_description, 
             r.created_at as run_date, 
             p.prompt_title, 
+            p.version as prompt_version,
             p.output_format as prompt_output_format, 
             p.prompt_hash, 
             p.lesson_plan_params as prompt_lp_params
