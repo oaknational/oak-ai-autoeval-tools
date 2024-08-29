@@ -465,7 +465,6 @@ def get_full_experiment_data(selected_experiment_id):
     Returns:
         pd.DataFrame: DataFrame with full experiment data.
     """
-    #added prompt version
     query_full = """
         SELECT 
             r.id as result_id, 
