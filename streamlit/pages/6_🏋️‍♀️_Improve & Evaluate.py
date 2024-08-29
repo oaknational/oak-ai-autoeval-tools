@@ -13,6 +13,7 @@ import json
 import matplotlib.pyplot as plt
 import warnings
 
+
     
 
 #TODO:  
@@ -26,41 +27,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message="pandas only sup
 
 
 load_dotenv()
-def fetch_bad_lesson_plans():
-    try:
-        conn = get_db_connection()  
-        query = """SELECT 
-            r.prompt_id, 
-            r.lesson_plan_id, 
-            lp.generation_details,
-            p.prompt_title,
-            min(CAST(r.result AS numeric)) AS min_result, 
-            max(CAST(r.result AS numeric)) AS max_result,
-            count(r.justification) AS justification_count,
-            COUNT(CASE WHEN CAST(r.result AS numeric) = 1 THEN 1 END) AS score_1_count,
-            COUNT(CASE WHEN CAST(r.result AS numeric) = 2 THEN 1 END) AS score_2_count,
-            COUNT(CASE WHEN CAST(r.result AS numeric) = 3 THEN 1 END) AS score_3_count,
-            COUNT(CASE WHEN CAST(r.result AS numeric) = 4 THEN 1 END) AS score_4_count, 
-            COUNT(CASE WHEN CAST(r.result AS numeric) = 5 THEN 1 END) AS score_5_count,
-            lp.json AS lesson_plan_json
-        FROM public.m_results r
-        INNER JOIN m_prompts p ON p.id = r.prompt_id
-        INNER JOIN lesson_plans lp ON lp.id = r.lesson_plan_id
-        WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\\.]+$' AND p.output_format = 'Score' 
-        AND p.prompt_title <> 'Answers Are Minimally Different'
-        GROUP BY r.lesson_plan_id, r.prompt_id, p.prompt_title, lp.generation_details, lp.json
-        
-		-- min(CAST(r.result AS numeric)) < 4.0 AND
-         -- COUNT(CASE WHEN CAST(r.result AS numeric) = 5 THEN 1 END) = 0 AND 
-        
-        ORDER BY  lesson_plan_id DESC, justification_count DESC, max_result ASC;"""
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-        return df
-    
-    except Exception as e:
-        print(f"An error occurred while fetching lesson plans: {e}")
-        return None
+
     
     
 if st.sidebar.button('Clear Cache'):
@@ -210,8 +177,86 @@ def calculate_success_failure_rate(df):
 
     return df
 
+
+def fetch_prompt_objectives_desc():
+    try:
+        conn = get_db_connection()
+        query = """
+        SELECT id, objective_desc
+        FROM public.m_prompts
+        WHERE output_format = 'Score'
+        """
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"An error occurred while fetching prompt details: {e}")
+        return None
+
+
+def fetch_bad_lesson_plans(selected_prompt_ids):
+    try:
+        conn = get_db_connection()  
+        query = """SELECT 
+                    r.prompt_id, 
+                    r.lesson_plan_id, 
+                    lp.generation_details,
+                    p.prompt_title,
+                    min(CAST(r.result AS numeric)) AS min_result, 
+                    max(CAST(r.result AS numeric)) AS max_result,
+                    count(r.justification) AS justification_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 1 THEN 1 END) AS score_1_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 2 THEN 1 END) AS score_2_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 3 THEN 1 END) AS score_3_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 4 THEN 1 END) AS score_4_count, 
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 5 THEN 1 END) AS score_5_count
+                FROM public.m_results r
+                INNER JOIN m_prompts p ON p.id = r.prompt_id
+                INNER JOIN lesson_plans lp ON lp.id = r.lesson_plan_id
+                WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\\.]+$' AND p.output_format = 'Score' 
+                AND p.prompt_title <> 'Answers Are Minimally Different'
+                AND r.prompt_id IN %s
+                GROUP BY r.lesson_plan_id, r.prompt_id, p.prompt_title, lp.generation_details
+                ORDER BY lesson_plan_id DESC, justification_count DESC, max_result ASC;"""
+        df = pd.read_sql_query(query, conn, params=(selected_prompt_ids,))
+        conn.close()
+        return df
+    
+    except Exception as e:
+        print(f"An error occurred while fetching lesson plans: {e}")
+        return None
+
+
+#set page logo
+
+st.markdown("## 🏋️‍♀️ Improve & Evaluate Lesson Plans")
+st.write(
+    """
+    This page allows you to select a prompt and improve the lesson plan based on the evaluation results.
+    You can select a prompt and view the lesson plans that have received the lowest scores.
+    You can then select a lesson plan to improve and evaluate the improved lesson plan.
+    """
+)
+
+prompt_objectives = fetch_prompt_objectives_desc()
+
+prompt_objective_descriptions =prompt_objectives['objective_desc'].unique()
+
+prompt_objective_selection = st.selectbox("Select a Prompt Objective", prompt_objective_descriptions, index=0, key=None)
+
+selected_prompts = prompt_objectives[prompt_objectives['objective_desc'] == prompt_objective_selection]
+# selected_prompts['id'] 
+
+#assign selected_prompts['id'] to a variable
+selected_prompt_ids = selected_prompts['id'].values
+selected_prompt_ids = tuple(selected_prompt_ids)
+
+#make lessons df empty
+# lessons_df = None
+
+
 # Fetch the data
-lessons_df =fetch_bad_lesson_plans()
+lessons_df =fetch_bad_lesson_plans(selected_prompt_ids)
 
 #order the lessons_df by lesson_plan_id and prompt_id
 lessons_df = lessons_df.sort_values(by=['lesson_plan_id', 'prompt_id'])
@@ -316,7 +361,6 @@ if prompt_title_selection is not None:
     'overall_fail_score',
     'catastrophic_fail_rate',
     'stellar_success_rate',
-    
     'min_result',
     'max_result',
     'score_1_count',
