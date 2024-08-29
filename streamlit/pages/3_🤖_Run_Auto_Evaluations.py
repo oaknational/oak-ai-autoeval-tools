@@ -8,12 +8,15 @@ Functionality:
 """
 import pandas as pd
 import streamlit as st
+import json
 
 from utils import (
     clear_all_caches, get_prompts, get_samples, get_teachers,
-    generate_experiment_placeholders, start_experiment
+    generate_experiment_placeholders, start_experiment,
+    lesson_plan_parts_at_end, display_at_end_score_criteria,
+    display_at_end_boolean_criteria
 )
-from constants import OptionConstants, ColumnLabels
+from constants import OptionConstants, ColumnLabels, RecommendedPrompts, LessonPlanParameters
 
 
 # Set page configuration
@@ -60,39 +63,137 @@ samples_data['samples_options'] = (
 )
 samples_options = samples_data['samples_options'].tolist()
 
-prompts_data['prompt_title_with_date'] = (
-    prompts_data['prompt_title'] + " (" +
-    prompts_data['output_format'].astype(str) + ")"
-)
-prompt_title_options = prompts_data['prompt_title_with_date'].tolist()
+# Initialise lists to store selected prompts and their IDs
+selected_prompts_info = []
+prompt_ids = []
 
-# Test selection section
+# Section: Test Selection
 st.subheader("Test selection")
-prompt_options = st.multiselect(
-    'Select prompts:', 
-    prompt_title_options,
-    help='You can select multiple prompts to run evaluations on.'
+prompt_titles = prompts_data["prompt_title"].unique().tolist()
+selected_prompt_titles = st.multiselect(
+    "Select prompts:",
+    prompt_titles,
+    help="You can select multiple prompts to run evaluations on.",
 )
 
-# Filter prompts based on selection
-prompt_data = (
-    prompts_data[prompts_data['prompt_title_with_date'].isin(prompt_options)]
-)
-prompt_table = pd.DataFrame({
-    'Prompt': prompt_options, 
-    'Description': [
-        prompt_data[
-            prompt_data['prompt_title_with_date'] == prompt
-        ]['experiment_description'].iloc[0]
-        for prompt in prompt_options
+# Iterate through each selected prompt to allow version selection
+for selected_prompt_title in selected_prompt_titles:
+    # Filter prompts by selected title
+    filtered_prompts = prompts_data.loc[
+        prompts_data["prompt_title"] == selected_prompt_title
+    ].copy()
+
+    # Get the recommended best version number
+    recommended_version_number = RecommendedPrompts.get_best_version(selected_prompt_title)
+
+    # Create metadata for display
+    filtered_prompts["prompt_version_info"] = (
+        "v"
+        + filtered_prompts["version"].astype(str)
+        + " | "
+        + filtered_prompts["output_format"]
+        + " | Created by: "
+        + filtered_prompts["created_by"]
+        + " | Created at: "
+        + filtered_prompts["created_at"].astype(str)
+    )
+
+    # Check if multiple versions are available
+    if len(filtered_prompts) > 1:
+        # Display the recommended version
+        st.markdown(f"**Recommended Version for '{selected_prompt_title}':**")
+        recommended_prompt_info = filtered_prompts.loc[
+            filtered_prompts['version'] == recommended_version_number, 'prompt_version_info'
+        ].values[0]
+        st.write(recommended_prompt_info)
+
+        # Show full prompt details for the recommended version
+        current_prompt = filtered_prompts.loc[
+            filtered_prompts['version'] == recommended_version_number
+        ].iloc[0]
+
+        with st.expander("View Full Prompt for Recommended Version"):
+            st.markdown(f'# *{current_prompt["prompt_title"]}* #')
+            st.markdown("### Objective:")
+            st.markdown(f"{current_prompt['prompt_objective']}")
+            output = lesson_plan_parts_at_end(
+                current_prompt["lesson_plan_params"], LessonPlanParameters.LESSON_PARAMS, LessonPlanParameters.LESSON_PARAMS_TITLES
+            )
+            st.markdown(output)
+
+            rating_criteria = json.loads(current_prompt["rating_criteria"])
+            if current_prompt["output_format"] == "Score":
+                display_at_end_score_criteria(rating_criteria, truncated=False)
+            elif current_prompt["output_format"] == "Boolean":
+                display_at_end_boolean_criteria(rating_criteria, truncated=False)
+
+            st.markdown(f"{current_prompt['general_criteria_note']}")
+            st.markdown("### Evaluation Instruction:")
+            st.markdown(f"{current_prompt['rating_instruction']}")
+
+        # Allow user to choose a different version
+        use_different_version = st.checkbox(f"Use a different version for '{selected_prompt_title}'?")
+
+        if use_different_version:
+            # Display a multiselect box with all available versions
+            selected_versions = st.multiselect(
+                f"Choose versions for {selected_prompt_title}:",
+                filtered_prompts["prompt_version_info"].tolist(),
+                help=f"You can select specific versions of {selected_prompt_title} to run evaluations on."
+            )
+
+            # Show full prompt details for each selected version
+            for selected_version in selected_versions:
+                version_prompt = filtered_prompts.loc[
+                    filtered_prompts["prompt_version_info"] == selected_version
+                ].iloc[0]
+
+                with st.expander(f"View Full Prompt for {selected_version}"):
+                    st.markdown(f'# *{version_prompt["prompt_title"]}* #')
+                    st.markdown("### Objective:")
+                    st.markdown(f"{version_prompt['prompt_objective']}")
+                    output = lesson_plan_parts_at_end(
+                        version_prompt["lesson_plan_params"], LessonPlanParameters.LESSON_PARAMS, LessonPlanParameters.LESSON_PARAMS_TITLES
+                    )
+                    st.markdown(output)
+
+                    rating_criteria = json.loads(version_prompt["rating_criteria"])
+                    if version_prompt["output_format"] == "Score":
+                        display_at_end_score_criteria(rating_criteria, truncated=False)
+                    elif version_prompt["output_format"] == "Boolean":
+                        display_at_end_boolean_criteria(rating_criteria, truncated=False)
+
+                    st.markdown(f"{version_prompt.get('general_criteria_note', '')}")
+                    st.markdown("### Evaluation Instruction:")
+                    st.markdown(f"{version_prompt['rating_instruction']}")
+        else:
+            # Default to the recommended version
+            selected_versions = [recommended_prompt_info]
+    else:
+        # Automatically select the only available version
+        selected_versions = filtered_prompts["prompt_version_info"].tolist()
+
+    # Filter the selected versions
+    selected_versions_df = filtered_prompts.loc[
+        filtered_prompts["prompt_version_info"].isin(selected_versions)
     ]
-})
-st.dataframe(prompt_table, hide_index=True, use_container_width=True)
 
-prompt_ids = [
-    prompt_data[prompt_data['prompt_title_with_date'] == prompt]['id'].iloc[0]
-    for prompt in prompt_options
-]
+    # Collect IDs and information of selected prompts
+    prompt_ids.extend(selected_versions_df["id"].tolist())
+
+    for _, current_prompt in selected_versions_df.iterrows():
+        selected_prompts_info.append({
+            "Prompt": f"{current_prompt['prompt_title']} v{current_prompt['version']}",
+            "Description": current_prompt["experiment_description"],
+        })
+
+# Create and display the prompt table
+if selected_prompts_info:
+    prompt_table = pd.DataFrame(selected_prompts_info)
+else:
+    prompt_table = pd.DataFrame(columns=["Prompt", "Description"])
+
+st.dataframe(prompt_table, hide_index=True, use_container_width=True)
 
 # Dataset selection section
 st.subheader("Dataset selection")
