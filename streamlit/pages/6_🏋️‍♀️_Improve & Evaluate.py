@@ -12,7 +12,7 @@ from openai import OpenAI
 import json
 import matplotlib.pyplot as plt
 import warnings
-
+import time
 
     
 
@@ -110,6 +110,8 @@ def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
 
         
         try:
+            start_time = time.time()
+
             response = client.chat.completions.create(
                 model=llm_model,
                 messages=[{"role": "user", "content": prompt}],
@@ -120,9 +122,14 @@ def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
             )
             message = response.choices[0].message.content
             # print(message)
+            end_time = time.time()
+
+            # Calculate the duration
+            duration = end_time - start_time
             cleaned_content, status = clean_response(message)
             return {
-                "response": cleaned_content
+                "response": cleaned_content,
+                "response_time": duration,
             }
 
         except Exception as e:
@@ -133,6 +140,7 @@ def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
                     "justification": f"An error occurred: {e}",
                 },
                 "status": "FAILURE",
+                "response_time": duration,
             }
 
 def fetch_lesson_plan_json(lesson_plan_id):
@@ -597,6 +605,9 @@ if prompt_title_selection is not None:
                 llm_model_temp = 0.5
                 llm_model = 'gpt-4o'
                 
+                #make a selection for llm model selection
+                llm_model = st.selectbox("Select an LLM Model for improvement and evaluation", ['gpt-4o', 'gpt-4o-mini'], index=0, key=None)
+
                 # experiment_id = None
 
                 if st.button("Perform Improvement"):
@@ -608,7 +619,7 @@ if prompt_title_selection is not None:
                         st.write("Running Improvement on the lesson plan")
                         response_n = run_agent_openai_inference(improvement_prompt, llm_model, llm_model_temp, timeout=150)
                         if response_n['response'] is not None:
-                            # st.write("Improved Plan")
+                            st.write(f"**Improvement took {response_n['response_time']:.2f} seconds using {llm_model} model**")
                             with st.expander('Improved Plan'):
                                 st.write(response_n['response'])
                                 response = response_n['response']
