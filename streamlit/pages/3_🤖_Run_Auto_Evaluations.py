@@ -255,6 +255,7 @@ st.dataframe(samples_table, hide_index=True, use_container_width=True)
 max_lessons = (
     samples_table[ColumnLabels.NUM_LESSONS].max() if not samples_table.empty else 5
 )
+
 total_sample_count = (
     samples_table[ColumnLabels.NUM_LESSONS].sum() if not samples_table.empty else 0
 )
@@ -278,7 +279,7 @@ st.session_state.limit = st.number_input(
     "Set a limit on the number of lesson plans per sample to evaluate:",
     min_value=1,
     max_value=9000,
-    value=st.session_state.limit,
+    value=max_lessons,
     help="Minimum value is 1.",
 )
 
