@@ -6,14 +6,22 @@ import plotly.express as px
 import re
 import openai
 import os
-from utils import  log_message,clear_all_caches
-from db_scripts import new_sample, get_db_connection, get_prompt, insert_single_lesson_plan, start_experiment, add_lesson_plan_to_sample
-from formatting import clean_response
-from openai import OpenAI
+from utils import  log_message,clear_all_caches, calculate_success_failure_rate
+from db_scripts import (
+    fetch_bad_lesson_plans, fetch_result_data, 
+    fetch_lesson_plan_json, insert_single_lesson_plan, 
+    get_prompt, fetch_prompt_objectives_desc,  
+    new_sample, 
+    add_lesson_plan_to_sample, 
+    start_experiment, 
+    fetch_final_data, 
+    delete_created_sample, delete_lesson_plans_from_sample_lesson_plans
+    
+)
+from inference import run_agent_openai_inference
 import json
 import matplotlib.pyplot as plt
 import warnings
-import time
 
     
 
