@@ -450,7 +450,7 @@ def get_light_experiment_data():
         FROM 
             public.m_experiments ex 
         INNER JOIN m_teachers t ON t.id::text = ex.created_by
-        WHERE ex.tracked = true
+        WHERE ex.tracked = true and ex.status = 'COMPLETE'
         ORDER by ex.created_at DESC;
     """
     return execute_single_query(query_light, return_dataframe=True)
