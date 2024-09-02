@@ -9,9 +9,10 @@ import json
 import re
 import openai
 from openai import OpenAI
-from dataeditor import * 
+from formatting import * 
 import plotly.graph_objects as go
-from utils import  log_message, get_db_connection, insert_single_lesson_plan
+from db_scripts import get_db_connection, insert_single_lesson_plan
+from utils import  log_message, get_env_variable
 from constants import ErrorMessages
 import requests
 

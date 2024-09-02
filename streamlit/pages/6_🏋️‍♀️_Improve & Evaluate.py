@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 import json
 from dotenv import load_dotenv
-from utils import get_db_connection, get_prompt,  add_lesson_plan_to_sample, insert_single_lesson_plan, clean_response, start_experiment
 import plotly.express as px
 import re
 import openai
 import os
-from utils import  log_message,clear_all_caches, new_sample
+from utils import  log_message,clear_all_caches
+from db_scripts import new_sample, get_db_connection, get_prompt, insert_single_lesson_plan, start_experiment, add_lesson_plan_to_sample
+from formatting import clean_response
 from openai import OpenAI
 import json
 import matplotlib.pyplot as plt
