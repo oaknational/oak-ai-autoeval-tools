@@ -13,10 +13,6 @@ import json
 
 from utils import (
     clear_all_caches,
-    
-    
-    
-    
 )
 from formatting import (
     generate_experiment_placeholders,
@@ -292,7 +288,7 @@ st.session_state.limit = st.number_input(
 )
 
 llm_model_options = [
-    "gpt-4o",
+    
     "gpt-4o-mini-2024-07-18",
     "gpt-4o-2024-05-13",
     "gpt-4o-2024-08-06",
@@ -300,6 +296,8 @@ llm_model_options = [
     "gpt-4-turbo-2024-04-09",
     "gpt-4-0125-preview",
     "gpt-4-1106-preview",
+    "gpt-4o",
+    "gpt-4o-mini",
     "llama",
 ]
 

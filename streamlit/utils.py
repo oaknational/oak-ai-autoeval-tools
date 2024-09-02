@@ -9,7 +9,6 @@ This module provides the following functions:
     Logs messages with different severity levels.
 - clear_all_caches:
     Clears the cache for Streamlit.
-
 - render_prompt: 
     Renders a prompt template using lesson plan and prompt details.
 

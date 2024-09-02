@@ -53,7 +53,7 @@ import pandas as pd
 import streamlit as st
 from formatting import fix_json_format
 from constants import ErrorMessages
-from inference import run_test
+# from inference import run_test
 from utils import log_message
 
 def get_db_connection():
@@ -630,6 +630,8 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
     Returns:
         bool: True if the experiment completes successfully, False otherwise.
     """
+    from inference import run_test
+
     experiment_id = add_experiment(
         experiment_name, sample_ids, created_by, tracked, llm_model,
         llm_model_temp, description=exp_description

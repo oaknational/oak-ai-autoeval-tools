@@ -14,7 +14,7 @@ import openai
 from openai import OpenAI
 import requests
 import json
-from db_scripts import add_results, get_prompt, get_lesson_plans_by_id
+# from db_scripts import add_results, get_prompt, get_lesson_plans_by_id
 from formatting import clean_response, process_prompt, decode_lesson_json
 
 def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
@@ -33,7 +33,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     Returns:
         dict: Inference result or error response.
     """
-    
+    from db_scripts import get_prompt
     required_keys = ["title", "topic", "subject", "keyStage"]
     if set(lesson_plan.keys()) == set(required_keys):
         return {
@@ -167,6 +167,8 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
     Returns:
         dict: Inference output.
     """
+    from db_scripts import add_results
+
     try:
         output = run_inference(
             content, prompt_id, llm_model, llm_model_temp,top_p, timeout=timeout
@@ -231,6 +233,8 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
     Returns:
         None
     """
+    from db_scripts import get_lesson_plans_by_id
+
     lesson_plans = get_lesson_plans_by_id(sample_id, limit)
     total_lessons = len(lesson_plans)
     log_message("info", f"Total lessons: {total_lessons}")
