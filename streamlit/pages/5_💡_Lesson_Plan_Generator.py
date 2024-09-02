@@ -35,10 +35,6 @@ def execute_single_query(query, params):
         return False
     
 
-
-
-
-
 def fetch_lesson_plan_sets(limit=None):
     """
     Fetch the contents of the lesson_plan_sets table and load into a pandas DataFrame.

@@ -11,7 +11,8 @@ This module provides the following functions:
     Clears the cache for Streamlit.
 - render_prompt: 
     Renders a prompt template using lesson plan and prompt details.
-
+- calculate_success_failure_rate:
+    Calculates the success and failure rates for the lesson plans.
 """
 
 # Import the required libraries and modules
@@ -111,6 +112,33 @@ def render_prompt(lesson_plan, prompt_details):
         objective_title=prompt_details.get("objective_title"),
         objective_desc=prompt_details.get("objective_desc"),
     )
+
+
+def calculate_success_failure_rate(df):
+    
+    df = df.groupby(['lesson_plan_id', 'generation_details', 'prompt_id']).agg({
+        'min_result': 'min',
+        'max_result': 'max',
+        'justification_count': 'sum',
+        'score_1_count': 'sum',
+        'score_2_count': 'sum',
+        'score_3_count': 'sum',
+        'score_4_count': 'sum',
+        'score_5_count': 'sum',
+        'prompt_title': lambda x: ', '.join(x)  # Concatenate prompt titles as a comma-separated string
+    }).reset_index()
+
+
+    df['stellar_success_rate'] = (df['score_5_count'] / df['justification_count']) * 100
+    df['catastrophic_fail_rate'] = (df['score_1_count'] / df['justification_count']) * 100
+
+    df = df[['lesson_plan_id', 'generation_details','prompt_title', 'prompt_id' , 'stellar_success_rate', 'catastrophic_fail_rate']]
+
+    #rename 'prompt_title' to 'prompt_titles'
+    # display_df.rename(columns={'prompt_title': 'prompt_titles'}, inplace=True)
+    df['overall_fail_score'] = (100 - df['stellar_success_rate']) + df['catastrophic_fail_rate']
+
+    return df
 
 
 

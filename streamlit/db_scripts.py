@@ -40,7 +40,20 @@
     updates status.
 - insert_prompt: 
     Add or update prompt in the database.
-    
+- fetch_lesson_plan_json:
+    Fetches lesson plan JSON data from the database.
+- fetch_prompt_objectives_desc:
+    Fetches prompt objectives and descriptions from the database.
+- fetch_bad_lesson_plans:
+    Fetches lesson plans with lowest scores based on selected prompt IDs.
+- fetch_result_data:
+    Fetches result data based on lesson plan ID, prompt ID, and result.
+- fetch_final_data:
+    Fetches final result data based on lesson plan ID, prompt ID, and experiment ID.
+- delete_created_sample:
+    Deletes a created sample from the database.
+- delete_lesson_plans_from_sample_lesson_plans:
+    Deletes lesson plans from the sample_lesson_plans table.
     """
 
 from utils import *
@@ -53,7 +66,6 @@ import pandas as pd
 import streamlit as st
 from formatting import fix_json_format
 from constants import ErrorMessages
-# from inference import run_test
 from utils import log_message
 
 def get_db_connection():
@@ -734,3 +746,141 @@ def insert_prompt(prompt_objective, lesson_plan_params, output_format,
     except Exception as e:
         log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return None
+    
+def fetch_lesson_plan_json(lesson_plan_id):
+    try:
+        conn = get_db_connection()
+        query = """
+        SELECT json
+        FROM public.lesson_plans 
+        WHERE id = %s
+        """
+        df = pd.read_sql_query(query, conn, params=(lesson_plan_id,))
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
+
+def fetch_prompt_objectives_desc():
+    try:
+        conn = get_db_connection()
+        query = """
+        SELECT id, objective_desc
+        FROM public.m_prompts
+        WHERE output_format = 'Score'
+        """
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"An error occurred while fetching prompt details: {e}")
+        return None
+
+
+def fetch_bad_lesson_plans(selected_prompt_ids):
+    try:
+        conn = get_db_connection()  
+        query = """SELECT 
+                    r.prompt_id, 
+                    r.lesson_plan_id, 
+                    lp.generation_details,
+                    p.prompt_title,
+                    min(CAST(r.result AS numeric)) AS min_result, 
+                    max(CAST(r.result AS numeric)) AS max_result,
+                    count(r.justification) AS justification_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 1 THEN 1 END) AS score_1_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 2 THEN 1 END) AS score_2_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 3 THEN 1 END) AS score_3_count,
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 4 THEN 1 END) AS score_4_count, 
+                    COUNT(CASE WHEN CAST(r.result AS numeric) = 5 THEN 1 END) AS score_5_count
+                FROM public.m_results r
+                INNER JOIN m_prompts p ON p.id = r.prompt_id
+                INNER JOIN lesson_plans lp ON lp.id = r.lesson_plan_id
+                WHERE r.status = 'SUCCESS' AND r.result ~ '^[0-9\\.]+$' AND p.output_format = 'Score' 
+                AND p.prompt_title <> 'Answers Are Minimally Different'
+                AND r.prompt_id IN %s
+                GROUP BY r.lesson_plan_id, r.prompt_id, p.prompt_title, lp.generation_details
+                ORDER BY lesson_plan_id DESC, justification_count DESC, max_result ASC;"""
+        df = pd.read_sql_query(query, conn, params=(selected_prompt_ids,))
+        conn.close()
+        return df
+    
+    except Exception as e:
+        print(f"An error occurred while fetching lesson plans: {e}")
+        return None
+    
+def fetch_result_data(lesson_plan_id, prompt_id, result):
+    try:
+        conn = get_db_connection()
+        query = """
+        SELECT 
+            r.prompt_id, r.lesson_plan_id, r.result, r.justification
+        FROM public.m_results r
+        WHERE r.lesson_plan_id = %s 
+        AND r.prompt_id = %s 
+        AND CAST(r.result AS numeric) = %s
+        AND r.status = 'SUCCESS'
+        ORDER BY r.result ASC
+        LIMIT 1
+        """
+        df = pd.read_sql_query(query, conn, params=(lesson_plan_id, prompt_id, result))
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"An error occurred while fetching result data: {e}")
+        return None
+
+
+def fetch_final_data(lesson_plan_id, prompt_id, experiment_id):
+    try:
+        conn = get_db_connection()
+        query = """
+        SELECT 
+            r.result, r.justification
+        FROM public.m_results r
+        WHERE r.lesson_plan_id = %s 
+        AND r.prompt_id = %s 
+        AND r.experiment_id = %s
+        """
+        df = pd.read_sql_query(query, conn, params=(lesson_plan_id, prompt_id, experiment_id))
+        conn.close()
+        return df
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+def delete_created_sample(sample_id):
+    try:
+        conn = get_db_connection()
+        query = """
+        DELETE FROM public.m_samples
+        WHERE id = %s
+        """
+        cur = conn.cursor()
+        cur.execute(query, (sample_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"An error occurred while deleting the sample: {e}")
+        return False
+    
+ 
+def delete_lesson_plans_from_sample_lesson_plans(sample_id):
+    try:
+        conn = get_db_connection()
+        query = """
+        DELETE FROM public.m_sample_lesson_plans
+        WHERE sample_id = %s
+        """
+        cur = conn.cursor()
+        cur.execute(query, (sample_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"An error occurred while deleting the sample lesson plans: {e}")
+        return False

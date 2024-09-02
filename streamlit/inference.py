@@ -9,11 +9,14 @@
     results to the database.
 """
 import streamlit as st
+import os
 from utils import log_message, get_env_variable, render_prompt
 import openai
 from openai import OpenAI
 import requests
 import json
+import time
+
 # from db_scripts import add_results, get_prompt, get_lesson_plans_by_id
 from formatting import clean_response, process_prompt, decode_lesson_json
 
@@ -274,3 +277,41 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
     placeholder1.empty()
     placeholder2.empty()
 
+
+def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
+        client = OpenAI( api_key= os.environ.get("OPENAI_API_KEY"), timeout=timeout)
+
+        
+        try:
+            start_time = time.time()
+
+            response = client.chat.completions.create(
+                model=llm_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=llm_model_temp,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+            )
+            message = response.choices[0].message.content
+            # print(message)
+            end_time = time.time()
+
+            # Calculate the duration
+            duration = end_time - start_time
+            cleaned_content, status = clean_response(message)
+            return {
+                "response": cleaned_content,
+                "response_time": duration,
+            }
+
+        except Exception as e:
+            log_message("error", f"Unexpected error during inference: {e}")
+            return {
+                "response": {
+                    "result": None,
+                    "justification": f"An error occurred: {e}",
+                },
+                "status": "FAILURE",
+                "response_time": duration,
+            }
