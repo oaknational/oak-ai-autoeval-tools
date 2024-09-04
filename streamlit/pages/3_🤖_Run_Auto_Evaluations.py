@@ -302,9 +302,9 @@ llm_model_options = [
 ]
 
 st.session_state.llm_model = st.selectbox(
-    "Select a model:",
+    'Select a model:',
     llm_model_options,
-    index="gpt-4o-mini",
+    index=llm_model_options.index(st.session_state.llm_model)
 )
 
 st.session_state.llm_model_temp = st.number_input(
