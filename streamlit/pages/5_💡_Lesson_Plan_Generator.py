@@ -10,7 +10,7 @@ from openai import OpenAI
 from utils.formatting import * 
 import plotly.graph_objects as go
 from utils.db_scripts import get_db_connection, insert_single_lesson_plan
-from utils.utils import  log_message, get_env_variable
+from utils.common_utils import  log_message, get_env_variable
 from utils.constants import ErrorMessages
 import requests
 

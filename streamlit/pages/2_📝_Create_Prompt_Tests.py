@@ -14,13 +14,10 @@ Note:
     a prompt with the same title already exists. 'Modify Prompt' 
     will save the new prompt as a new version of the existing prompt.
 """
-import json
 
 import streamlit as st
-import pandas as pd
 
-from constants import ExamplePrompts, LessonPlanParameters
-from utils.utils import (
+from utils.common_utils import (
     clear_all_caches, 
 )
 

@@ -65,7 +65,7 @@ import pandas as pd
 import streamlit as st
 from utils.formatting import fix_json_format
 from utils.constants import ErrorMessages
-from utils.utils import log_message, get_env_variable
+from utils.common_utils import log_message, get_env_variable
 
 def get_db_connection():
     """ Establish a connection to the PostgreSQL database.

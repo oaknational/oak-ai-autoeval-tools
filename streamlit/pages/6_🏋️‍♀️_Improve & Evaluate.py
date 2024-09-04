@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import plotly.express as px
 import re
 
-from utils.utils import  log_message,clear_all_caches, calculate_success_failure_rate
+from utils.common_utils import  log_message,clear_all_caches, calculate_success_failure_rate
 from utils.db_scripts import (
     fetch_bad_lesson_plans, fetch_result_data, 
     fetch_lesson_plan_json, insert_single_lesson_plan, 

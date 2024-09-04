@@ -12,7 +12,7 @@ import uuid
 import pandas as pd
 import streamlit as st
 
-from utils.utils import log_message
+from utils.common_utils import log_message
 from utils.formatting import convert_to_json
 from utils.db_scripts import execute_multi_query
 

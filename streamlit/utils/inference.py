@@ -10,7 +10,7 @@
 """
 import streamlit as st
 import os
-from utils import log_message, get_env_variable, render_prompt
+from utils.common_utils import log_message, get_env_variable, render_prompt
 import openai
 from openai import OpenAI
 import requests

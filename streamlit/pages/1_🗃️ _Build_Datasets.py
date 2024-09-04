@@ -13,7 +13,7 @@ import pandas as pd
 import streamlit as st
 
 
-from utils.utils import clear_all_caches
+from utils.common_utils import clear_all_caches
 from utils.db_scripts import (
 new_sample, add_lesson_plans_to_sample, get_lesson_plans_for_dataset
 )

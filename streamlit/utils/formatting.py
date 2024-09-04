@@ -38,7 +38,7 @@ import streamlit as st
 import re
 import json
 
-from utils.utils import log_message
+from utils.common_utils import log_message
 from utils.constants import ErrorMessages
 
 
