@@ -11,22 +11,22 @@ import pandas as pd
 import streamlit as st
 import json
 
-from utils import (
+from utils.utils import (
     clear_all_caches,
 )
-from formatting import (
+from utils.formatting import (
     generate_experiment_placeholders,
     lesson_plan_parts_at_end,
     display_at_end_score_criteria,
     display_at_end_boolean_criteria
     )
-from db_scripts import (
+from utils.db_scripts import (
     get_prompts,
     get_samples,
     get_teachers,
     start_experiment)
 
-from constants import (
+from utils.constants import (
     OptionConstants,
     ColumnLabels,
     RecommendedPrompts,
