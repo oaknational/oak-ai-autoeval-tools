@@ -84,7 +84,7 @@ To install AutoEval, follow the following steps:
 6. Run the following command in the terminal to create tables and insert some placeholder data into your database.
 
     ```bash
-    python streamlit/db_operations.py
+    python streamlit/db_setup.py
     ```
 
 7. Run the following command in the terminal to open the app in a new tab in your default browser.

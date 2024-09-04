@@ -9,9 +9,10 @@ import json
 import re
 import openai
 from openai import OpenAI
-from dataeditor import * 
+from formatting import * 
 import plotly.graph_objects as go
-from utils import  log_message, get_db_connection, insert_single_lesson_plan
+from db_scripts import get_db_connection, insert_single_lesson_plan
+from utils import  log_message, get_env_variable
 from constants import ErrorMessages
 import requests
 
@@ -33,10 +34,6 @@ def execute_single_query(query, params):
         log_message("error", f"Unexpected error executing query: {e}")
         return False
     
-
-
-
-
 
 def fetch_lesson_plan_sets(limit=None):
     """
@@ -225,8 +222,8 @@ if 'llm_model_temp' not in st.session_state:
     st.session_state.llm_model_temp = 0.1
 
 
-llm_model_options = ['llama','gpt-4o-mini-2024-07-18',
-                     'gpt-4o-2024-05-13','gpt-4o-2024-08-06','chatgpt-4o-latest',
+llm_model_options = ['llama','gpt-4o-mini-2024-07-18', "gpt-4o",
+    "gpt-4o-mini",'gpt-4o-2024-05-13','gpt-4o-2024-08-06','chatgpt-4o-latest',
                      'gpt-4-turbo-2024-04-09','gpt-4-0125-preview','gpt-4-1106-preview']
 
 

@@ -12,7 +12,9 @@ import uuid
 import pandas as pd
 import streamlit as st
 
-from utils import convert_to_json, log_message, execute_multi_query
+from utils import log_message
+from formatting import convert_to_json
+from db_scripts import execute_multi_query
 
 
 # Set page configuration
