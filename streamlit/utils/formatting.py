@@ -38,8 +38,8 @@ import streamlit as st
 import re
 import json
 
-from utils import log_message
-from constants import ErrorMessages
+from utils.common_utils import log_message
+from utils.constants import ErrorMessages
 
 
 #TODO: do we move those to constants.py?

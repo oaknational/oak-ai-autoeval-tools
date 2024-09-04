@@ -1,5 +1,4 @@
 import streamlit as st
-import psycopg2
 import pandas as pd
 import os 
 from dotenv import load_dotenv
@@ -7,13 +6,12 @@ import plotly.express as px
 import numpy as np
 import json
 import re
-import openai
 from openai import OpenAI
-from formatting import * 
+from utils.formatting import * 
 import plotly.graph_objects as go
-from db_scripts import get_db_connection, insert_single_lesson_plan
-from utils import  log_message, get_env_variable
-from constants import ErrorMessages
+from utils.db_scripts import get_db_connection, insert_single_lesson_plan
+from utils.common_utils import  log_message, get_env_variable
+from utils.constants import ErrorMessages
 import requests
 
 # Load environment variables

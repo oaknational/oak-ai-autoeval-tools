@@ -10,7 +10,7 @@
 """
 import streamlit as st
 import os
-from utils import log_message, get_env_variable, render_prompt
+from utils.common_utils import log_message, get_env_variable, render_prompt
 import openai
 from openai import OpenAI
 import requests
@@ -18,7 +18,7 @@ import json
 import time
 
 # from db_scripts import add_results, get_prompt, get_lesson_plans_by_id
-from formatting import clean_response, process_prompt, decode_lesson_json
+from utils.formatting import clean_response, process_prompt, decode_lesson_json
 
 def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         top_p=1 ,timeout=15):
@@ -36,7 +36,7 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     Returns:
         dict: Inference result or error response.
     """
-    from db_scripts import get_prompt
+    from utils.db_scripts import get_prompt
     required_keys = ["title", "topic", "subject", "keyStage"]
     if set(lesson_plan.keys()) == set(required_keys):
         return {
@@ -170,7 +170,7 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
     Returns:
         dict: Inference output.
     """
-    from db_scripts import add_results
+    from utils.db_scripts import add_results
 
     try:
         output = run_inference(
@@ -236,7 +236,7 @@ def run_test(sample_id, prompt_id, experiment_id, limit, llm_model,
     Returns:
         None
     """
-    from db_scripts import get_lesson_plans_by_id
+    from utils.db_scripts import get_lesson_plans_by_id
 
     lesson_plans = get_lesson_plans_by_id(sample_id, limit)
     total_lessons = len(lesson_plans)

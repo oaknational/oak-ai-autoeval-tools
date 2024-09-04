@@ -15,9 +15,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from formatting import standardize_key_stage, standardize_subject, json_to_html
-from utils import clear_all_caches
-from db_scripts import execute_single_query, get_light_experiment_data, get_full_experiment_data
+from utils.formatting import standardize_key_stage, standardize_subject, json_to_html
+from utils.common_utils import clear_all_caches
+from utils.db_scripts import execute_single_query, get_light_experiment_data, get_full_experiment_data
 
 
 def fetch_and_preprocess_light_data():

@@ -27,6 +27,9 @@ scripts for each menu option in the pages/ directory. Click on a menu
 item to run the corresponding script in the main window.
 """
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 st.set_page_config(
     page_title="Hello",

@@ -13,36 +13,12 @@ import pandas as pd
 import streamlit as st
 
 
-from utils import clear_all_caches
-from db_scripts import (
-execute_single_query, execute_multi_query, new_sample, add_lesson_plans_to_sample
+from utils.common_utils import clear_all_caches
+from utils.db_scripts import (
+new_sample, add_lesson_plans_to_sample, get_lesson_plans_for_dataset
 )
 
 
-
-def get_lesson_plans(keyword=None):
-    """ Retrieve lesson plans from the lesson_plans table based on a 
-        keyword filter.
-
-    Args:
-        keyword (str, optional): Keyword to filter generation details. 
-            Defaults to None.
-
-    Returns:
-        pd.DataFrame: DataFrame containing lesson plan IDs and 
-            generation details.
-    """
-    query = """
-        SELECT lp.id, lp.generation_details
-        FROM lesson_plans lp
-        WHERE 1=1
-    """
-    params = []
-    if keyword:
-        query += " AND lp.generation_details LIKE %s"
-        params.append(f"%{keyword}%")
-
-    return execute_single_query(query, params, return_dataframe=True)
 
 
 
@@ -75,7 +51,7 @@ keyword = st.text_input("Enter keyword for generation details:")
 
 # Get lesson plans
 if st.button("Get Lesson Plans"):
-    lesson_plans = get_lesson_plans(keyword)
+    lesson_plans = get_lesson_plans_for_dataset(keyword)
     if not lesson_plans.empty:
         st.write("Lesson Plans:")
         st.dataframe(lesson_plans)

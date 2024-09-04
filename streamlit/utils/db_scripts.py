@@ -56,7 +56,6 @@
     Deletes lesson plans from the sample_lesson_plans table.
     """
 
-from utils import *
 import uuid
 import hashlib
 import psycopg2
@@ -64,9 +63,9 @@ import json
 from datetime import datetime
 import pandas as pd
 import streamlit as st
-from formatting import fix_json_format
-from constants import ErrorMessages
-from utils import log_message
+from utils.formatting import fix_json_format
+from utils.constants import ErrorMessages
+from utils.common_utils import log_message, get_env_variable
 
 def get_db_connection():
     """ Establish a connection to the PostgreSQL database.
@@ -642,7 +641,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
     Returns:
         bool: True if the experiment completes successfully, False otherwise.
     """
-    from inference import run_test
+    from utils.inference import run_test
 
     experiment_id = add_experiment(
         experiment_name, sample_ids, created_by, tracked, llm_model,
@@ -884,3 +883,29 @@ def delete_lesson_plans_from_sample_lesson_plans(sample_id):
     except Exception as e:
         print(f"An error occurred while deleting the sample lesson plans: {e}")
         return False
+    
+
+
+def get_lesson_plans_for_dataset(keyword=None):
+    """ Retrieve lesson plans from the lesson_plans table based on a 
+        keyword filter.
+
+    Args:
+        keyword (str, optional): Keyword to filter generation details. 
+            Defaults to None.
+
+    Returns:
+        pd.DataFrame: DataFrame containing lesson plan IDs and 
+            generation details.
+    """
+    query = """
+        SELECT lp.id, lp.generation_details
+        FROM lesson_plans lp
+        WHERE 1=1
+    """
+    params = []
+    if keyword:
+        query += " AND lp.generation_details LIKE %s"
+        params.append(f"%{keyword}%")
+
+    return execute_single_query(query, params, return_dataframe=True)
