@@ -13,8 +13,10 @@ import pandas as pd
 import streamlit as st
 
 
-from utils import clear_all_caches, execute_single_query, execute_multi_query, new_sample, add_lesson_plans_to_sample
-
+from utils import clear_all_caches
+from db_scripts import (
+execute_single_query, execute_multi_query, new_sample, add_lesson_plans_to_sample
+)
 
 
 

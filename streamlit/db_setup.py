@@ -32,7 +32,8 @@ import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 
-from utils import execute_single_query, execute_multi_query, log_message
+from utils import log_message
+from db_scripts import execute_single_query, execute_multi_query
 from constants import ErrorMessages
 
 
