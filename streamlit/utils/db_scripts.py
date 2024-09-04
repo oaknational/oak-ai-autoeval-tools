@@ -63,9 +63,9 @@ import json
 from datetime import datetime
 import pandas as pd
 import streamlit as st
-from formatting import fix_json_format
-from constants import ErrorMessages
-from utils import log_message, get_env_variable
+from utils.formatting import fix_json_format
+from utils.constants import ErrorMessages
+from utils.utils import log_message, get_env_variable
 
 def get_db_connection():
     """ Establish a connection to the PostgreSQL database.
@@ -641,7 +641,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
     Returns:
         bool: True if the experiment completes successfully, False otherwise.
     """
-    from inference import run_test
+    from utils.inference import run_test
 
     experiment_id = add_experiment(
         experiment_name, sample_ids, created_by, tracked, llm_model,

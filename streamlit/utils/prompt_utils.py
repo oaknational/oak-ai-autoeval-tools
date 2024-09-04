@@ -3,13 +3,13 @@
 import json
 import streamlit as st
 import pandas as pd
-from constants import ExamplePrompts, LessonPlanParameters
+from utils.constants import ExamplePrompts, LessonPlanParameters
 
-from db_scripts import (
+from utils.db_scripts import (
 execute_single_query, get_teachers, insert_prompt,
 
 )
-from formatting import (
+from utils.formatting import (
 lesson_plan_parts_at_end, get_first_ten_words, display_at_end_score_criteria,
     display_at_end_boolean_criteria
 )
