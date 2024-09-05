@@ -14,14 +14,16 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 ENV APP_HOME=/app
 WORKDIR $APP_HOME
 
-# Copy application code with secure permissions (owned by root, read-only for others)
-COPY --chown=root:root --chmod=755 streamlit/ /app/streamlit/
+# Copy application code with root ownership
+COPY --chown=root:root streamlit/ /app/streamlit/
 
-# Copy requirements.txt with secure permissions
-COPY --chown=root:root --chmod=644 requirements.txt /app/
+# Copy requirements.txt with root ownership
+COPY --chown=root:root requirements.txt /app/
 
-# Create a logs directory for runtime logging or temp files
-# Set ownership of the logs directory to appuser so it can write to it
+# Modify file permissions for security
+RUN chmod -R 755 /app/streamlit && chmod 644 /app/requirements.txt
+
+# Create a logs directory for runtime logging and set ownership to non-root user
 RUN mkdir -p /app/streamlit/logs && \
     chown -R appuser:appgroup /app/streamlit/logs && \
     chmod -R 775 /app/streamlit/logs
