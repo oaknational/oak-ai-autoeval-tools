@@ -2,7 +2,7 @@
 FROM python:3
 
 # Prevents Python from buffering output
-ENV PYTHONUNBUFFERED True
+ENV PYTHONUNBUFFERED=True
 
 # Expose the port that your app will run on
 EXPOSE 8080
@@ -11,7 +11,7 @@ EXPOSE 8080
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 # Create an application directory and set permissions
-ENV APP_HOME /app
+ENV APP_HOME=/app
 WORKDIR $APP_HOME
 
 # Copy all necessary files to the container
@@ -27,4 +27,4 @@ RUN chown -R appuser:appgroup $APP_HOME
 USER appuser
 
 # Command to run the app
-CMD streamlit run --server.port $PORT --server.enableCORS false streamlit/Hello.py
+CMD ["bash", "-c", "streamlit run streamlit/Hello.py --server.port=${PORT} --server.enableCORS=false"]
