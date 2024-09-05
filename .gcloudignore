@@ -1,0 +1,30 @@
+# Include the standard .gitignore
+# This imports the contents of .gitignore into .gcloudignore
+.gitignore
+
+# Ignore Dockerfile and dockerignore itself
+.dockerignore
+
+# Ignore node_modules if using Node.js or npm
+node_modules/
+
+# Ignore Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+
+# Ignore IDE and text editor settings
+.vscode/
+.idea/
+*.iml
+
+# Ignore any logs and temporary files
+*.log
+logs/
+
+# Ignore environment variables files
+.env
+*.env
