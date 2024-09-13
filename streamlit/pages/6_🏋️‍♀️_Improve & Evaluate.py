@@ -415,7 +415,7 @@ if prompt_title_selection is not None:
                 llm_model = 'gpt-4o'
                 
                 #make a selection for llm model selection
-                llm_model = st.selectbox("Select an LLM Model for improvement and evaluation", ['gpt-4o', 'gpt-4o-mini'], index=0, key=None)
+                llm_model = st.selectbox("Select an LLM Model for improvement and evaluation", ['gpt-4o', 'gpt-4o-mini','o1-preview-2024-09-12','o1-mini-2024-09-12',], index=0, key=None)
 
                 # experiment_id = None
 
