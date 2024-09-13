@@ -411,11 +411,11 @@ if prompt_title_selection is not None:
                 exp_description = 'temp_experiment'
                 teacher_id = 'c2358325-bf3c-44e8-80d9-37b445dad389'
                 tracked= False
-                llm_model_temp = 0.5
+                llm_model_temp = 1
                 llm_model = 'gpt-4o'
-                
+                judge_llm_model = 'gpt-4o'
                 #make a selection for llm model selection
-                llm_model = st.selectbox("Select an LLM Model for improvement and evaluation", ['gpt-4o', 'gpt-4o-mini'], index=0, key=None)
+                llm_model = st.selectbox("Select an LLM Model for improvement", ['gpt-4o', 'gpt-4o-mini','o1-preview-2024-09-12','o1-mini-2024-09-12',], index=0, key=None)
 
                 # experiment_id = None
 
@@ -454,7 +454,7 @@ if prompt_title_selection is not None:
                                     sample_ids = [sample_id]
                                     prompt_ids = [prompt_id]
                                     experiment_id = start_experiment(experiment_name, exp_description, sample_ids, teacher_id,
-                                    prompt_ids, limit, llm_model,
+                                    prompt_ids, limit, judge_llm_model,
                                     tracked, llm_model_temp)
                                 
                             
