@@ -26,5 +26,6 @@ venv/
 logs/
 
 # Ignore environment variables files
-.env
-*.env
+**/.env
+**/*.env
+
