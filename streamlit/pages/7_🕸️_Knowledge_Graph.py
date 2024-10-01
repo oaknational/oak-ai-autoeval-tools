@@ -159,5 +159,23 @@ html_output = html_output.replace("</body>", custom_js + "</body>")
 with open("graph.html", "w") as f:
     f.write(html_output)
 
-# Display in Streamlit
-st.components.v1.html(open("graph.html").read(), height=1000)
+# Inject custom CSS to align the graph container closer to the sidebar
+st.markdown("""
+    <style>
+    /* Move the specific graph iframe container closer to the sidebar */
+    .stApp iframe {
+        margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
+        padding-left: 0px !important;    /* Ensure no padding on the left */
+    }
+
+    /* Ensure the iframe takes full width of its container */
+    .stApp .stComponent {
+        width: 100% !important;
+        margin-left: -150px !important;  /* Adjust this value to move graph */
+        padding-left: 0px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Display the graph in Streamlit
+st.components.v1.html(open("graph.html").read(), height=1000, width=1000)
