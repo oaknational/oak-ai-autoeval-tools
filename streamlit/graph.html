@@ -1,0 +1,177 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#ff0018", "id": "KeyStage_1", "label": "Science Education", "physics": true, "shape": "dot", "title": "KeyStage"}, {"color": "#f4ff00", "id": "Subject_1", "label": "Science", "physics": true, "shape": "dot", "title": "Subject"}, {"color": "#ffb100", "id": "Topic_1", "label": "Biology", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#ffb100", "id": "Topic_2", "label": "Chemistry", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#ffb100", "id": "Topic_3", "label": "Physics", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#00dfff", "id": "LearningObjective_1", "label": "Develop scientific knowledge and conceptual understanding", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_2", "label": "Understand the nature, processes, and methods of science", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#dc00ff", "id": "LearningOutcome_1", "label": "Recognize the power of rational explanation", "physics": true, "shape": "dot", "title": "LearningOutcome"}, {"color": "#dc00ff", "id": "LearningOutcome_2", "label": "Develop excitement and curiosity about natural phenomena", "physics": true, "shape": "dot", "title": "LearningOutcome"}, {"color": "#00ff16", "id": "AssessmentTask_1", "label": "Scientific Enquiries", "physics": true, "shape": "dot", "title": "AssessmentTask"}, {"color": "#ff0018", "id": "KeyStage_2", "label": "Key Stage 2", "physics": true, "shape": "dot", "title": "KeyStage"}, {"color": "#2b00ff", "id": "Concept_1", "label": "Scientific Knowledge", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#2b00ff", "id": "Concept_2", "label": "Conceptual Understanding", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#00ff6e", "id": "Skill_1", "label": "Use of technical terminology", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_2", "label": "Building specialist vocabulary", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ffc7", "id": "SafetyNote_1", "label": "Safety in science enquiries", "physics": true, "shape": "dot", "title": "SafetyNote"}, {"color": "#ff5900", "id": "TeacherNote_1", "label": "Engagement through context", "physics": true, "shape": "dot", "title": "TeacherNote"}, {"color": "#f4ff00", "id": "Subject_Science", "label": "Science", "physics": true, "shape": "dot", "title": "Subject"}, {"color": "#ffb100", "id": "Topic_ScientificEnquiry", "label": "Scientific Enquiry", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#0086ff", "id": "Subtopic_Approaches", "label": "Approaches to Scientific Enquiry", "physics": true, "shape": "dot", "title": "Subtopic"}, {"color": "#2b00ff", "id": "Concept_WorkingScientifically", "label": "Working Scientifically", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#00ff6e", "id": "Skill_SpokenLanguage", "label": "Spoken Language Skills", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00dfff", "id": "LearningObjective_UseApproaches", "label": "Use a variety of approaches to answer scientific questions", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#dc00ff", "id": "LearningOutcome_DataPresentation", "label": "Collect, analyse, and present data", "physics": true, "shape": "dot", "title": "LearningOutcome"}, {"color": "#9cff00", "id": "CurriculumStandard_1", "label": "Year-by-Year Programme of Study", "physics": true, "shape": "dot", "title": "CurriculumStandard"}, {"color": "#ffb100", "id": "Topic_Observation", "label": "Observation of Phenomena", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#00ff6e", "id": "Skill_Curiosity", "label": "Curiosity and Questioning", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#2b00ff", "id": "Concept_ScientificEnquiry", "label": "Scientific Enquiry", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#002dff", "id": "Activity_PracticalExperiences", "label": "First-hand Practical Experiences", "physics": true, "shape": "dot", "title": "Activity"}, {"color": "#00dfff", "id": "LearningObjective_Communication", "label": "Communicate Scientific Ideas", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#dc00ff", "id": "LearningOutcome_Understanding", "label": "Understanding Scientific Ideas", "physics": true, "shape": "dot", "title": "LearningOutcome"}, {"color": "#8400ff", "id": "YearGroup_1", "label": "Year 1", "physics": true, "shape": "dot", "title": "YearGroup"}, {"color": "#8400ff", "id": "YearGroup_2", "label": "Year 2", "physics": true, "shape": "dot", "title": "YearGroup"}, {"color": "#ffb100", "id": "Topic_WorkingScientifically", "label": "Working Scientifically", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#00ff6e", "id": "Skill_PracticalMethods", "label": "Practical Scientific Methods", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#2b00ff", "id": "Concept_ScientificVocabulary", "label": "Scientific Vocabulary", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#00dfff", "id": "LearningObjective_UseEquipment", "label": "Use simple equipment", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_AskQuestions", "label": "Ask simple questions", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_PerformTests", "label": "Perform simple tests", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_ObserveClosely", "label": "Observe closely", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_IdentifyClassify", "label": "Identify and classify", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00ff6e", "id": "Skill_3", "label": "Performing Tests", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_4", "label": "Identifying and Classifying", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_5", "label": "Gathering and Recording Data", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#ff00c9", "id": "Equipment_1", "label": "Hand Lenses", "physics": true, "shape": "dot", "title": "Equipment"}, {"color": "#ff00c9", "id": "Equipment_2", "label": "Egg Timers", "physics": true, "shape": "dot", "title": "Equipment"}, {"color": "#002dff", "id": "Activity_1", "label": "Explore local environment for plants", "physics": true, "shape": "dot", "title": "Activity"}, {"color": "#ffb100", "id": "Topic_Plants", "label": "Plants", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#ffb100", "id": "Topic_Animals", "label": "Animals", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#00dfff", "id": "LearningObjective_ObservePlants", "label": "Observe the growth of plants", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_IdentifyAnimals", "label": "Identify and name common animals", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00ff6e", "id": "Skill_Observation", "label": "Observation skills", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_Comparison", "label": "Comparison skills", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff16", "id": "AssessmentTask_PlantGrowth", "label": "Record plant growth observations", "physics": true, "shape": "dot", "title": "AssessmentTask"}, {"color": "#00ff16", "id": "AssessmentTask_AnimalIdentification", "label": "Identify various animals", "physics": true, "shape": "dot", "title": "AssessmentTask"}, {"color": "#0086ff", "id": "Subtopic_1", "label": "Types of Animals", "physics": true, "shape": "dot", "title": "Subtopic"}, {"color": "#00dfff", "id": "LearningObjective_3", "label": "Identify and label basic parts of the human body", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#00dfff", "id": "LearningObjective_4", "label": "Compare and group together a variety of everyday materials based on their physical properties", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#ff0000", "id": "Lesson_1", "label": "Exploring Local Habitats", "physics": true, "shape": "dot", "title": "Lesson"}, {"color": "#0086ff", "id": "Subtopic_2", "label": "Basic Needs of Animals", "physics": true, "shape": "dot", "title": "Subtopic"}, {"color": "#ff0000", "id": "Lesson_2", "label": "Understanding Animal Needs", "physics": true, "shape": "dot", "title": "Lesson"}, {"color": "#ff0071", "id": "Resource_1", "label": "Materials for Comparison", "physics": true, "shape": "dot", "title": "Resource"}, {"color": "#43ff00", "id": "AssessmentMethod_1", "label": "Comparative and Fair Tests", "physics": true, "shape": "dot", "title": "AssessmentMethod"}, {"color": "#00ff6e", "id": "Skill_6", "label": "Reporting Findings", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#8400ff", "id": "YearGroup_3", "label": "Year 3", "physics": true, "shape": "dot", "title": "YearGroup"}, {"color": "#8400ff", "id": "YearGroup_4", "label": "Year 4", "physics": true, "shape": "dot", "title": "YearGroup"}, {"color": "#00ff16", "id": "AssessmentTask_2", "label": "Observe stages of plant life cycles", "physics": true, "shape": "dot", "title": "AssessmentTask"}, {"color": "#00ff16", "id": "AssessmentTask_3", "label": "Investigate water transportation in plants", "physics": true, "shape": "dot", "title": "AssessmentTask"}, {"color": "#0086ff", "id": "Subtopic_3", "label": "Soil Exploration", "physics": true, "shape": "dot", "title": "Subtopic"}, {"color": "#00dfff", "id": "LearningObjective_5", "label": "Find patterns in shadow sizes", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#002dff", "id": "Activity_2", "label": "Investigate sound insulation with earmuffs", "physics": true, "shape": "dot", "title": "Activity"}, {"color": "#002dff", "id": "Activity_3", "label": "Make and play own instruments", "physics": true, "shape": "dot", "title": "Activity"}, {"color": "#ff0018", "id": "KeyStage_UpperKeyStage2", "label": "Upper Key Stage 2", "physics": true, "shape": "dot", "title": "KeyStage"}, {"color": "#8400ff", "id": "YearGroup_5", "label": "Year 5", "physics": true, "shape": "dot", "title": "YearGroup"}, {"color": "#8400ff", "id": "YearGroup_6", "label": "Year 6", "physics": true, "shape": "dot", "title": "YearGroup"}, {"color": "#ffb100", "id": "Topic_Electricity", "label": "Electricity", "physics": true, "shape": "dot", "title": "Topic"}, {"color": "#00dfff", "id": "LearningObjective_SafetyPrecautions", "label": "Understand safety precautions when working with electricity", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#2b00ff", "id": "Concept_Circuit", "label": "Circuit", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#00ff16", "id": "AssessmentTask_ElectricityExperiment", "label": "Electricity Experiment", "physics": true, "shape": "dot", "title": "AssessmentTask"}, {"color": "#2b00ff", "id": "Concept_3", "label": "Working and Thinking Scientifically", "physics": true, "shape": "dot", "title": "Concept"}, {"color": "#00ff6e", "id": "Skill_PlanningEnquiries", "label": "Planning Different Types of Scientific Enquiries", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_TakingMeasurements", "label": "Taking Measurements with Scientific Equipment", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_RecordingData", "label": "Recording Data and Results", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_MakingPredictions", "label": "Using Test Results to Make Predictions", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00ff6e", "id": "Skill_ReportingFindings", "label": "Reporting and Presenting Findings", "physics": true, "shape": "dot", "title": "Skill"}, {"color": "#00dfff", "id": "LearningObjective_6", "label": "Explain formation of new materials", "physics": true, "shape": "dot", "title": "LearningObjective"}, {"color": "#2b00ff", "id": "Scientist_1", "label": "Carl Linnaeus", "physics": true, "shape": "dot", "title": "Concept"}]);
+                  edges = new vis.DataSet([{"from": "KeyStage_1", "title": "IS_PART_OF", "to": "Subject_1"}, {"from": "KeyStage_1", "title": "IS_PART_OF", "to": "Subject_Science"}, {"from": "KeyStage_1", "title": "FOR_YEAR", "to": "YearGroup_1"}, {"from": "KeyStage_1", "title": "FOR_YEAR", "to": "YearGroup_2"}, {"from": "KeyStage_1", "title": "HAS_TOPIC", "to": "Topic_1"}, {"from": "KeyStage_1", "title": "FOR_YEAR", "to": "YearGroup_3"}, {"from": "KeyStage_1", "title": "FOR_YEAR", "to": "YearGroup_4"}, {"from": "Subject_1", "title": "HAS_TOPIC", "to": "Topic_1"}, {"from": "Subject_1", "title": "HAS_TOPIC", "to": "Topic_2"}, {"from": "Subject_1", "title": "HAS_TOPIC", "to": "Topic_3"}, {"from": "Subject_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_1"}, {"from": "Subject_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_2"}, {"from": "Subject_1", "title": "FOR_YEAR", "to": "KeyStage_2"}, {"from": "Subject_1", "title": "INCLUDES", "to": "Concept_1"}, {"from": "Subject_1", "title": "INCLUDES", "to": "Concept_2"}, {"from": "Subject_1", "title": "HAS_SAFETY_NOTE", "to": "SafetyNote_1"}, {"from": "Subject_1", "title": "SUPPORTED_BY", "to": "TeacherNote_1"}, {"from": "Subject_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "CurriculumStandard_1"}, {"from": "Subject_1", "title": "IS_PART_OF", "to": "YearGroup_1"}, {"from": "Subject_1", "title": "IS_PART_OF", "to": "YearGroup_3"}, {"from": "Subject_1", "title": "IS_PART_OF", "to": "YearGroup_4"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Concept_1"}, {"from": "Topic_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_1"}, {"from": "Topic_1", "title": "HAS_LEARNING_OUTCOME", "to": "LearningOutcome_1"}, {"from": "Topic_1", "title": "DEVELOPS", "to": "Skill_1"}, {"from": "Topic_1", "title": "DEVELOPS", "to": "Skill_2"}, {"from": "Topic_1", "title": "DEVELOPS", "to": "Skill_3"}, {"from": "Topic_1", "title": "DEVELOPS", "to": "Skill_4"}, {"from": "Topic_1", "title": "DEVELOPS", "to": "Skill_5"}, {"from": "Topic_1", "title": "USES_EQUIPMENT", "to": "Equipment_1"}, {"from": "Topic_1", "title": "USES_EQUIPMENT", "to": "Equipment_2"}, {"from": "Topic_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_2"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Activity_1"}, {"from": "Topic_1", "title": "HAS_SUBTOPIC", "to": "Subtopic_1"}, {"from": "Topic_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_3"}, {"from": "Topic_1", "title": "HAS_SAFETY_NOTE", "to": "SafetyNote_1"}, {"from": "Topic_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_4"}, {"from": "Topic_1", "title": "HAS_LESSON", "to": "Lesson_1"}, {"from": "Topic_1", "title": "EVALUATES", "to": "AssessmentTask_1"}, {"from": "Topic_1", "title": "FOR_YEAR", "to": "YearGroup_1"}, {"from": "Topic_1", "title": "HAS_SUBTOPIC", "to": "Subtopic_2"}, {"from": "Topic_1", "title": "SUPPORTED_BY", "to": "TeacherNote_1"}, {"from": "Topic_1", "title": "DEVELOPS", "to": "Skill_6"}, {"from": "Topic_1", "title": "FOR_YEAR", "to": "YearGroup_2"}, {"from": "Topic_1", "title": "HAS_SUBTOPIC", "to": "Subtopic_3"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Activity_2"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Activity_3"}, {"from": "Topic_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_5"}, {"from": "Topic_1", "title": "SUPPORTED_BY", "to": "Resource_1"}, {"from": "Topic_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_6"}, {"from": "Topic_1", "title": "FOR_YEAR", "to": "YearGroup_4"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Scientist_1"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Concept_2"}, {"from": "Topic_1", "title": "INCLUDES", "to": "Concept_3"}, {"from": "Topic_1", "title": "FOR_YEAR", "to": "YearGroup_3"}, {"from": "Topic_2", "title": "HAS_SUBTOPIC", "to": "Subtopic_2"}, {"from": "Topic_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_1"}, {"from": "Topic_2", "title": "INCLUDES", "to": "Concept_1"}, {"from": "Topic_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_2"}, {"from": "Topic_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_3"}, {"from": "Topic_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_4"}, {"from": "Topic_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_5"}, {"from": "Topic_2", "title": "HAS_SAFETY_NOTE", "to": "SafetyNote_1"}, {"from": "Topic_2", "title": "HAS_LESSON", "to": "Lesson_2"}, {"from": "Topic_2", "title": "HAS_TOPIC", "to": "Lesson_1"}, {"from": "Topic_3", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_1"}, {"from": "Topic_3", "title": "INCLUDES", "to": "Concept_1"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OUTCOME", "to": "LearningOutcome_1"}, {"from": "LearningObjective_1", "title": "DEVELOPS", "to": "Concept_1"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OUTCOME", "to": "LearningOutcome_2"}, {"from": "LearningObjective_1", "title": "DEVELOPS", "to": "Skill_1"}, {"from": "LearningObjective_1", "title": "ADDRESSES", "to": "Skill_2"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "CurriculumStandard_1"}, {"from": "LearningObjective_1", "title": "SUPPORTED_BY", "to": "TeacherNote_1"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "Subtopic_1"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "Lesson_1"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "Subtopic_2"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "Lesson_2"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "KeyStage_2"}, {"from": "LearningObjective_1", "title": "HAS_LEARNING_OBJECTIVE", "to": "YearGroup_4"}, {"from": "LearningObjective_2", "title": "HAS_LEARNING_OUTCOME", "to": "LearningOutcome_2"}, {"from": "LearningObjective_2", "title": "ADDRESSES", "to": "AssessmentTask_1"}, {"from": "LearningObjective_2", "title": "DEVELOPS", "to": "Skill_1"}, {"from": "LearningObjective_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "Subtopic_1"}, {"from": "LearningObjective_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "Lesson_2"}, {"from": "LearningObjective_2", "title": "DEVELOPS", "to": "Skill_2"}, {"from": "LearningObjective_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "KeyStage_2"}, {"from": "LearningObjective_2", "title": "DEVELOPS", "to": "Concept_2"}, {"from": "LearningOutcome_1", "title": "EVALUATES", "to": "AssessmentTask_1"}, {"from": "LearningOutcome_1", "title": "HAS_LEARNING_OUTCOME", "to": "Lesson_1"}, {"from": "LearningOutcome_1", "title": "HAS_LEARNING_OUTCOME", "to": "Subtopic_2"}, {"from": "LearningOutcome_1", "title": "EVALUATED_BY", "to": "AssessmentMethod_1"}, {"from": "LearningOutcome_1", "title": "DEVELOPS", "to": "Skill_1"}, {"from": "LearningOutcome_1", "title": "HAS_LEARNING_OUTCOME", "to": "Lesson_2"}, {"from": "LearningOutcome_1", "title": "HAS_LEARNING_OUTCOME", "to": "Subtopic_1"}, {"from": "LearningOutcome_1", "title": "INCLUDES", "to": "Activity_1"}, {"from": "LearningOutcome_2", "title": "EVALUATES", "to": "AssessmentTask_1"}, {"from": "LearningOutcome_2", "title": "HAS_LEARNING_OUTCOME", "to": "Lesson_2"}, {"from": "LearningOutcome_2", "title": "EVALUATES", "to": "AssessmentTask_2"}, {"from": "AssessmentTask_1", "title": "INCLUDES", "to": "Subtopic_1"}, {"from": "AssessmentTask_1", "title": "INCLUDES", "to": "Lesson_1"}, {"from": "AssessmentTask_1", "title": "EVALUATES", "to": "Skill_1"}, {"from": "AssessmentTask_1", "title": "HAS_SAFETY_NOTE", "to": "SafetyNote_1"}, {"from": "AssessmentTask_1", "title": "USES_EQUIPMENT", "to": "Resource_1"}, {"from": "KeyStage_2", "title": "IS_PART_OF", "to": "Subject_Science"}, {"from": "KeyStage_2", "title": "INCLUDES", "to": "Concept_1"}, {"from": "KeyStage_2", "title": "INCLUDES", "to": "Concept_2"}, {"from": "KeyStage_2", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_3"}, {"from": "KeyStage_2", "title": "INCLUDES", "to": "Concept_3"}, {"from": "Concept_1", "title": "DEVELOPS", "to": "Skill_1"}, {"from": "Concept_1", "title": "INCLUDES", "to": "Subtopic_1"}, {"from": "Concept_1", "title": "HAS_LESSON", "to": "Lesson_1"}, {"from": "Concept_1", "title": "ADDRESSES", "to": "Activity_1"}, {"from": "Concept_1", "title": "USES_EQUIPMENT", "to": "Equipment_1"}, {"from": "Concept_1", "title": "HAS_SUBTOPIC", "to": "Subtopic_3"}, {"from": "Concept_1", "title": "DEVELOPS", "to": "LearningObjective_3"}, {"from": "Concept_2", "title": "INCLUDES", "to": "Subtopic_2"}, {"from": "Concept_2", "title": "HAS_LESSON", "to": "Lesson_2"}, {"from": "Concept_2", "title": "INCLUDES", "to": "Subtopic_1"}, {"from": "Concept_2", "title": "DEVELOPS", "to": "Skill_1"}, {"from": "Concept_2", "title": "DEVELOPS", "to": "Skill_2"}, {"from": "Concept_2", "title": "DEVELOPS", "to": "Skill_3"}, {"from": "Concept_2", "title": "DEVELOPS", "to": "Skill_4"}, {"from": "Concept_2", "title": "DEVELOPS", "to": "Skill_5"}, {"from": "Concept_2", "title": "HAS_SUBTOPIC", "to": "Subtopic_3"}, {"from": "Skill_1", "title": "DEVELOPS", "to": "Activity_1"}, {"from": "Skill_1", "title": "DEVELOPS", "to": "LearningObjective_3"}, {"from": "Skill_1", "title": "EVALUATES", "to": "AssessmentTask_2"}, {"from": "Skill_1", "title": "EVALUATES", "to": "AssessmentTask_3"}, {"from": "Skill_1", "title": "DEVELOPS", "to": "Lesson_1"}, {"from": "Skill_1", "title": "DEVELOPS", "to": "Subtopic_1"}, {"from": "SafetyNote_1", "title": "HAS_SAFETY_NOTE", "to": "Activity_1"}, {"from": "SafetyNote_1", "title": "HAS_SAFETY_NOTE", "to": "Subtopic_1"}, {"from": "SafetyNote_1", "title": "HAS_SAFETY_NOTE", "to": "Lesson_1"}, {"from": "TeacherNote_1", "title": "SUPPORTED_BY", "to": "Subtopic_1"}, {"from": "TeacherNote_1", "title": "SUPPORTED_BY", "to": "Lesson_1"}, {"from": "Subject_Science", "title": "HAS_TOPIC", "to": "Topic_ScientificEnquiry"}, {"from": "Subject_Science", "title": "DEVELOPS", "to": "Skill_SpokenLanguage"}, {"from": "Subject_Science", "title": "HAS_TOPIC", "to": "Topic_Observation"}, {"from": "Subject_Science", "title": "HAS_TOPIC", "to": "Topic_WorkingScientifically"}, {"from": "Subject_Science", "title": "HAS_TOPIC", "to": "Topic_Plants"}, {"from": "Subject_Science", "title": "HAS_TOPIC", "to": "Topic_Animals"}, {"from": "Subject_Science", "title": "FOR_YEAR", "to": "KeyStage_UpperKeyStage2"}, {"from": "Subject_Science", "title": "HAS_TOPIC", "to": "Topic_Electricity"}, {"from": "Topic_ScientificEnquiry", "title": "HAS_SUBTOPIC", "to": "Subtopic_Approaches"}, {"from": "Topic_ScientificEnquiry", "title": "INCLUDES", "to": "Concept_WorkingScientifically"}, {"from": "Subtopic_Approaches", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_UseApproaches"}, {"from": "Subtopic_Approaches", "title": "HAS_LEARNING_OUTCOME", "to": "LearningOutcome_DataPresentation"}, {"from": "CurriculumStandard_1", "title": "ALIGNED_WITH", "to": "Concept_3"}, {"from": "Topic_Observation", "title": "DEVELOPS", "to": "Skill_Curiosity"}, {"from": "Topic_Observation", "title": "INCLUDES", "to": "Concept_ScientificEnquiry"}, {"from": "Concept_ScientificEnquiry", "title": "REQUIRES_PREREQUISITE", "to": "Activity_PracticalExperiences"}, {"from": "Concept_ScientificEnquiry", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_Communication"}, {"from": "LearningObjective_Communication", "title": "HAS_LEARNING_OUTCOME", "to": "LearningOutcome_Understanding"}, {"from": "Topic_WorkingScientifically", "title": "DEVELOPS", "to": "Skill_PracticalMethods"}, {"from": "Topic_WorkingScientifically", "title": "ADDRESSES", "to": "Concept_ScientificVocabulary"}, {"from": "Topic_WorkingScientifically", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_AskQuestions"}, {"from": "Topic_WorkingScientifically", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_ObserveClosely"}, {"from": "Topic_WorkingScientifically", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_PerformTests"}, {"from": "Topic_WorkingScientifically", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_IdentifyClassify"}, {"from": "Topic_WorkingScientifically", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_UseEquipment"}, {"from": "Topic_WorkingScientifically", "title": "INCLUDES", "to": "Skill_PlanningEnquiries"}, {"from": "Topic_WorkingScientifically", "title": "INCLUDES", "to": "Skill_TakingMeasurements"}, {"from": "Topic_WorkingScientifically", "title": "INCLUDES", "to": "Skill_RecordingData"}, {"from": "Topic_WorkingScientifically", "title": "INCLUDES", "to": "Skill_MakingPredictions"}, {"from": "Topic_WorkingScientifically", "title": "INCLUDES", "to": "Skill_ReportingFindings"}, {"from": "Skill_3", "title": "USES_EQUIPMENT", "to": "Equipment_1"}, {"from": "Skill_3", "title": "USES_EQUIPMENT", "to": "Equipment_2"}, {"from": "Equipment_1", "title": "USES_EQUIPMENT", "to": "Subtopic_1"}, {"from": "Equipment_1", "title": "USES_EQUIPMENT", "to": "Lesson_1"}, {"from": "Equipment_2", "title": "USES_EQUIPMENT", "to": "Subtopic_1"}, {"from": "Activity_1", "title": "INCLUDES", "to": "Subtopic_1"}, {"from": "Activity_1", "title": "USES_EQUIPMENT", "to": "Resource_1"}, {"from": "Topic_Plants", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_ObservePlants"}, {"from": "Topic_Animals", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_IdentifyAnimals"}, {"from": "LearningObjective_ObservePlants", "title": "DEVELOPS", "to": "Skill_Observation"}, {"from": "LearningObjective_ObservePlants", "title": "DEVELOPS", "to": "Skill_Comparison"}, {"from": "LearningObjective_ObservePlants", "title": "EVALUATES", "to": "AssessmentTask_PlantGrowth"}, {"from": "LearningObjective_IdentifyAnimals", "title": "EVALUATES", "to": "AssessmentTask_AnimalIdentification"}, {"from": "Skill_Observation", "title": "DEVELOPS", "to": "Topic_Electricity"}, {"from": "Subtopic_1", "title": "HAS_LESSON", "to": "Lesson_1"}, {"from": "KeyStage_UpperKeyStage2", "title": "FOR_YEAR", "to": "YearGroup_5"}, {"from": "KeyStage_UpperKeyStage2", "title": "FOR_YEAR", "to": "YearGroup_6"}, {"from": "Topic_Electricity", "title": "HAS_LEARNING_OBJECTIVE", "to": "LearningObjective_SafetyPrecautions"}, {"from": "Topic_Electricity", "title": "HAS_SUBTOPIC", "to": "Concept_Circuit"}, {"from": "Topic_Electricity", "title": "EVALUATES", "to": "AssessmentTask_ElectricityExperiment"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {"nodes": {"physics": true, "fixed": {"x": false, "y": false}, "color": {"highlight": {"border": "yellow", "background": "yellow"}}}, "edges": {"color": {"highlight": "black", "inherit": false}, "hoverWidth": 3}, "physics": {"enabled": true, "solver": "forceAtlas2Based"}};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    
+    <script type="text/javascript">
+    var nodes = network.body.nodes;
+    var edges = network.body.edges;
+
+    network.on('click', function(properties) {
+        var clickedNode = properties.nodes[0];
+        if (clickedNode !== undefined) {
+            var node = network.body.nodes[clickedNode];
+
+            // Unfix the clicked node to allow it to be moved freely
+            node.setOptions({ fixed: { x: false, y: false }, physics: true });
+
+            var connectedNodes = network.getConnectedNodes(clickedNode);
+
+            // Highlight clicked node and its neighbors
+            Object.values(nodes).forEach(function(node) {
+                if (connectedNodes.includes(node.id) || node.id == clickedNode) {
+                    node.setOptions({ opacity: 1 });  // Full opacity for neighbors
+                } else {
+                    node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
+                }
+            });
+
+            Object.values(edges).forEach(function(edge) {
+                if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
+                    edge.setOptions({ color: 'black' });
+                } else {
+                    edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
+                }
+            });
+        } else {
+            // Reset if nothing clicked
+            Object.values(nodes).forEach(function(node) {
+                node.setOptions({ opacity: 1 });
+            });
+            Object.values(edges).forEach(function(edge) {
+                edge.setOptions({ color: 'black' });
+            });
+        }
+    });
+
+    // Fix node position after drag
+    network.on('dragEnd', function(properties) {
+        properties.nodes.forEach(function(nodeId) {
+            var node = network.body.nodes[nodeId];
+            node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
+        });
+    });
+    </script>
+</body>
+</html>
