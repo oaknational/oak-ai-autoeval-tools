@@ -34,9 +34,15 @@ class GraphDocument:
     relationships: List[Relationship]
 
 def sanitize_llm_response(response):
-    response = re.sub(r"(\}\s*\{)", r"}, {", response)
-    response = re.sub(r'(?<=[\}"])(\s*\{)', r', {', response)
+    # Modify the first regex to be more efficient by using a non-greedy match
+    response = re.sub(r"}\s*\{", r"}, {", response)
+    
+    # Modify the second regex for more efficiency by reducing the pattern complexity
+    response = re.sub(r'"\s*\{', r'", {', response)
+    
+    # Remove any code blocks and strip leading/trailing spaces
     response = response.replace("```json", "").replace("```", "").strip()
+    
     return response
 
 def extract_json_from_response(response):
