@@ -214,12 +214,99 @@ def build_graph(nodes, edges, selected_node_types, selected_relationship_types):
 # Streamlit app setup
 st.title("Knowledge Extractor")
 
+
+
+st.markdown("""
+            <style>
+            /* Move the specific graph iframe container closer to the sidebar */
+            .stApp iframe {
+                margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
+                padding-left: 0px !important;    /* Ensure no padding on the left */
+                margin-bottom: -400px !important;  /* Reduce space below the iframe */
+            }
+
+            /* Ensure the iframe takes full width of its container */
+            .stApp .stComponent {
+                width: 100% !important;
+                margin-left: -150px !important;  /* Adjust this value to move graph */
+                padding-left: 0px !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+# Inject custom JavaScript
+custom_js = """
+                <script type="text/javascript">
+                var nodes = network.body.nodes;
+                var edges = network.body.edges;
+
+                network.on('click', function(properties) {
+                    var clickedNode = properties.nodes[0];
+                    if (clickedNode !== undefined) {
+                        var node = network.body.nodes[clickedNode];
+
+                        // Unfix the clicked node to allow it to be moved freely
+                        node.setOptions({ fixed: { x: false, y: false }, physics: true });
+
+                        var connectedNodes = network.getConnectedNodes(clickedNode);
+
+                        // Highlight clicked node and its neighbors
+                        Object.values(nodes).forEach(function(node) {
+                            if (connectedNodes.includes(node.id) || node.id == clickedNode) {
+                                node.setOptions({ opacity: 1 });  // Full opacity for neighbors
+                            } else {
+                                node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
+                            }
+                        });
+
+                        Object.values(edges).forEach(function(edge) {
+                            if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
+                                edge.setOptions({ color: 'black' });
+                            } else {
+                                edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
+                            }
+                        });
+                    } else {
+                        // Reset if nothing clicked
+                        Object.values(nodes).forEach(function(node) {
+                            node.setOptions({ opacity: 1 });
+                        });
+                        Object.values(edges).forEach(function(edge) {
+                            edge.setOptions({ color: 'black' });
+                        });
+                    }
+                });
+
+                // Fix node position after drag
+                network.on('dragEnd', function(properties) {
+                    properties.nodes.forEach(function(nodeId) {
+                        var node = network.body.nodes[nodeId];
+                        node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
+                    });
+                });
+                </script>
+            """
+
 # Upload file input
-uploaded_file = st.file_uploader("Upload Curriculum Content File", type=["txt"])
+st.header("Upload a Content File to Build a Knowledge Graph")
+uploaded_file = st.file_uploader('', type=["txt"])
 
 if uploaded_file is not None:
     content = uploaded_file.read().decode("utf-8")
 
+    # Initialize session state variables if they don't exist
+    if 'all_nodes' not in st.session_state:
+        st.session_state.all_nodes = []
+    if 'all_edges' not in st.session_state:
+        st.session_state.all_edges = []
+    if 'node_types' not in st.session_state:
+        st.session_state.node_types = set()
+    if 'relationship_types' not in st.session_state:
+        st.session_state.relationship_types = set()
+    if 'processing_complete' not in st.session_state:
+        st.session_state.processing_complete = False
+
+    graph_placeholder = st.empty()
     # Create a temporary file to store uploaded content for TextLoader
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp_file:
         temp_file.write(content.encode("utf-8"))
@@ -243,17 +330,7 @@ if uploaded_file is not None:
         'HAS_LEARNING_OBJECTIVE', 'HAS_LEARNING_OUTCOME', 
     ]
 
-    # Initialize session state variables if they don't exist
-    if 'all_nodes' not in st.session_state:
-        st.session_state.all_nodes = []
-    if 'all_edges' not in st.session_state:
-        st.session_state.all_edges = []
-    if 'node_types' not in st.session_state:
-        st.session_state.node_types = set()
-    if 'relationship_types' not in st.session_state:
-        st.session_state.relationship_types = set()
-    if 'processing_complete' not in st.session_state:
-        st.session_state.processing_complete = False
+    
 
     
     # Button to start extraction
@@ -262,7 +339,7 @@ if uploaded_file is not None:
         progress_bar = st.progress(0)
         total_documents = len(documents)
         st.write(f"**Total Documents to Process: {total_documents}**")
-        graph_placeholder = st.empty()
+        
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("Extracted Nodes")
@@ -318,78 +395,10 @@ if uploaded_file is not None:
 
             net = build_graph(st.session_state.all_nodes, st.session_state.all_edges, selected_node_types, selected_relationship_types)
 
-            # Inject custom JavaScript
-            custom_js = """
-                <script type="text/javascript">
-                var nodes = network.body.nodes;
-                var edges = network.body.edges;
-
-                network.on('click', function(properties) {
-                    var clickedNode = properties.nodes[0];
-                    if (clickedNode !== undefined) {
-                        var node = network.body.nodes[clickedNode];
-
-                        // Unfix the clicked node to allow it to be moved freely
-                        node.setOptions({ fixed: { x: false, y: false }, physics: true });
-
-                        var connectedNodes = network.getConnectedNodes(clickedNode);
-
-                        // Highlight clicked node and its neighbors
-                        Object.values(nodes).forEach(function(node) {
-                            if (connectedNodes.includes(node.id) || node.id == clickedNode) {
-                                node.setOptions({ opacity: 1 });  // Full opacity for neighbors
-                            } else {
-                                node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
-                            }
-                        });
-
-                        Object.values(edges).forEach(function(edge) {
-                            if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
-                                edge.setOptions({ color: 'black' });
-                            } else {
-                                edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
-                            }
-                        });
-                    } else {
-                        // Reset if nothing clicked
-                        Object.values(nodes).forEach(function(node) {
-                            node.setOptions({ opacity: 1 });
-                        });
-                        Object.values(edges).forEach(function(edge) {
-                            edge.setOptions({ color: 'black' });
-                        });
-                    }
-                });
-
-                // Fix node position after drag
-                network.on('dragEnd', function(properties) {
-                    properties.nodes.forEach(function(nodeId) {
-                        var node = network.body.nodes[nodeId];
-                        node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
-                    });
-                });
-                </script>
-            """
-
             # Generate dynamic HTML for the graph
             html_output = net.generate_html()
             html_output = html_output.replace("</body>", custom_js + "</body>")
-            st.markdown("""
-            <style>
-            /* Move the specific graph iframe container closer to the sidebar */
-            .stApp iframe {
-                margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
-                padding-left: 0px !important;    /* Ensure no padding on the left */
-            }
-
-            /* Ensure the iframe takes full width of its container */
-            .stApp .stComponent {
-                width: 100% !important;
-                margin-left: -150px !important;  /* Adjust this value to move graph */
-                padding-left: 0px !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+            
             # Update the graph placeholder
             with graph_placeholder:
                 st.components.v1.html(html_output, height=1000, width=1200)
@@ -418,91 +427,126 @@ if uploaded_file is not None:
             default=list(st.session_state.relationship_types)
         )
 
-        # Build the graph based on filters
-        net = build_graph(st.session_state.all_nodes, st.session_state.all_edges, selected_node_types, selected_relationship_types)
+else: 
+        # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-        # Inject custom JavaScript
-        custom_js = """
-            <script type="text/javascript">
-                var nodes = network.body.nodes;
-                var edges = network.body.edges;
+    # Get the parent directory of the current script's directory
+    base_dir = os.path.dirname(script_dir)
 
-                network.on('click', function(properties) {
-                    var clickedNode = properties.nodes[0];
-                    if (clickedNode !== undefined) {
-                        var node = network.body.nodes[clickedNode];
+    kg_json_file_path = os.path.join(base_dir, 'data', 'knowledge_graph.json')
 
-                        // Unfix the clicked node to allow it to be moved freely
-                        node.setOptions({ fixed: { x: false, y: false }, physics: true });
+    # Check if the file exists
+    if not os.path.exists(kg_json_file_path):
+        st.error(f"File not found: {kg_json_file_path}")
+    else:
+        with open(kg_json_file_path, 'r') as file:
+            data = json.load(file)
 
-                        var connectedNodes = network.getConnectedNodes(clickedNode);
 
-                        // Highlight clicked node and its neighbors
-                        Object.values(nodes).forEach(function(node) {
-                            if (connectedNodes.includes(node.id) || node.id == clickedNode) {
-                                node.setOptions({ opacity: 1 });  // Full opacity for neighbors
-                            } else {
-                                node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
-                            }
-                        });
+    # Extract unique node types and relationship types from the data
+    node_types = set([node.get('category', 'Unknown') for node in data['nodes']])
+    relationship_types = set([edge['type'] for edge in data['edges']])
 
-                        Object.values(edges).forEach(function(edge) {
-                            if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
-                                edge.setOptions({ color: 'black' });
-                            } else {
-                                edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
-                            }
-                        });
-                    } else {
-                        // Reset if nothing clicked
-                        Object.values(nodes).forEach(function(node) {
-                            node.setOptions({ opacity: 1 });
-                        });
-                        Object.values(edges).forEach(function(edge) {
-                            edge.setOptions({ color: 'black' });
-                        });
-                    }
-                });
+    # Streamlit UI for selecting node types and relationships to display
+    st.sidebar.title("Graph Filters")
 
-                // Fix node position after drag
-                network.on('dragEnd', function(properties) {
-                    properties.nodes.forEach(function(nodeId) {
-                        var node = network.body.nodes[nodeId];
-                        node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
-                    });
-                });
-                </script>
-        """
+    selected_node_types = st.sidebar.multiselect(
+        "Select node types to display:", list(node_types), default=list(node_types)
+    )
 
-        # Generate dynamic HTML for the graph
-        html_output = net.generate_html()
-        html_output = html_output.replace("</body>", custom_js + "</body>")
+    selected_relationship_types = st.sidebar.multiselect(
+        "Select relationship types to display:", list(relationship_types), default=list(relationship_types)
+    )
+
+    # Create a graph
+    G = nx.Graph()
+
+    # Create a set to track added nodes
+    added_node_ids = set()
+
+    # Filter and add nodes based on the selected node types
+    selected_node_ids = set()
+    for node in data['nodes']:
+        node_id = node['id']
+        # Check if the node has already been added (based on its ID)
+        if node_id not in added_node_ids and node.get('category', 'Unknown') in selected_node_types:
+            G.add_node(node_id, label=node['label'], category=node.get('category', 'Unknown'))
+            selected_node_ids.add(node_id)  # Store the IDs of the selected nodes
+            added_node_ids.add(node_id)  # Track the node as added
+
+    # Filter and add edges based on the selected relationship types and selected nodes
+    for edge in data['edges']:
+        if edge['type'] in selected_relationship_types and edge['source'] in selected_node_ids and edge['target'] in selected_node_ids:
+            G.add_edge(edge['source'], edge['target'], relationship=edge.get('relationship', ''), type=edge['type'])
+
+    # Identify unique categories in the filtered graph
+    unique_categories = set([node[1].get('category', 'Unknown') for node in G.nodes(data=True)])
+
+    # Dynamically generate colors for each unique category
+    color_map = plt.cm.get_cmap('hsv', len(unique_categories))  # You can choose any colormap here
+    category_colors = {category: mcolors.rgb2hex(color_map(i)[:3]) for i, category in enumerate(unique_categories)}
+
+    # Create a pyvis network
+    net = Network(notebook=True)  # Initialize net before adding nodes and edges
+
+    # Add nodes with dynamic colors based on their category and enable dragging with physics enabled initially
+    for node, node_attrs in G.nodes(data=True):
+        category = node_attrs.get('category', 'Unknown')
+        color = category_colors.get(category, 'gray')  # Default color is gray if no category is found
+        title = f"{category}"  # Tooltip text
+        # Add node with physics enabled for dragging, and allow the position to be fixed after drag
+        net.add_node(node, label=node_attrs.get('label'), color=color, title=title, physics=True)
+
+    # Add edges and set titles for edge relationships
+    for source, target, edge_attrs in G.edges(data=True):
+        relationship_type = edge_attrs.get('type', 'No relationship defined')  # Fallback if type is missing
+        net.add_edge(source, target, title=relationship_type)
+
+    # Set visual options (only JSON, no JavaScript here)
+    net.set_options("""
+    {
+        "nodes": {
+            "physics": true,
+            "fixed": {
+                "x": false,
+                "y": false
+            },
+            "color": {
+                "highlight": {
+                    "border": "yellow",
+                    "background": "yellow"
+                }
+            }
+        },
+        "edges": {
+            "color": {
+                "highlight": "black",
+                "inherit": false
+            },
+            "hoverWidth": 3
+        },
+        "physics": {
+            "enabled": true,
+            "solver": "forceAtlas2Based"
+        }
+    }
+    """)
+
+    # Inject custom JavaScript separately into the HTML
+    html_output = net.generate_html()
+    
+
+    # Append the custom JavaScript to the HTML output
+    html_output = html_output.replace("</body>", custom_js + "</body>")
+
+    # Save the final HTML with the custom JS
+    with open("graph.html", "w") as f:
+        f.write(html_output)
+
+
+    # Display the graph in Streamlit
+    st.components.v1.html(open("graph.html").read(), height=1000, width=1000)
+
+
         
-        st.markdown("""
-            <style>
-            /* Move the specific graph iframe container closer to the sidebar */
-            .stApp iframe {
-                margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
-                padding-left: 0px !important;    /* Ensure no padding on the left */
-            }
-
-            /* Ensure the iframe takes full width of its container */
-            .stApp .stComponent {
-                width: 100% !important;
-                margin-left: -150px !important;  /* Adjust this value to move graph */
-                padding-left: 0px !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-
-        # Update the graph placeholder
-        with graph_placeholder:
-            st.components.v1.html(html_output, height=1000, width=1200)
-
-        # Update the data tables
-        with col1:
-            node_df = pd.DataFrame(st.session_state.all_nodes)
-            node_table_placeholder.dataframe(node_df)
-        with col2:
-            edge_df = pd.DataFrame(st.session_state.all_edges)
-            edge_table_placeholder.dataframe(edge_df)
