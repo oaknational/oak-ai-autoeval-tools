@@ -4,10 +4,23 @@ import json
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import os
 
-# Load the JSON data
-with open("knowledge_graph.json", "r") as f:
-    data = json.load(f)
+# Get the directory of the current script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Get the parent directory of the current script's directory
+base_dir = os.path.dirname(script_dir)
+
+kg_json_file_path = os.path.join(base_dir, 'data', 'knowledge_graph.json')
+
+# Check if the file exists
+if not os.path.exists(kg_json_file_path):
+    st.error(f"File not found: {kg_json_file_path}")
+else:
+    with open(kg_json_file_path, 'r') as file:
+        data = json.load(file)
+
 
 # Extract unique node types and relationship types from the data
 node_types = set([node.get('category', 'Unknown') for node in data['nodes']])
