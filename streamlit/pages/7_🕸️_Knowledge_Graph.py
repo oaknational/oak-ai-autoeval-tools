@@ -13,7 +13,7 @@ query = '''
 	FROM public.knowledge_graph;
     '''
 knowledge_graphs= execute_single_query(query, None,True)
-knowledge_graph_options = 'select' + knowledge_graphs['id'].tolist()  # Extract the 'id' column as a list
+knowledge_graph_options = ['select'] + knowledge_graphs['id'].tolist()  # Extract the 'id' column as a list
 # knowledge_graph_options
 selected_id=None
 selected_id = st.selectbox("select a Graph to Display", knowledge_graph_options)
@@ -26,10 +26,7 @@ if selected_id is not None:
     st.write(kg_data)
     data = kg_data['json'].iloc[0]
     
-    
-    # Rename 'edges' to 'relationships'
-    data['edges'] = data.pop('relationships') 
-    
+        
     
     
     # Extract unique node types and relationship types from the data
