@@ -13,6 +13,83 @@ import networkx as nx
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from pyvis.network import Network
+import uuid
+from datetime import datetime
+from utils.db_scripts import execute_single_query
+
+
+
+
+st.markdown("""
+            <style>
+            /* Move the specific graph iframe container closer to the sidebar */
+            .stApp iframe {
+                margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
+                padding-left: 0px !important;    /* Ensure no padding on the left */
+                margin-bottom: -400px !important;  /* Reduce space below the iframe */
+            }
+
+            /* Ensure the iframe takes full width of its container */
+            .stApp .stComponent {
+                width: 100% !important;
+                margin-left: -150px !important;  /* Adjust this value to move graph */
+                padding-left: 0px !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+# Inject custom JavaScript
+custom_js = """
+                <script type="text/javascript">
+                var nodes = network.body.nodes;
+                var edges = network.body.edges;
+
+                network.on('click', function(properties) {
+                    var clickedNode = properties.nodes[0];
+                    if (clickedNode !== undefined) {
+                        var node = network.body.nodes[clickedNode];
+
+                        // Unfix the clicked node to allow it to be moved freely
+                        node.setOptions({ fixed: { x: false, y: false }, physics: true });
+
+                        var connectedNodes = network.getConnectedNodes(clickedNode);
+
+                        // Highlight clicked node and its neighbors
+                        Object.values(nodes).forEach(function(node) {
+                            if (connectedNodes.includes(node.id) || node.id == clickedNode) {
+                                node.setOptions({ opacity: 1 });  // Full opacity for neighbors
+                            } else {
+                                node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
+                            }
+                        });
+
+                        Object.values(edges).forEach(function(edge) {
+                            if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
+                                edge.setOptions({ color: 'black' });
+                            } else {
+                                edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
+                            }
+                        });
+                    } else {
+                        // Reset if nothing clicked
+                        Object.values(nodes).forEach(function(node) {
+                            node.setOptions({ opacity: 1 });
+                        });
+                        Object.values(edges).forEach(function(edge) {
+                            edge.setOptions({ color: 'black' });
+                        });
+                    }
+                });
+
+                // Fix node position after drag
+                network.on('dragEnd', function(properties) {
+                    properties.nodes.forEach(function(nodeId) {
+                        var node = network.body.nodes[nodeId];
+                        node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
+                    });
+                });
+                </script>
+            """
 
 # Define Node, Relationship, and GraphDocument classes
 @dataclass
@@ -22,7 +99,7 @@ class Node:
     properties: Dict
 
 @dataclass
-class Relationship:
+class Edge:
     source: str  # Node ID
     target: str  # Node ID
     type: str
@@ -31,7 +108,7 @@ class Relationship:
 @dataclass
 class GraphDocument:
     nodes: List[Node]
-    relationships: List[Relationship]
+    edges: List[Edge]
 
 def sanitize_llm_response(response):
     # Modify the first regex to be more efficient by using a non-greedy match
@@ -72,19 +149,19 @@ def parse_llm_response(response, allowed_nodes, allowed_relationships, strict_mo
         nodes.append(node)
         node_ids[node_id] = node_id
 
-    relationships = []
-    for rel in data.get('relationships', []):
+    edges = []
+    for rel in data.get('edges', []):
         source_id = rel.get('source')
         target_id = rel.get('target')
         rel_type = rel.get('type')
         if strict_mode and rel_type not in allowed_relationships:
             continue
         if source_id in node_ids and target_id in node_ids:
-            relationships.append(rel)
+            edges.append(rel)
         else:
-            st.warning(f"Invalid relationship: {source_id} -> {target_id}, nodes not found.")
+            st.warning(f"Invalid edge: {source_id} -> {target_id}, nodes not found.")
 
-    return GraphDocument(nodes=nodes, relationships=relationships)
+    return GraphDocument(nodes=nodes, edges=edges)
 
 # Function to generate LLM response
 def generate_response(prompt, llm_model, llm_model_temp, top_p=1, timeout=150):
@@ -102,9 +179,11 @@ def generate_response(prompt, llm_model, llm_model_temp, top_p=1, timeout=150):
     return message
 
 # Function to create a custom prompt for the LLM
-def create_custom_prompt(document_content, allowed_nodes, allowed_relationships, strict_mode):
+def create_custom_prompt(document_content, allowed_nodes, allowed_relationships, discovered_nodes):
     allowed_nodes_str = ', '.join(f'"{node}"' for node in allowed_nodes)
     allowed_relationships_str = ', '.join(f'"{rel}"' for rel in allowed_relationships)
+    discovered_nodes_str = ', '.join(f'"{node}"' for node in discovered_nodes)
+
     prompt = f"""
     You are an expert in extracting knowledge graph data from curriculum content. Please extract the key elements in the form of nodes and relationships, ensuring that all relationships refer to the correct node IDs.
 
@@ -113,12 +192,13 @@ def create_custom_prompt(document_content, allowed_nodes, allowed_relationships,
     1. Each node must have a unique `id`, `type`, and `properties` (including at least a `label`).
     2. Each relationship must have a `source` (the node's unique `id`), `target` (another node's unique `id`), and a `type` (relationship type).
     3. Ensure that all node IDs are referenced properly in relationships.
-    4. Only use the following allowed node types: {allowed_nodes_str}
-    5. Only use the following allowed relationship types: {allowed_relationships_str}
-    6. If there is content that does not fit the allowed nodes or relationships, you can skip it.
-    7. This is for teachers to use to plan their lessons for the semester so you don't need to include every detail, just the most important elements of the curriculum.
-    8. Science should be a Subject while Physics, Chemistry, and Biology should be SubjectDiscipline.
-    9. Output format should be JSON.
+    4. You will also be given a list of node IDs from previous responses to reference. If there are no nodes provided yet, it means you will start fresh.
+    5. Only use the following allowed node types: {allowed_nodes_str}
+    6. Only use the following allowed relationship types: {allowed_relationships_str}
+    7. If there is content that does not fit the allowed nodes or relationships, you can skip it.
+    8. This is for teachers to use to plan their lessons for the semester so you don't need to include every detail, just the most important elements of the curriculum.
+    9. Science should be a Subject while Physics, Chemistry, and Biology should be SubjectDiscipline.
+    10. Output format should be JSON.
 
     **Example Output:**
 
@@ -127,13 +207,91 @@ def create_custom_prompt(document_content, allowed_nodes, allowed_relationships,
             {{"id": "Subject_1", "type": "Subject", "properties": {{"label": "Science"}}}},
             {{"id": "SubjectDiscipline_1", "type": "SubjectDiscipline", "properties": {{"label": "Physics"}}}}
         ],
-        "relationships": [
+        "edges": [
             {{"source": "Subject_1", "target": "SubjectDiscipline_1", "type": "INCLUDES"}}
         ]
     }}
 
     **Content to Analyze:**
     {document_content}
+
+
+    **Node IDs from previous responses:**
+    {discovered_nodes_str}
+    """
+    return prompt
+
+def DocumentRelationshipWriter(document_content,allowed_nodes, allowed_relationships):
+    allowed_nodes_str = ', '.join(f'"{node}"' for node in allowed_nodes)
+    allowed_relationships_str = ', '.join(f'"{rel}"' for rel in allowed_relationships)
+    prompt = f"""
+    You are tasked with rewriting complex texts by identifying and clarifying the key nodes (important concepts, entities, or terms) and relationships between them. Your output must strictly follow the relationship sentence format, where each sentence explicitly states the connection between two key concepts.
+
+    Your Responsibilities:
+
+    Identify Key Concepts (Nodes):
+    Break down the document into its core elements by identifying the important terms, concepts, or entities. These should be central to understanding the document’s content and will serve as the "nodes" in the knowledge graph. Use the following allowed node labels: {allowed_nodes_str}.
+
+    Clarify Relationships (Edges):
+    For each important concept, identify how it relates to other key concepts within the text only using one of the {allowed_relationships_str}. Each sentence must describe the relationship between two key concepts using this format:
+    [Subject Node] [Relationship Verb] [Object Node].
+    
+    Ensure Consistency in Relationships:
+    Use the following allowed relationship types: {allowed_relationships_str}. If there are multiple possible relationships, select the one that best reflects the context and rewrite it in the relationship sentence format.
+
+    Simplify Without Oversimplifying:
+    Your job is to make the relationships easier to understand, but do not strip away any important nuances. However, every relationship should be expressed as a simple, clear sentence in the format described.
+
+    Reorganize if Necessary:
+    If the original text is disorganized, feel free to reorder sentences to ensure that each relationship is clearly presented. However, all content must be delivered in the relationship sentence format.
+
+    Key Constraints:
+
+    No descriptive or explanatory text should be included.
+    Every sentence must strictly follow the format:
+    [Subject Node] [Relationship Verb] [Object Node].
+    Example Output:
+
+    Original Text:
+    “Subject content Science – Physics
+    Key Stage 3 – Year 8 
+    Pupils should be taught about:
+    Energy
+    Calculation of fuel uses and costs in the domestic context
+     comparing energy values of different foods (from labels) (kJ)
+     comparing power ratings of appliances in watts (W, kW)
+     comparing amounts of energy transferred (J, kJ, kW hour)
+     domestic fuel bills, fuel use and costs
+     fuels and energy resources. 
+    Lessons in unit:
+    Energy and temperature
+    Energy and substance
+”
+    Rewritten:
+
+    "
+    Subject Science includes SubjectDiscipline Physics.
+    KeyStage Key Stage 3 includes YearGroup Year 8.
+    YearGroup Year 8 includes SubjectDicipline Physics.
+    SubjectDiscipline Physics includes Topic Energy.
+    Topic Energy includes Subtopic Calculation of fuel usage.
+    Subtopic Calculation of fuel usage involves Skill measurement
+    Subtopic Calculation of fuel usage requires Knowledge basic arithmetic.
+    Subtopic Calculation of fuel usage hasActivity Activity calculating energy values of foods.
+    Subtopic Calculation of fuel usage hasActivity Activity comparing power ratings of appliances.
+    Subtopic Calculation of fuel usage hasActivity Activity comparing energy transfer amounts.
+    Subtopic Calculation of fuel usage hasLearningOutcome LearningOutcome fuels and energy resources.
+    Topic Energy includes Lesson Energy and temperature.
+    Topic Energy includes Lesson Energy and substance.
+    "
+
+
+    End Goal:
+    Your output must consist entirely of relationship sentences in this format, clearly stating the connection between key nodes, to make it easy to extract relationships for a knowledge graph.
+
+    **Content to Re-write:**
+    {document_content}
+
     """
     return prompt
 
@@ -146,7 +304,7 @@ def extract_nodes(graph_document):
 def extract_relationships(graph_document):
     return [
         {"source": rel.get('source'), "target": rel.get('target'), "type": rel.get('type')}
-        for rel in graph_document.relationships
+        for rel in graph_document.edges
     ]
 
 def build_graph(nodes, edges, selected_node_types, selected_relationship_types):
@@ -211,37 +369,62 @@ def build_graph(nodes, edges, selected_node_types, selected_relationship_types):
     
     return net
 
+import json
+
+def add_data_to_knowledge_graph(json_data, source):
+    """
+    Insert a new record into the knowledge_graph table with JSON data, nodes, edges, and timestamps.
+
+    Args:
+        json_data (dict): The JSON data to be inserted, containing nodes and edges.
+        source (str): The source of the knowledge graph data (e.g., the uploaded file name).
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    query = """
+    INSERT INTO public.knowledge_graph (
+        id, created_at, updated_at, nodes, edges, json, source
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s);
+    """
+    
+    # Generate a unique ID and current timestamp for created_at and updated_at
+    record_id = str(uuid.uuid4())
+    now = datetime.now()
+
+    # Extract nodes and relationships from json_data
+    nodes = json_data.get('nodes', [])
+    edges = json_data.get('edges', [])
+    
+    # Convert the nodes and edges dict to JSON strings
+    nodes_str = json.dumps(nodes)
+    edges_str = json.dumps(edges)
+    
+    # Convert the whole dict to a JSON string for the json column
+    json_data_str = json.dumps(json_data)
+
+    # Call the execute_single_query function to insert the record
+    return execute_single_query(
+        query,
+        (record_id, now, now, nodes_str, edges_str, json_data_str, source)
+    )
+
+
+
+
+
 # Streamlit app setup
 st.title("Knowledge Extractor")
 
+
 # Upload file input
-uploaded_file = st.file_uploader("Upload Curriculum Content File", type=["txt"])
+st.header("Upload a Content File to Build a Knowledge Graph")
+uploaded_file = st.file_uploader('', type=["txt"])
 
 if uploaded_file is not None:
+    file_name = uploaded_file.name
     content = uploaded_file.read().decode("utf-8")
-
-    # Create a temporary file to store uploaded content for TextLoader
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp_file:
-        temp_file.write(content.encode("utf-8"))
-        temp_file_path = temp_file.name
-
-    # Use the temporary file path with TextLoader
-    loader = TextLoader(file_path=temp_file_path)
-    docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=200)
-    documents = text_splitter.split_documents(documents=docs)
-
-    allowed_nodes = [
-        'KeyStage', 'Subject', 'Topic', 'Subtopic', 'Concept', 
-        'Lesson', 'LearningObjective', 'LearningOutcome', 'Skill',   
-        'Prerequisite', 'Equipment', 'Activity', 'YearGroup'
-    ]
-
-    allowed_relationships = [
-        'INCLUDES', 'TEACHES', 'REQUIRES_PREREQUISITE', 
-        'USES_EQUIPMENT',  'PROGRESSES_TO',  'HAS_LESSON', 
-        'HAS_LEARNING_OBJECTIVE', 'HAS_LEARNING_OUTCOME', 
-    ]
 
     # Initialize session state variables if they don't exist
     if 'all_nodes' not in st.session_state:
@@ -255,6 +438,31 @@ if uploaded_file is not None:
     if 'processing_complete' not in st.session_state:
         st.session_state.processing_complete = False
 
+    graph_placeholder = st.empty()
+    # Create a temporary file to store uploaded content for TextLoader
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as temp_file:
+        temp_file.write(content.encode("utf-8"))
+        temp_file_path = temp_file.name
+
+    # Use the temporary file path with TextLoader
+    loader = TextLoader(file_path=temp_file_path)
+    docs = loader.load()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=500)
+    documents = text_splitter.split_documents(documents=docs)
+
+    allowed_nodes = [
+        'KeyStage', 'Subject','SubjectDiscipline', 'Topic', 'Subtopic',
+        'Lesson', 'LearningOutcome', 'Skill',   'Knowledge',
+          'Activity', 'YearGroup'
+    ]
+
+    allowed_relationships = [
+        'includes', 'involves',
+         'hasLearningOutcome',  'hasActivity', 
+    ]
+
+ 
+    
     
     # Button to start extraction
     if st.button("Start Extraction"):
@@ -262,7 +470,13 @@ if uploaded_file is not None:
         progress_bar = st.progress(0)
         total_documents = len(documents)
         st.write(f"**Total Documents to Process: {total_documents}**")
-        graph_placeholder = st.empty()
+        
+
+        relationship_chunk_prompt_place_holder = st.empty()
+        relationship_chunk_place_holder = st.empty()
+        prompt_place_holder = st.empty()
+        response_place_holder = st.empty()
+
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("Extracted Nodes")
@@ -279,9 +493,19 @@ if uploaded_file is not None:
 
         # Process each document
         for idx, document in enumerate(documents):
+
+
+
+            relationship_chunk_prompt= DocumentRelationshipWriter(document.page_content,allowed_nodes, allowed_relationships)
+
+            # relationship_chunk_prompt_place_holder.markdown(relationship_chunk_prompt)
+            relationship_chunk = generate_response(relationship_chunk_prompt, llm_model='gpt-4o-mini', llm_model_temp=0)
+            relationship_chunk_place_holder.markdown(relationship_chunk)
             # Access document content correctly using document.page_content
-            prompt = create_custom_prompt(document.page_content, allowed_nodes, allowed_relationships, strict_mode)
-            response = generate_response(prompt, llm_model='gpt-4o-mini', llm_model_temp=0.2)
+            prompt = create_custom_prompt(relationship_chunk, allowed_nodes, allowed_relationships, st.session_state.all_nodes)
+            # prompt_place_holder.markdown(prompt)
+            response = generate_response(prompt, llm_model='gpt-4o', llm_model_temp=0.2)
+            # response_place_holder.markdown(response)
 
             # Parse the response
             graph_document = parse_llm_response(response, allowed_nodes, allowed_relationships, strict_mode)
@@ -318,78 +542,10 @@ if uploaded_file is not None:
 
             net = build_graph(st.session_state.all_nodes, st.session_state.all_edges, selected_node_types, selected_relationship_types)
 
-            # Inject custom JavaScript
-            custom_js = """
-                <script type="text/javascript">
-                var nodes = network.body.nodes;
-                var edges = network.body.edges;
-
-                network.on('click', function(properties) {
-                    var clickedNode = properties.nodes[0];
-                    if (clickedNode !== undefined) {
-                        var node = network.body.nodes[clickedNode];
-
-                        // Unfix the clicked node to allow it to be moved freely
-                        node.setOptions({ fixed: { x: false, y: false }, physics: true });
-
-                        var connectedNodes = network.getConnectedNodes(clickedNode);
-
-                        // Highlight clicked node and its neighbors
-                        Object.values(nodes).forEach(function(node) {
-                            if (connectedNodes.includes(node.id) || node.id == clickedNode) {
-                                node.setOptions({ opacity: 1 });  // Full opacity for neighbors
-                            } else {
-                                node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
-                            }
-                        });
-
-                        Object.values(edges).forEach(function(edge) {
-                            if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
-                                edge.setOptions({ color: 'black' });
-                            } else {
-                                edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
-                            }
-                        });
-                    } else {
-                        // Reset if nothing clicked
-                        Object.values(nodes).forEach(function(node) {
-                            node.setOptions({ opacity: 1 });
-                        });
-                        Object.values(edges).forEach(function(edge) {
-                            edge.setOptions({ color: 'black' });
-                        });
-                    }
-                });
-
-                // Fix node position after drag
-                network.on('dragEnd', function(properties) {
-                    properties.nodes.forEach(function(nodeId) {
-                        var node = network.body.nodes[nodeId];
-                        node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
-                    });
-                });
-                </script>
-            """
-
             # Generate dynamic HTML for the graph
             html_output = net.generate_html()
             html_output = html_output.replace("</body>", custom_js + "</body>")
-            st.markdown("""
-            <style>
-            /* Move the specific graph iframe container closer to the sidebar */
-            .stApp iframe {
-                margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
-                padding-left: 0px !important;    /* Ensure no padding on the left */
-            }
-
-            /* Ensure the iframe takes full width of its container */
-            .stApp .stComponent {
-                width: 100% !important;
-                margin-left: -150px !important;  /* Adjust this value to move graph */
-                padding-left: 0px !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+            
             # Update the graph placeholder
             with graph_placeholder:
                 st.components.v1.html(html_output, height=1000, width=1200)
@@ -418,91 +574,32 @@ if uploaded_file is not None:
             default=list(st.session_state.relationship_types)
         )
 
-        # Build the graph based on filters
-        net = build_graph(st.session_state.all_nodes, st.session_state.all_edges, selected_node_types, selected_relationship_types)
+        if st.button("Save Knowledge Graph to Database"):
+            # Create a JSON representation of the nodes and edges
+            knowledge_graph_data = {
+                "nodes": st.session_state.all_nodes,
+                "edges": st.session_state.all_edges
+            }
 
-        # Inject custom JavaScript
-        custom_js = """
-            <script type="text/javascript">
-                var nodes = network.body.nodes;
-                var edges = network.body.edges;
+            # Convert to JSON string (if needed for storage purposes)
+            knowledge_graph_json = json.dumps(knowledge_graph_data, indent=2)
 
-                network.on('click', function(properties) {
-                    var clickedNode = properties.nodes[0];
-                    if (clickedNode !== undefined) {
-                        var node = network.body.nodes[clickedNode];
+            # Display the generated JSON (for visual confirmation)
+            st.subheader("Generated Knowledge Graph JSON")
+            st.code(knowledge_graph_json, language="json")
 
-                        // Unfix the clicked node to allow it to be moved freely
-                        node.setOptions({ fixed: { x: false, y: false }, physics: true });
+            # Save the data to the knowledge_graph table in the PostgreSQL database
+            success = add_data_to_knowledge_graph(knowledge_graph_data, file_name)
 
-                        var connectedNodes = network.getConnectedNodes(clickedNode);
+            if success:
+                st.success("Knowledge graph saved successfully!")
+            else:
+                st.error("Failed to save the knowledge graph.")
 
-                        // Highlight clicked node and its neighbors
-                        Object.values(nodes).forEach(function(node) {
-                            if (connectedNodes.includes(node.id) || node.id == clickedNode) {
-                                node.setOptions({ opacity: 1 });  // Full opacity for neighbors
-                            } else {
-                                node.setOptions({ opacity: 0.2 });  // Fade non-connected nodes
-                            }
-                        });
+else: 
+    
+    
+    st.write("Please upload a file to start the extraction process.")
 
-                        Object.values(edges).forEach(function(edge) {
-                            if (connectedNodes.includes(edge.to) || connectedNodes.includes(edge.from)) {
-                                edge.setOptions({ color: 'black' });
-                            } else {
-                                edge.setOptions({ color: 'rgba(200,200,200,0.5)' });  // Fade non-connected edges
-                            }
-                        });
-                    } else {
-                        // Reset if nothing clicked
-                        Object.values(nodes).forEach(function(node) {
-                            node.setOptions({ opacity: 1 });
-                        });
-                        Object.values(edges).forEach(function(edge) {
-                            edge.setOptions({ color: 'black' });
-                        });
-                    }
-                });
 
-                // Fix node position after drag
-                network.on('dragEnd', function(properties) {
-                    properties.nodes.forEach(function(nodeId) {
-                        var node = network.body.nodes[nodeId];
-                        node.setOptions({ fixed: { x: true, y: true }, physics: false });  // Fix position after dragging
-                    });
-                });
-                </script>
-        """
-
-        # Generate dynamic HTML for the graph
-        html_output = net.generate_html()
-        html_output = html_output.replace("</body>", custom_js + "</body>")
         
-        st.markdown("""
-            <style>
-            /* Move the specific graph iframe container closer to the sidebar */
-            .stApp iframe {
-                margin-left: -150px !important;  /* Move the iframe container closer to the sidebar */
-                padding-left: 0px !important;    /* Ensure no padding on the left */
-            }
-
-            /* Ensure the iframe takes full width of its container */
-            .stApp .stComponent {
-                width: 100% !important;
-                margin-left: -150px !important;  /* Adjust this value to move graph */
-                padding-left: 0px !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-
-        # Update the graph placeholder
-        with graph_placeholder:
-            st.components.v1.html(html_output, height=1000, width=1200)
-
-        # Update the data tables
-        with col1:
-            node_df = pd.DataFrame(st.session_state.all_nodes)
-            node_table_placeholder.dataframe(node_df)
-        with col2:
-            edge_df = pd.DataFrame(st.session_state.all_edges)
-            edge_table_placeholder.dataframe(edge_df)
