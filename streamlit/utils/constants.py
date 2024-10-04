@@ -197,9 +197,8 @@ class RecommendedPrompts:
         "Starter Quiz Doesn't Test Lesson Content": "1",
         "Starter Quiz Tests Prior Knowledge": "1",
         "Technical and Content Restrictions": "1",
-        "Testing Misconceptions": "1"
-
-        
+        "Testing Misconceptions": "1",
+        "Gender Bias": "4",
     }
 
     @classmethod
