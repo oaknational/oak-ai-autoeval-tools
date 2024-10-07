@@ -13,12 +13,12 @@ query = '''
 	FROM public.knowledge_graph;
     '''
 knowledge_graphs= execute_single_query(query, None,True)
-knowledge_graph_options = ['select'] + knowledge_graphs['id'].tolist()  # Extract the 'id' column as a list
+knowledge_graph_options = ['Select'] + knowledge_graphs['id'].tolist()  # Extract the 'id' column as a list
 # knowledge_graph_options
 selected_id=None
 selected_id = st.selectbox("select a Graph to Display", knowledge_graph_options)
-selected_id
-if selected_id is not None:
+
+if selected_id is not None and selected_id != 'Select':
     query_kg = ''' 
     select id, json from public.knowledge_graph where id = %s '''
 
