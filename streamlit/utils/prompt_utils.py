@@ -435,7 +435,7 @@ def view_prompt_details(prompt_title, prompt_objective, lesson_plan_params,
 def save_prompt(prompt_objective, lesson_plan_params, output_format,
         rating_criteria, general_criteria_note, rating_instruction,
         prompt_title, objective_title, objective_desc, created_by,
-        version="1"):
+        version="1", preferred=True):
     """
     Saves a prompt to the database.
 
@@ -465,8 +465,13 @@ def save_prompt(prompt_objective, lesson_plan_params, output_format,
         objective_desc,
         created_by,
         version,
+        preferred,
     )
     st.success(f"Prompt saved successfully! With ID: {returned_id}")
+
+    if preferred: 
+        return version
+    
 
 
 def create_new_prompt():
@@ -509,6 +514,22 @@ def create_new_prompt():
                     prompt_title, objective_title, objective_desc, created_by
                 )
 
+def update_previous_versions(prompt_title, saved_version):
+    """
+    Updates the preferred status of previous versions of a prompt.
+
+    Args:
+        prompt_title (str): The title of the prompt.
+        saved_version (str): The version of the prompt that was saved.
+    """
+    
+    query = """
+                    UPDATE public.m_prompts
+                    SET preferred = %s
+                    WHERE prompt_title = %s
+                    AND version != %s;
+                    """
+    execute_single_query(query, params=(False, prompt_title, saved_version))
 
 def modify_existing_prompt():
     """
@@ -624,15 +645,23 @@ def modify_existing_prompt():
             )
             st.session_state["draft_prompt"]["created_by"] = created_by
 
+            #add a checkbox to make the prompt preferred
+            make_preferred = st.checkbox("Make this prompt preferred", value=True)
+            saved_version = None
             if st.button(
                 "Save Prompt", help="Save the prompt to the database."
             ):
                 version = str(int(current_prompt["version"]) + 1)
-                save_prompt(
+                saved_version = save_prompt(
                     prompt_objective, lesson_plan_params, output_format,
                     rating_criteria, general_criteria_note, rating_instruction,
                     prompt_title, objective_title, objective_desc, created_by,
-                    version
+                    version, make_preferred
                 )
+
+                if saved_version is not None:
+                    update_previous_versions(prompt_title, saved_version)
+                    
+
         else:
             st.write("No prompts available for the selected title.")

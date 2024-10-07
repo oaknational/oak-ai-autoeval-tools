@@ -374,6 +374,7 @@ def get_prompts():
                 objective_title,
                 objective_desc, 
                 version,
+                preferred,
                 created_by,
                 created_at,
                 ROW_NUMBER() OVER (
@@ -398,6 +399,7 @@ def get_prompts():
             objective_title,
             objective_desc, 
             version,
+            preferred,
             created_by,
             created_at,
             row_num
@@ -687,7 +689,7 @@ def start_experiment(experiment_name, exp_description, sample_ids, created_by,
 def insert_prompt(prompt_objective, lesson_plan_params, output_format,
         rating_criteria, general_criteria_note, rating_instruction,
         prompt_title, experiment_description, objective_title, objective_desc,
-        prompt_created_by, version,):
+        prompt_created_by, version,preferred):
     """ Add or update prompt in the database.
 
     Args:
@@ -713,11 +715,11 @@ def insert_prompt(prompt_objective, lesson_plan_params, output_format,
             lesson_plan_params, output_format, rating_criteria, 
             general_criteria_note, rating_instruction, prompt_hash, 
             prompt_title, experiment_description, objective_title, 
-            objective_desc, created_by, version
+            objective_desc, created_by, version, preferred
         )
         VALUES (
             now(), now(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-            %s, %s, %s
+            %s, %s, %s, %s
         ) 
         RETURNING id;
     """
@@ -734,7 +736,8 @@ def insert_prompt(prompt_objective, lesson_plan_params, output_format,
         objective_title,
         objective_desc,
         prompt_created_by,
-        version
+        version,
+        preferred,
     )
     try:
         result = execute_single_query(insert_query, params)

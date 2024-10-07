@@ -30,7 +30,6 @@ from utils.db_scripts import (
 from utils.constants import (
     OptionConstants,
     ColumnLabels,
-    RecommendedPrompts,
     LessonPlanParameters,
 )
 
@@ -101,10 +100,8 @@ for selected_prompt_title in selected_prompt_titles:
         prompts_data["prompt_title"] == selected_prompt_title
     ].copy()
 
-    # Get the recommended best version number
-    recommended_version_number = RecommendedPrompts.get_best_version(
-        selected_prompt_title
-    )
+    # Filter for the preferred version
+    preferred_prompt = filtered_prompts.loc[filtered_prompts["preferred"] == True]
 
     # Create metadata for display
     filtered_prompts["prompt_version_info"] = (
@@ -117,23 +114,40 @@ for selected_prompt_title in selected_prompt_titles:
         + " | Created at: "
         + filtered_prompts["created_at"].astype(str)
     )
+    
+    # Apply the same for preferred_prompt
+    if not preferred_prompt.empty:
+        preferred_prompt["prompt_version_info"] = (
+            "v"
+            + preferred_prompt["version"].astype(str)
+            + " | "
+            + preferred_prompt["output_format"]
+            + " | Created by: "
+            + preferred_prompt["created_by"]
+            + " | Created at: "
+            + preferred_prompt["created_at"].astype(str)
+        )
 
     # Check if multiple versions are available
     if len(filtered_prompts) > 1:
-        # Display the recommended version
-        st.markdown(f"**Recommended Version for '{selected_prompt_title}':**")
-        recommended_prompt_info = filtered_prompts.loc[
-            filtered_prompts["version"] == recommended_version_number,
-            "prompt_version_info",
-        ].values[0]
-        st.write(recommended_prompt_info)
+        # Display the preferred version if available, otherwise use the latest version
+        if not preferred_prompt.empty:
+            st.markdown(f"**Preferred Version for '{selected_prompt_title}':**")
+            preferred_prompt_info = preferred_prompt["prompt_version_info"].values[0]
+        else:
+            st.markdown(f"**Latest Version for '{selected_prompt_title}':**")
+            preferred_prompt_info = filtered_prompts.iloc[0]["prompt_version_info"]
+        
+        st.write(preferred_prompt_info)
 
-        # Show full prompt details for the recommended version
-        current_prompt = filtered_prompts.loc[
-            filtered_prompts["version"] == recommended_version_number
-        ].iloc[0]
+        # Show full prompt details for the preferred or latest version
+        current_prompt = (
+            preferred_prompt.iloc[0]
+            if not preferred_prompt.empty
+            else filtered_prompts.iloc[0]
+        )
 
-        with st.expander("View Full Prompt for Recommended Version"):
+        with st.expander("View Full Prompt for Preferred/Latest Version"):
             st.markdown(f'# *{current_prompt["prompt_title"]}* #')
             st.markdown("### Objective:")
             st.markdown(f"{current_prompt['prompt_objective']}")
@@ -196,8 +210,8 @@ for selected_prompt_title in selected_prompt_titles:
                     st.markdown("### Evaluation Instruction:")
                     st.markdown(f"{version_prompt['rating_instruction']}")
         else:
-            # Default to the recommended version
-            selected_versions = [recommended_prompt_info]
+            # Default to the preferred or latest version
+            selected_versions = [preferred_prompt_info]
     else:
         # Automatically select the only available version
         selected_versions = filtered_prompts["prompt_version_info"].tolist()
