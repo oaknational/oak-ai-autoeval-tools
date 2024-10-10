@@ -10,38 +10,45 @@ Functionality:
 - Results are stored in the database and can be viewed in the
     Visualise Results page.
 """
+import io
+import json
 
 import pandas as pd
 import streamlit as st
-import json
-import io
 from openai import OpenAI
 
-# Initialize the OpenAI client
-client = OpenAI()
-
-
 from utils.common_utils import (
-    clear_all_caches
+    clear_all_caches,
+    log_message,
+    get_env_variable,
+    render_prompt
 )
 from utils.formatting import (
     generate_experiment_placeholders,
     lesson_plan_parts_at_end,
     display_at_end_score_criteria,
-    display_at_end_boolean_criteria
-    )
+    display_at_end_boolean_criteria,
+    decode_lesson_json,
+    process_prompt
+)
 from utils.db_scripts import (
     get_prompts,
     get_samples,
     get_teachers,
+    add_batch,
     add_experiment,
-    start_experiment)
-
+    get_lesson_plans_by_id,
+    get_prompt,
+    execute_single_query
+)
 from utils.constants import (
     OptionConstants,
     ColumnLabels,
-    LessonPlanParameters,
+    LessonPlanParameters
 )
+
+# Initialize the OpenAI client
+client = OpenAI()
 
 # Set page configuration
 st.set_page_config(page_title="Batch AutoEval", page_icon="🤖")
@@ -80,27 +87,46 @@ if "evaluations_list" not in st.session_state:
     st.session_state.evaluations_list = []
 
 
-def add_to_batch(
-    experiment_name,
-    exp_description,
-    sample_ids,
-    created_by,
-    prompt_ids,
-    limit,
-    llm_model,
-    tracked,
-    llm_model_temp,
-    top_p,
-):
+def new_batches_table():
+    """ Create a new table `m_batches` in the database to store batch information.
+
+    Returns:
+        None
     """
-    Add evaluation to batch.
+    query = """
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        CREATE TABLE IF NOT EXISTS m_batches (
+            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+            batch_ref TEXT,
+            batch_description TEXT,
+            experiment_id TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            created_by TEXT,
+            status TEXT);
     """
-    # Create the experiment in the database
-    experiment_id = add_experiment(
-        experiment_name, sample_ids, created_by, tracked, llm_model,
-        llm_model_temp, description=exp_description
-    )
-    
+    execute_single_query(query)
+
+new_batches_table()
+
+
+def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
+        llm_model_temp, top_p=1, timeout=15):
+    """ Run a test for each lesson plan associated with a sample and add 
+    results to the database.
+
+    Args:
+        sample_id (str): ID of the sample.
+        prompt_id (str): ID of the prompt.
+        experiment_id (int): ID of the experiment.
+        limit (int): Maximum number of records to fetch.
+        llm_model (str): Name of the LLM model.
+        llm_model_temp (float): Temperature parameter for LLM.
+        timeout (int, optional): Timeout duration for inference.
+
+    Returns:
+        None
+    """
     # Convert any int64 values to Python int
     def convert_to_serializable(obj):
         if isinstance(obj, list):
@@ -114,31 +140,101 @@ def add_to_batch(
         else:
             raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
-    # Create the evaluation json
-    eval_entry = convert_to_serializable({
-        "custom_id": experiment_id,
-        "method": "POST",
-        "url": "/v1/chat/completions",
-        "body": {
-            "llm_model": llm_model,
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "Hello world!"}
-            ],
-            "max_tokens": 1000
-        },
-        "experiment_name": experiment_name,
-        "exp_description": exp_description,
-        "sample_ids": sample_ids,
-        "teacher_id": teacher_id,
-        "prompt_ids": prompt_ids,
-        "limit": limit,
-        "tracked": tracked,
-        "llm_model_temp": llm_model_temp,
-        "top_p": top_p
-    })
-    # Append the dictionary to the evaluations list
-    st.session_state.evaluations_list.append(eval_entry)
+    prompt_details = get_prompt(prompt_id)
+    if not prompt_details:
+        return {
+            "response": {
+                "result": None,
+                "justification": "Prompt details not found for the given ID."
+            },
+            "status": "ABORTED",
+        }
+    lesson_plans = get_lesson_plans_by_id(sample_id, limit)
+    total_lessons = len(lesson_plans)
+    log_message("info", f"Total lessons: {total_lessons}")
+
+    for i, lesson in enumerate(lesson_plans):
+        lesson_plan_id = lesson[0]
+        lesson_id = lesson[1]
+        lesson_json_str = lesson[2]
+
+        content = decode_lesson_json(lesson_json_str, lesson_plan_id, lesson_id, i)
+        if content is None:
+            continue
+        
+        cleaned_prompt_details = process_prompt(prompt_details)
+        prompt = render_prompt(content, cleaned_prompt_details)
+        
+        if "Prompt details are missing" in prompt or "Missing data" in prompt:
+            st.write(f"Skipping lesson {i + 1} of {total_lessons} due to missing prompt data.")
+        else:
+            # Create the evaluation json
+            eval_entry = convert_to_serializable({
+                "custom_id": experiment_id,
+                "method": "POST",
+                "url": "/v1/chat/completions",
+                "body": {
+                    "model": llm_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": llm_model_temp,
+                    "timeout": timeout,
+                    "top_p": top_p,
+                    "frequency_penalty": 0,
+                    "presence_penalty": 0
+                }
+            })
+            # Append the dictionary to the evaluations list
+            st.session_state.evaluations_list.append(eval_entry)
+        
+
+def add_to_batch(
+    experiment_name,
+    exp_description,
+    sample_ids,
+    created_by,
+    prompt_ids,
+    limit,
+    llm_model,
+    tracked,
+    llm_model_temp,
+    top_p,
+):
+    """
+    Add evaluations to batch.
+    """
+    # Create the experiment in the database
+    experiment_id = add_experiment(
+        experiment_name, sample_ids, created_by, tracked, llm_model,
+        llm_model_temp, description=exp_description
+    )
+    if not experiment_id:
+        log_message("error", "Failed to create experiment")
+        return False
+    st.success(f"Experiment details saved with ID: {experiment_id}")
+    
+    total_samples = len(sample_ids)
+    total_prompts = len(prompt_ids)
+
+    try:
+        for sample_index, sample_id in enumerate(sample_ids):
+            st.write(
+                f"Working on sample {sample_index + 1} of {total_samples}"
+            )
+
+            for prompt_index, prompt_id in enumerate(prompt_ids):
+                st.write(
+                    f"Working on prompt {prompt_index + 1} of {total_prompts}"
+                )
+                create_eval(
+                    sample_id, prompt_id, experiment_id, limit, llm_model,
+                    llm_model_temp, top_p
+                )
+
+        return experiment_id
+        
+    except Exception as e:
+        log_message("error", f"An error occurred during the experiment: {e}")
+        return False
 
 
 # Fetching data
@@ -362,8 +458,7 @@ llm_model_options = [
     "gpt-4-0125-preview",
     "gpt-4-1106-preview",
     "gpt-4o",
-    "gpt-4o-mini",
-    "llama",
+    "gpt-4o-mini"
 ]
 
 st.session_state.llm_model = st.selectbox(
@@ -425,9 +520,12 @@ with st.form(key="experiment_form"):
         value=placeholder_description,
         placeholder=placeholder_description,
     )
+    batch_description = st.text_input(
+        "Enter a description for your batch submission to identify it later:"
+    )
 
-    if st.form_submit_button("Add evaluation to batch"):
-        add_to_batch(
+    if st.form_submit_button("Submit batch"):
+        experiment_id = add_to_batch(   
             experiment_name,
             exp_description,
             sample_ids,
@@ -437,38 +535,38 @@ with st.form(key="experiment_form"):
             st.session_state.llm_model,
             tracked,
             st.session_state.llm_model_temp,
-            st.session_state.top_p,
+            st.session_state.top_p
+        )
+        
+        
+        #st.write("Sample submission:", st.session_state.evaluations_list[0])
+        
+        # Convert the list of dictionaries to JSONL format in-memory
+        jsonl_data = io.BytesIO()
+        for entry in st.session_state.evaluations_list:
+            jsonl_data.write((json.dumps(entry) + "\n").encode('utf-8'))
+        jsonl_data.seek(0)  # Reset the pointer to the beginning of the BytesIO object
+
+        # Upload the in-memory JSONL data to OpenAI
+        batch_input_file = client.files.create(
+            file=jsonl_data,
+            purpose="batch"
         )
 
-if st.session_state.evaluations_list:
-    with st.form(key="batch_submission"):
-        st.subheader("Batch submission")
-        st.write("The following evaluations will be submitted for batch processing:")
-        for eval in st.session_state.evaluations_list:    
-            st.write(eval["custom_id"])
+        batch_input_file_id = batch_input_file.id
+        st.write("File uploaded with ID:", batch_input_file_id)
 
-        if st.form_submit_button("Submit batch for processing"):
-            # Convert the list of dictionaries to JSONL format in-memory
-            jsonl_data = io.BytesIO()
-            for entry in st.session_state.evaluations_list:
-                jsonl_data.write((json.dumps(entry) + "\n").encode('utf-8'))
-            jsonl_data.seek(0)  # Reset the pointer to the beginning of the BytesIO object
-
-            # Upload the in-memory JSONL data to OpenAI
-            batch_input_file = client.files.create(
-                file=jsonl_data,
-                purpose="batch"
-            )
-
-            batch_input_file_id = batch_input_file.id
-            st.write("File uploaded with ID:", batch_input_file_id)
-
-            client.batches.create(
-                input_file_id=batch_input_file_id,
-                endpoint="/v1/chat/completions",
-                completion_window="24h",
-                metadata={"description": "test eval job 1"}
-            )
-
-            #st.write(client.batches.retrieve("batch_abc123"))
-            st.write(client.batches.retrieve(batch_input_file_id))
+        # Create batch input file
+        batch_object = client.batches.create(
+            input_file_id=batch_input_file_id,
+            endpoint="/v1/chat/completions",
+            completion_window="24h",
+            metadata={"description": batch_description}
+        )
+        batch_id = batch_object.id
+        batch_num_id = add_batch(batch_id, experiment_id, batch_description, st.session_state.created_by)
+        st.success(
+            f"Batch created with {len(st.session_state.evaluations_list)} experiments.\n\n"
+            f"Batch submitted with ID: {batch_id}"
+        )
+        

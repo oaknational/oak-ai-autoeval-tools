@@ -467,6 +467,46 @@ def get_lesson_plans_by_id(sample_id, limit=None):
     return execute_single_query(query, params)
 
 
+def add_batch(batch_ref, experiment_id, batch_description, created_by, status="PENDING"):
+    """ Add a new batch to the database.
+
+    Args:
+        xxx
+        status (str, optional): Status of the experiment.
+
+    Returns:
+        int: ID of the newly added batch.
+    """
+    insert_query = """
+        INSERT INTO m_batches (
+            created_at, updated_at, batch_ref, batch_description, experiment_id, created_by, status) 
+        VALUES (
+            now(), now(), %s, %s, %s, %s, %s)
+        RETURNING id;
+    """
+    params = (batch_ref, batch_description, experiment_id, created_by, status)
+
+    try:
+        result = execute_single_query(insert_query, params)
+        if result:
+            return result[0][0]
+        else:
+            return None
+    except Exception as e:
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
+        return None
+
+
+def get_batches():
+    """ Retrieve batches data from the database.
+
+    Returns:
+        pd.DataFrame: DataFrame with batches data.
+    """
+    query = "SELECT batch_ref, batch_description, created_by, created_at FROM m_batches;"
+    return execute_single_query(query, return_dataframe=True)
+
+
 def add_experiment(experiment_name, sample_ids, created_by, tracked,
         llm_model="gpt-4", llm_model_temp=0.5, description="None",
         status="PENDING"):
