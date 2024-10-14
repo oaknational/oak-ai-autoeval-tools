@@ -11,11 +11,13 @@ Functionality:
     Visualise Results page.
 """
 import io
+import uuid
 import json
 
 import pandas as pd
 import streamlit as st
 from openai import OpenAI
+from openai import OpenAIError
 
 from utils.common_utils import (
     clear_all_caches,
@@ -111,7 +113,7 @@ new_batches_table()
 
 
 def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
-        llm_model_temp, top_p=1, timeout=15):
+        llm_model_temp, top_p=1):
     """ Run a test for each lesson plan associated with a sample and add 
     results to the database.
 
@@ -122,7 +124,6 @@ def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
         limit (int): Maximum number of records to fetch.
         llm_model (str): Name of the LLM model.
         llm_model_temp (float): Temperature parameter for LLM.
-        timeout (int, optional): Timeout duration for inference.
 
     Returns:
         None
@@ -168,16 +169,19 @@ def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
         if "Prompt details are missing" in prompt or "Missing data" in prompt:
             st.write(f"Skipping lesson {i + 1} of {total_lessons} due to missing prompt data.")
         else:
+            # Create a unique custom_id for each evaluation entry
+            unique_custom_id = f"{i}-{experiment_id}"
+            st.write(unique_custom_id)
+            
             # Create the evaluation json
             eval_entry = convert_to_serializable({
-                "custom_id": experiment_id,
+                "custom_id": unique_custom_id,
                 "method": "POST",
                 "url": "/v1/chat/completions",
                 "body": {
                     "model": llm_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": llm_model_temp,
-                    "timeout": timeout,
                     "top_p": top_p,
                     "frequency_penalty": 0,
                     "presence_penalty": 0
@@ -415,33 +419,36 @@ st.dataframe(prompt_table, hide_index=True, use_container_width=True)
 
 # Dataset selection section
 st.subheader("Dataset selection")
-sample_options = st.multiselect(
+dataset_selected = st.multiselect(
     "Select datasets to run evaluation on:",
     samples_options,
     help="(Number of Lesson Plans in the Sample)",
 )
-samples_data = samples_data[(samples_data["samples_options"].isin(sample_options))]
+# Filter samples_data based on the selected datasets
+if dataset_selected:
+    filtered_samples_data = samples_data[samples_data["samples_options"].isin(dataset_selected)]
 
-# Get sample IDs
-sample_ids = [
-    samples_data[samples_data["samples_options"] == sample]["id"].iloc[0]
-    for sample in sample_options
-]
+    # Get sample IDs
+    sample_ids = [
+        filtered_samples_data[filtered_samples_data["samples_options"] == sample]["id"].iloc[0]
+        for sample in dataset_selected
+    ]
 
-# Create samples table
-samples_table = pd.DataFrame(
-    {
-        "Sample": sample_options,
-        ColumnLabels.NUM_LESSONS: [
-            samples_data[samples_data["samples_options"] == sample][
-                "number_of_lessons"
-            ].iloc[0]
-            for sample in sample_options
-        ],
-    }
-)
+    # Create samples table for the selected datasets
+    samples_table = pd.DataFrame(
+        {
+            "Sample": dataset_selected,
+            ColumnLabels.NUM_LESSONS: [
+                filtered_samples_data[filtered_samples_data["samples_options"] == sample]["number_of_lessons"].iloc[0]
+                for sample in dataset_selected
+            ],
+        }
+    )
 
-st.dataframe(samples_table, hide_index=True, use_container_width=True)
+    # Display the samples table
+    st.dataframe(samples_table, hide_index=True, use_container_width=True)
+else:
+    st.warning("Please select at least one dataset to proceed.")
 
 # Set parameters for batch processing
 st.session_state.limit = (
@@ -449,14 +456,8 @@ st.session_state.limit = (
 )
 
 llm_model_options = [
-    'o1-preview-2024-09-12','o1-mini-2024-09-12',
-    "gpt-4o-mini-2024-07-18",
     "gpt-4o-2024-05-13",
-    "gpt-4o-2024-08-06",
-    "chatgpt-4o-latest",
     "gpt-4-turbo-2024-04-09",
-    "gpt-4-0125-preview",
-    "gpt-4-1106-preview",
     "gpt-4o",
     "gpt-4o-mini"
 ]
@@ -537,10 +538,17 @@ with st.form(key="experiment_form"):
             st.session_state.llm_model_temp,
             st.session_state.top_p
         )
-        
-        
-        #st.write("Sample submission:", st.session_state.evaluations_list[0])
-        
+
+        # Verify data before submission
+        if st.session_state.evaluations_list:
+            st.write("Sample evaluation entry:")
+            st.json(st.session_state.evaluations_list[0])
+            st.json(st.session_state.evaluations_list[1])
+            st.write(f"Total evaluations: {len(st.session_state.evaluations_list)}")
+        else:
+            st.error("No evaluations to submit. Please check your selections.")
+            st.stop()
+
         # Convert the list of dictionaries to JSONL format in-memory
         jsonl_data = io.BytesIO()
         for entry in st.session_state.evaluations_list:
@@ -556,13 +564,37 @@ with st.form(key="experiment_form"):
         batch_input_file_id = batch_input_file.id
         st.write("File uploaded with ID:", batch_input_file_id)
 
-        # Create batch input file
-        batch_object = client.batches.create(
-            input_file_id=batch_input_file_id,
-            endpoint="/v1/chat/completions",
-            completion_window="24h",
-            metadata={"description": batch_description}
-        )
+        # Create batch and capture the response
+        try:
+            batch_object = client.batches.create(
+                input_file_id=batch_input_file_id,
+                endpoint="/v1/chat/completions",
+                completion_window="24h",
+                metadata={"description": batch_description}
+            )
+
+            # Print the batch object for inspection
+            st.write("Batch created successfully:")
+            st.write(batch_object)
+
+            # Access attributes directly
+            batch_id = batch_object.id
+            initial_status = batch_object.status
+
+            st.write(f"Batch ID: {batch_id}")
+            st.write(f"Initial Status: {initial_status}")
+
+            # Retrieve and print full batch details using the ID
+            batch_details = client.batches.retrieve(batch_id)
+            st.write("Batch details:", batch_details)
+
+        except OpenAIError as e:
+            # Print detailed error message for troubleshooting
+            st.write("Failed to create batch with error:", e.http_status, e.user_message)
+            st.write("Error details:", e.json_body if hasattr(e, 'json_body') else "No details available")
+        
+        
+        
         batch_id = batch_object.id
         batch_num_id = add_batch(batch_id, experiment_id, batch_description, st.session_state.created_by)
         st.success(

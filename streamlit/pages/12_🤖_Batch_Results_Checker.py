@@ -13,6 +13,8 @@ import json
 import pandas as pd
 import streamlit as st
 from openai import OpenAI
+from openai import BadRequestError, AuthenticationError, APIError
+
 
 from utils.common_utils import (
     clear_all_caches,
@@ -82,18 +84,76 @@ batches_options.insert(0, " ")
 
 # Batch selection section
 st.subheader("Batch selection")
-batches_options = st.selectbox(
+selected_batch = st.selectbox(
     "Select pending batch to check status:",
     batches_options
 )
 
-#batches_data = batches_data[(batches_data["batches_options"].isin(batches_options))]
-#st.write(batches_data)
-
-
-#batch_id = "batch_6707df91cd608190ba0a9a7ff3283dd5"
-
-# Check status of batch job
-#st.write(client.batches.retrieve(batch_id))
+# Function to check the status of the batch job
+def check_batch_status(batch_ref):
+    try:
+        # Retrieve batch details using the OpenAI client library
+        #batch = client.beta.threads.retrieve(batch_ref)
+        batch_details = client.batches.retrieve(batch_ref)
+        st.write("Batch details:\n\n", batch_details)
         
-        
+        # Extract the status from the batch details
+        status = batch_details.status
+        output_file_id = batch_details.output_file_id
+        error_file_id = batch_details.error_file_id
+        return status, output_file_id, error_file_id
+    
+    except BadRequestError as e:
+        st.error(f"Invalid batch reference: {str(e)}")
+    except AuthenticationError as e:
+        st.error(f"Authentication failed. Check your API key: {str(e)}")
+    except APIError as e:
+        st.error(f"API error occurred: {str(e)}")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+    return None
+
+# Assuming batch_ref has been selected as per previous example
+if selected_batch != " ":
+    batch_ref = selected_batch.split(" -- ")[0]  # Extract the batch_ref part
+    status, output_file_id, error_file_id = check_batch_status(batch_ref)
+    
+    if status:
+        st.write(f"The status of batch job {batch_ref} is: {status}")
+        # Access batch results
+        if status == 'completed':
+            try:
+                file_response = client.files.content(output_file_id)
+                st.write(file_response.text)
+            except:
+                st.error(f"An unexpected error occurred: No output file.")
+                file_response = client.files.content(error_file_id)
+                st.write(file_response.text)
+    else:
+        st.write("Could not retrieve the batch status.")
+else:
+    st.write("No batch selected yet.")
+    
+
+
+'''
+# Retrieve all batches
+batches = client.batches.list()
+st.write(len(batches.data))
+
+# Loop through all batches and cancel each one
+for batch in batches.data:
+    batch_id = batch.id
+    batch_status = batch.status
+    
+    # Only cancel batches that are in progress or pending
+    if batch_status in ["in_progress", "pending"]:
+        try:
+            client.batches.cancel(batch_id)
+            st.write(f"Cancelled batch: {batch_id}")
+        except APIError as e:
+            st.write(f"Failed to cancel batch {batch_id}: {e}")
+
+batches = client.batches.list()
+st.write(len(batches.data))
+'''
