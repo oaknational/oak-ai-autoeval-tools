@@ -176,6 +176,7 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
         output = run_inference(
             content, prompt_id, llm_model, llm_model_temp,top_p, timeout=timeout
         )
+        
         response = output.get("response")
 
         if "status" not in output:
