@@ -11,7 +11,6 @@ Functionality:
     Visualise Results page.
 """
 import io
-import uuid
 import json
 
 import pandas as pd
@@ -22,7 +21,6 @@ from openai import OpenAIError
 from utils.common_utils import (
     clear_all_caches,
     log_message,
-    get_env_variable,
     render_prompt
 )
 from utils.formatting import (
