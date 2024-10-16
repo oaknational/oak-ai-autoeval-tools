@@ -9,9 +9,6 @@ import streamlit as st
 from openai import OpenAI
 from openai import BadRequestError, AuthenticationError, APIError
 
-from utils.formatting import (
-    fix_json_format
-)
 from utils.common_utils import (
     clear_all_caches
 )
@@ -45,6 +42,12 @@ def check_batch_status(batch_ref):
 
 
 def add_batch_results(output):
+    def clean_json_str(json_str):
+        json_str = json_str.replace('```json', '').replace('```', '').strip()
+        json_str = json_str.replace('\\\\\\"', '"')
+        json_str = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_str)
+        return json_str
+    
     st.warning("Please do not close the page until the results have been retrieved.")
     # Split the JSON string into separate JSON objects
     # using a regex to detect the start of each object
@@ -53,15 +56,14 @@ def add_batch_results(output):
     for json_str in json_strings:
         try:
             # Convert the main JSON object
-            cleaned_str = fix_json_format(json_str)
+            cleaned_str = clean_json_str(json_str)
             data = json.loads(cleaned_str)
             content = data["response"]["body"]["choices"][0]["message"]["content"]
-            cleaned_content = fix_json_format(content)
+            cleaned_content = clean_json_str(content)
             inner_data = json.loads(cleaned_content)
 
             # Access specific fields as needed
             experiment_id, prompt_id, lesson_plan_id = data["custom_id"].split('+')
-            batch_ref = data["id"]
             justification = inner_data.get("justification", "")
             result = inner_data.get("result", "")
             status = "SUCCESS"
@@ -75,15 +77,18 @@ def add_batch_results(output):
                 justification,
                 status
             )
-            # Update status of experiment and batch
-            status = "COMPLETE"
-            update_status(experiment_id, status)
-            update_batch_status(batch_ref, status)
 
         except json.JSONDecodeError as e:
             st.write("Failed to parse JSON:", e)
+            return
         except KeyError as e:
             st.write("Key missing in JSON:", e)
+            return
+
+    # Update status of experiment and batch
+    status = "COMPLETE"
+    update_status(experiment_id, status)
+    update_batch_status(experiment_id, status)
 
 
 # Initialize the OpenAI client
