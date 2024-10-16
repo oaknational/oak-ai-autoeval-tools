@@ -38,76 +38,13 @@ from utils.db_scripts import (
     add_batch,
     add_experiment,
     get_lesson_plans_by_id,
-    get_prompt,
-    execute_single_query
+    get_prompt
 )
 from utils.constants import (
     OptionConstants,
     ColumnLabels,
     LessonPlanParameters
 )
-
-# Initialize the OpenAI client
-client = OpenAI()
-
-# Set page configuration
-st.set_page_config(page_title="Batch AutoEval", page_icon="🤖")
-
-# Add a button to the sidebar to clear cache
-if st.sidebar.button("Clear Cache"):
-    clear_all_caches()
-    st.sidebar.success("Cache cleared!")
-
-# Page and sidebar headers
-st.markdown("# 🤖 Batch AutoEval")
-st.write(
-    """
-    This page allows you to run evaluations on multiple datasets using
-    multiple prompts in batch mode. Batch submissions have a clear 24-hour 
-    turnaround time, and are ideal for processing jobs that don't require 
-    immediate responses.
-    
-    Results will be stored in the database and can be 
-    viewed in the Visualise Results page.
-    """
-)
-
-# Initialize session state
-if "llm_model" not in st.session_state:
-    st.session_state.llm_model = "gpt-4o"
-if "llm_model_temp" not in st.session_state:
-    st.session_state.llm_model_temp = 0.5
-if "top_p" not in st.session_state:
-    st.session_state.top_p = 1.0
-if "limit" not in st.session_state:
-    st.session_state.limit = 5
-if "created_by" not in st.session_state:
-    st.session_state.created_by = OptionConstants.SELECT_TEACHER
-if "evaluations_list" not in st.session_state:
-    st.session_state.evaluations_list = []
-
-
-def new_batches_table():
-    """ Create a new table `m_batches` in the database to store batch information.
-
-    Returns:
-        None
-    """
-    query = """
-        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-        CREATE TABLE IF NOT EXISTS m_batches (
-            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-            batch_ref TEXT,
-            batch_description TEXT,
-            experiment_id TEXT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-            created_by TEXT,
-            status TEXT);
-    """
-    execute_single_query(query)
-
-new_batches_table()
 
 
 def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
@@ -150,7 +87,6 @@ def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
         }
     lesson_plans = get_lesson_plans_by_id(sample_id, limit)
     total_lessons = len(lesson_plans)
-    log_message("info", f"Total lessons: {total_lessons}")
 
     for i, lesson in enumerate(lesson_plans):
         lesson_plan_id = lesson[0]
@@ -167,11 +103,8 @@ def create_eval(sample_id, prompt_id, experiment_id, limit, llm_model,
         if "Prompt details are missing" in prompt or "Missing data" in prompt:
             st.write(f"Skipping lesson {i + 1} of {total_lessons} due to missing prompt data.")
         else:
-            # Create a unique custom_id for each evaluation entry
-            unique_custom_id = f"{i}-{experiment_id}"
-            st.write(unique_custom_id)
-            
             # Create the evaluation json
+            unique_custom_id = f"{experiment_id}+{prompt_id}+{lesson_plan_id}"
             eval_entry = convert_to_serializable({
                 "custom_id": unique_custom_id,
                 "method": "POST",
@@ -213,31 +146,59 @@ def add_to_batch(
         log_message("error", "Failed to create experiment")
         return False
     st.success(f"Experiment details saved with ID: {experiment_id}")
-    
-    total_samples = len(sample_ids)
-    total_prompts = len(prompt_ids)
 
     try:
-        for sample_index, sample_id in enumerate(sample_ids):
-            st.write(
-                f"Working on sample {sample_index + 1} of {total_samples}"
-            )
-
-            for prompt_index, prompt_id in enumerate(prompt_ids):
-                st.write(
-                    f"Working on prompt {prompt_index + 1} of {total_prompts}"
-                )
+        for sample_id in sample_ids:
+            for prompt_id in prompt_ids:
                 create_eval(
                     sample_id, prompt_id, experiment_id, limit, llm_model,
                     llm_model_temp, top_p
                 )
-
         return experiment_id
         
     except Exception as e:
         log_message("error", f"An error occurred during the experiment: {e}")
         return False
 
+
+# Initialize the OpenAI client
+client = OpenAI()
+
+# Set page configuration
+st.set_page_config(page_title="Batch AutoEval", page_icon="🤖")
+
+# Add a button to the sidebar to clear cache
+if st.sidebar.button("Clear Cache"):
+    clear_all_caches()
+    st.sidebar.success("Cache cleared!")
+
+# Page and sidebar headers
+st.markdown("# 🤖 Batch AutoEval")
+st.write(
+    """
+    This page allows you to run evaluations on multiple datasets using
+    multiple prompts in batch mode. Batch submissions have a clear 24-hour 
+    turnaround time, and are ideal for processing jobs that don't require 
+    immediate responses.
+    
+    Results will be stored in the database and can be 
+    viewed in the Visualise Results page.
+    """
+)
+
+# Initialize session state
+if "llm_model" not in st.session_state:
+    st.session_state.llm_model = "gpt-4o"
+if "llm_model_temp" not in st.session_state:
+    st.session_state.llm_model_temp = 0.5
+if "top_p" not in st.session_state:
+    st.session_state.top_p = 1.0
+if "limit" not in st.session_state:
+    st.session_state.limit = 5
+if "created_by" not in st.session_state:
+    st.session_state.created_by = OptionConstants.SELECT_TEACHER
+if "evaluations_list" not in st.session_state:
+    st.session_state.evaluations_list = []
 
 # Fetching data
 prompts_data = get_prompts()
@@ -426,27 +387,25 @@ dataset_selected = st.multiselect(
 if dataset_selected:
     filtered_samples_data = samples_data[samples_data["samples_options"].isin(dataset_selected)]
 
-    # Get sample IDs
-    sample_ids = [
-        filtered_samples_data[filtered_samples_data["samples_options"] == sample]["id"].iloc[0]
-        for sample in dataset_selected
-    ]
+# Get sample IDs
+sample_ids = [
+    filtered_samples_data[filtered_samples_data["samples_options"] == sample]["id"].iloc[0]
+    for sample in dataset_selected
+]
 
-    # Create samples table for the selected datasets
-    samples_table = pd.DataFrame(
-        {
-            "Sample": dataset_selected,
-            ColumnLabels.NUM_LESSONS: [
-                filtered_samples_data[filtered_samples_data["samples_options"] == sample]["number_of_lessons"].iloc[0]
-                for sample in dataset_selected
-            ],
-        }
-    )
+# Create samples table for the selected datasets
+samples_table = pd.DataFrame(
+    {
+        "Sample": dataset_selected,
+        ColumnLabels.NUM_LESSONS: [
+            filtered_samples_data[filtered_samples_data["samples_options"] == sample]["number_of_lessons"].iloc[0]
+            for sample in dataset_selected
+        ],
+    }
+)
 
-    # Display the samples table
-    st.dataframe(samples_table, hide_index=True, use_container_width=True)
-else:
-    st.warning("Please select at least one dataset to proceed.")
+# Display the samples table
+st.dataframe(samples_table, hide_index=True, use_container_width=True)
 
 # Set parameters for batch processing
 st.session_state.limit = (
@@ -497,6 +456,8 @@ if st.session_state.created_by != OptionConstants.SELECT_TEACHER:
         "id"
     ].iloc[0]
 
+tracked = st.selectbox("Should experiment be tracked?", options=["True", "False"])
+
 # Generate placeholders dynamically
 placeholder_name, placeholder_description = generate_experiment_placeholders(
     st.session_state.llm_model,
@@ -506,8 +467,6 @@ placeholder_name, placeholder_description = generate_experiment_placeholders(
     len(sample_ids),
     st.session_state.created_by,
 )
-
-tracked = True
 
 with st.form(key="experiment_form"):
     st.subheader("Experiment information")
@@ -524,6 +483,7 @@ with st.form(key="experiment_form"):
     )
 
     if st.form_submit_button("Submit batch"):
+        st.warning("Please do not close the page until batch submission is confirmed.")
         experiment_id = add_to_batch(   
             experiment_name,
             exp_description,
@@ -537,16 +497,6 @@ with st.form(key="experiment_form"):
             st.session_state.top_p
         )
 
-        # Verify data before submission
-        if st.session_state.evaluations_list:
-            st.write("Sample evaluation entry:")
-            st.json(st.session_state.evaluations_list[0])
-            st.json(st.session_state.evaluations_list[1])
-            st.write(f"Total evaluations: {len(st.session_state.evaluations_list)}")
-        else:
-            st.error("No evaluations to submit. Please check your selections.")
-            st.stop()
-
         # Convert the list of dictionaries to JSONL format in-memory
         jsonl_data = io.BytesIO()
         for entry in st.session_state.evaluations_list:
@@ -559,44 +509,22 @@ with st.form(key="experiment_form"):
             purpose="batch"
         )
 
-        batch_input_file_id = batch_input_file.id
-        st.write("File uploaded with ID:", batch_input_file_id)
-
         # Create batch and capture the response
         try:
             batch_object = client.batches.create(
-                input_file_id=batch_input_file_id,
+                input_file_id=batch_input_file.id,
                 endpoint="/v1/chat/completions",
                 completion_window="24h",
                 metadata={"description": batch_description}
             )
-
-            # Print the batch object for inspection
-            st.write("Batch created successfully:")
-            st.write(batch_object)
-
-            # Access attributes directly
-            batch_id = batch_object.id
-            initial_status = batch_object.status
-
-            st.write(f"Batch ID: {batch_id}")
-            st.write(f"Initial Status: {initial_status}")
-
-            # Retrieve and print full batch details using the ID
-            batch_details = client.batches.retrieve(batch_id)
-            st.write("Batch details:", batch_details)
-
         except OpenAIError as e:
             # Print detailed error message for troubleshooting
             st.write("Failed to create batch with error:", e.http_status, e.user_message)
             st.write("Error details:", e.json_body if hasattr(e, 'json_body') else "No details available")
-        
-        
-        
+
         batch_id = batch_object.id
         batch_num_id = add_batch(batch_id, experiment_id, batch_description, st.session_state.created_by)
         st.success(
             f"Batch created with {len(st.session_state.evaluations_list)} experiments.\n\n"
             f"Batch submitted with ID: {batch_id}"
         )
-        

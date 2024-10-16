@@ -16,6 +16,7 @@ Create new tables in the database:
 - new_lesson_plans_table
 - new_obj_prompt_table (link objectives with prompts)
 - new_samples_lessons_table (link samples with lesson plans)
+- new_baches_table
 
 Create new rows in tables:
 - add_teacher
@@ -186,6 +187,27 @@ def new_samples_lessons_table():
             sample_id UUID,
             lesson_plan_id TEXT,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT now());
+    """
+    execute_single_query(query)
+
+
+def new_batches_table():
+    """ Create a new table m_batches in the database to store batch information.
+
+    Returns:
+        None
+    """
+    query = """
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        CREATE TABLE IF NOT EXISTS m_batches (
+            id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+            batch_ref TEXT,
+            batch_description TEXT,
+            experiment_id TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            created_by TEXT,
+            status TEXT);
     """
     execute_single_query(query)
 
@@ -395,6 +417,7 @@ def initialize_database(csv_file_path):
     new_obj_prompt_table()
     new_samples_table()
     new_samples_lessons_table()
+    new_batches_table()
     new_teachers_table()
     new_lesson_plans_table()
     insert_lesson_plan()

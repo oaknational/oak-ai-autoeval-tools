@@ -35,6 +35,8 @@
     Adds results of an experiment to the database.
 - update_status: 
     Updates the status of an experiment in the database.
+- update_batch_status: 
+    Updates the status of a batch in the database.
 - start_experiment: 
     Starts a new experiment, runs tests for each sample and prompt, and
     updates status.
@@ -662,7 +664,34 @@ def update_status(experiment_id, status):
     except Exception as e:
         log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return False
-    
+
+
+def update_batch_status(batch_ref, status):
+    """ Update the status of a batch in the database using batch_ref as the key.
+
+    Args:
+        batch_ref (str): Reference identifier for the batch.
+        status (str): New status to update.
+        
+    Returns:
+        bool: True if the status was updated successfully, False otherwise.
+    """
+    query = """
+        UPDATE m_batches SET status = %s
+        WHERE batch_ref = %s;
+    """
+    params = (status, batch_ref)
+
+    try:
+        success = execute_single_query(query, params)
+        if not success:
+            log_message("error", "Failed to update status")
+            return False
+        return True
+    except Exception as e:
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
+        return False
+
 
 def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5, top_p=1):
