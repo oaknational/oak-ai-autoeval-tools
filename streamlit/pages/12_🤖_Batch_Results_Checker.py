@@ -9,6 +9,9 @@ import streamlit as st
 from openai import OpenAI
 from openai import BadRequestError, AuthenticationError, APIError
 
+from utils.formatting import (
+    fix_json_format
+)
 from utils.common_utils import (
     clear_all_caches
 )
@@ -50,12 +53,10 @@ def add_batch_results(output):
     for json_str in json_strings:
         try:
             # Convert the main JSON object
-            st.write('HERE')
-            st.write(json_str)
-            data = json.loads(json_str)
+            cleaned_str = fix_json_format(json_str)
+            data = json.loads(cleaned_str)
             content = data["response"]["body"]["choices"][0]["message"]["content"]
-            cleaned_content = content.replace('json\n', '', 1).strip()
-            cleaned_content = cleaned_content.strip('`').strip()
+            cleaned_content = fix_json_format(content)
             inner_data = json.loads(cleaned_content)
 
             # Access specific fields as needed
