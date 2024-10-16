@@ -27,6 +27,10 @@
     Retrieves teachers data from the database.
 - get_lesson_plans_by_id: 
     Retrieves lesson plans based on a sample ID.
+- add_batch:
+    Adds details of a new batch submission to the database
+- get_batches:
+    Retrieves pending batches.
 - add_experiment: 
     Adds a new experiment to the database.
 - get_prompt: 
@@ -505,7 +509,7 @@ def get_batches():
     Returns:
         pd.DataFrame: DataFrame with batches data.
     """
-    query = "SELECT batch_ref, batch_description, created_by, created_at FROM m_batches;"
+    query = "SELECT batch_ref, batch_description, created_by, created_at FROM m_batches WHERE status = 'PENDING';"
     return execute_single_query(query, return_dataframe=True)
 
 
