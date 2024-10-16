@@ -45,7 +45,7 @@ def add_batch_results(output):
     st.warning("Please do not close the page until the results have been retrieved.")
     # Split the JSON string into separate JSON objects
     # using a regex to detect the start of each object
-    json_strings = re.findall(r'(\{.*?\})(?=\s*\{|\s*$)', output)
+    json_strings = re.findall(r'(\{.*?\})(?=(\s*\{)|(\s*$))', output)
     
     for json_str in json_strings:
         try:
