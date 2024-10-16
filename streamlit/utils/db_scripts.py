@@ -670,11 +670,11 @@ def update_status(experiment_id, status):
         return False
 
 
-def update_batch_status(batch_ref, status):
-    """ Update the status of a batch in the database using batch_ref as the key.
+def update_batch_status(experiment_id, status):
+    """ Update the status of a batch in the database using experiment_id as the key.
 
     Args:
-        batch_ref (str): Reference identifier for the batch.
+        experiment_id (str): Reference identifier for the batch.
         status (str): New status to update.
         
     Returns:
@@ -682,9 +682,9 @@ def update_batch_status(batch_ref, status):
     """
     query = """
         UPDATE m_batches SET status = %s
-        WHERE batch_ref = %s;
+        WHERE experiment_id = %s;
     """
-    params = (status, batch_ref)
+    params = (status, experiment_id)
 
     try:
         success = execute_single_query(query, params)
