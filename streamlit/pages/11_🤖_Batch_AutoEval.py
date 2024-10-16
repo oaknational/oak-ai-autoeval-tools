@@ -408,8 +408,17 @@ samples_table = pd.DataFrame(
 st.dataframe(samples_table, hide_index=True, use_container_width=True)
 
 # Set parameters for batch processing
-st.session_state.limit = (
+max_lessons = (
     samples_table[ColumnLabels.NUM_LESSONS].max() if not samples_table.empty else 5
+)
+
+# Set limit on lesson plans
+st.session_state.limit = st.number_input(
+    "Set a limit on the number of lesson plans per sample to evaluate:",
+    min_value=1,
+    max_value=9000,
+    value=max_lessons,
+    help="Minimum value is 1.",
 )
 
 llm_model_options = [

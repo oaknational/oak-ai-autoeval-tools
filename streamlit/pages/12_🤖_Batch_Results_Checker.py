@@ -45,11 +45,13 @@ def add_batch_results(output):
     st.warning("Please do not close the page until the results have been retrieved.")
     # Split the JSON string into separate JSON objects
     # using a regex to detect the start of each object
-    json_strings = re.findall(r'(\{.*?\})(?=(\s*\{)|(\s*$))', output)
+    json_strings = re.findall(r'(\{.*?\})(?=\s*\{|\s*$)', output)
     
     for json_str in json_strings:
         try:
             # Convert the main JSON object
+            st.write('HERE')
+            st.write(json_str)
             data = json.loads(json_str)
             content = data["response"]["body"]["choices"][0]["message"]["content"]
             cleaned_content = content.replace('json\n', '', 1).strip()
