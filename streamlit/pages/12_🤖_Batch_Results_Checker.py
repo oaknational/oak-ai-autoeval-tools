@@ -50,8 +50,6 @@ def add_batch_results(output):
     for json_str in json_strings:
         try:
             # Convert the main JSON object
-            st.write('HERE')
-            st.write(json_str)
             data = json.loads(json_str)
             content = data["response"]["body"]["choices"][0]["message"]["content"]
             cleaned_content = content.replace('json\n', '', 1).strip()
