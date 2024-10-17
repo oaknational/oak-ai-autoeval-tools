@@ -27,6 +27,10 @@
     Retrieves teachers data from the database.
 - get_lesson_plans_by_id: 
     Retrieves lesson plans based on a sample ID.
+- add_batch:
+    Adds details of a new batch submission to the database
+- get_batches:
+    Retrieves pending batches.
 - add_experiment: 
     Adds a new experiment to the database.
 - get_prompt: 
@@ -35,6 +39,8 @@
     Adds results of an experiment to the database.
 - update_status: 
     Updates the status of an experiment in the database.
+- update_batch_status: 
+    Updates the status of a batch in the database.
 - start_experiment: 
     Starts a new experiment, runs tests for each sample and prompt, and
     updates status.
@@ -467,6 +473,46 @@ def get_lesson_plans_by_id(sample_id, limit=None):
     return execute_single_query(query, params)
 
 
+def add_batch(batch_ref, experiment_id, batch_description, created_by, status="PENDING"):
+    """ Add a new batch to the database.
+
+    Args:
+        xxx
+        status (str, optional): Status of the experiment.
+
+    Returns:
+        int: ID of the newly added batch.
+    """
+    insert_query = """
+        INSERT INTO m_batches (
+            created_at, updated_at, batch_ref, batch_description, experiment_id, created_by, status) 
+        VALUES (
+            now(), now(), %s, %s, %s, %s, %s)
+        RETURNING id;
+    """
+    params = (batch_ref, batch_description, experiment_id, created_by, status)
+
+    try:
+        result = execute_single_query(insert_query, params)
+        if result:
+            return result[0][0]
+        else:
+            return None
+    except Exception as e:
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
+        return None
+
+
+def get_batches():
+    """ Retrieve batches data from the database.
+
+    Returns:
+        pd.DataFrame: DataFrame with batches data.
+    """
+    query = "SELECT batch_ref, batch_description, created_by, created_at FROM m_batches WHERE status = 'PENDING';"
+    return execute_single_query(query, return_dataframe=True)
+
+
 def add_experiment(experiment_name, sample_ids, created_by, tracked,
         llm_model="gpt-4", llm_model_temp=0.5, description="None",
         status="PENDING"):
@@ -622,7 +668,34 @@ def update_status(experiment_id, status):
     except Exception as e:
         log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
         return False
-    
+
+
+def update_batch_status(experiment_id, status):
+    """ Update the status of a batch in the database using experiment_id as the key.
+
+    Args:
+        experiment_id (str): Reference identifier for the batch.
+        status (str): New status to update.
+        
+    Returns:
+        bool: True if the status was updated successfully, False otherwise.
+    """
+    query = """
+        UPDATE m_batches SET status = %s
+        WHERE experiment_id = %s;
+    """
+    params = (status, experiment_id)
+
+    try:
+        success = execute_single_query(query, params)
+        if not success:
+            log_message("error", "Failed to update status")
+            return False
+        return True
+    except Exception as e:
+        log_message("error", f"{ErrorMessages.UNEXPECTED_ERROR}: {e}")
+        return False
+
 
 def start_experiment(experiment_name, exp_description, sample_ids, created_by,
         prompt_ids, limit, llm_model, tracked, llm_model_temp=0.5, top_p=1):
