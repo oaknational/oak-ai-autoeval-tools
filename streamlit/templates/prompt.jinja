@@ -211,23 +211,15 @@ Provide Your Evaluation:
 {{ rating_instruction }}
 
 JSON FORMAT:
-{   
-    "justification": "<JUSTIFICATION>",
-    "result": "<TRUE or FALSE>"
-}
+{"justification": "<JUSTIFICATION>","result": "<TRUE or FALSE>"}
  Your justification should be concise, precise, and directly support your evaluation. Use the JSON format provided for your evaluation, returning only a single result, not a collection of results.
 
 A sample response is below:
-START
-{ 
-    "justification": "The justification should explain why the statement was evaluated as true or false, based on the evidence or criteria being considered.", 
-    "result":"TRUE" 
-} 
-END
-Your response should entrirely consist of the respnse format provided above. Do not respond by saying 'Here is your response:...' or don't start your response like ''' json. 
-A detailed justification is crucial.
-
+-START-
+{"justification": "The justification should explain why the statement was evaluated as true or false, based on the evidence or criteria being considered.", "result":"TRUE" } 
+-END-
 Your response should strictly follow the given format.
+Do not introduce add line breaks in your response.
 
 {% elif output_format == 'Score' %}
 {# Section for Score output format - uses 'Rating' #}
@@ -241,18 +233,13 @@ Provide Your Rating:
 {{ rating_instruction }}
 
 JSON FORMAT:
-{   
-    "justification": "<JUSTIFICATION>",
-    "result": "<SCORE>"
-}
+{"justification": "<JUSTIFICATION>","result": "<SCORE>"}
 Your justification should be concise, precise, and directly support your rating. Use the JSON format provided for your evaluation, returning only a single score, not a collection of scores.
 A sample response is below: 
-START
-{
-"justification":"The justification should explain why the specific score was given, based on the evidence or criteria being evaluated. The explanation should be directly tied to the rating provided.",
-"result":"5"
-}
-END
-Your response should entirely follow the response format.
+-START-
+{"justification":"The justification should explain why the specific score was given, based on the evidence or criteria being evaluated. The explanation should be directly tied to the rating provided.","result":"5"}
+-END-
+Your response should entirely follow the response format. 
+Do not introduce add line breaks in your response. 
 
 {%- endif %}
