@@ -174,6 +174,9 @@ Scripts:
 {% if "keyStage" in lesson_plan_params %}
 {{ check_and_display(lesson, "keyStage", 'Key Stage') }}
 {% endif -%}
+{% if "keywords" in lesson_plan_params %}
+{{ check_and_display(lesson, "keywords", 'Keywords') }}
+{% endif -%}
 {% if "starterQuiz" in lesson_plan_params %}
 {{ check_and_display(lesson, 'starterQuiz', 'Starter Quiz') }}
 {% endif -%}
