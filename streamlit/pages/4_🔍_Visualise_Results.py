@@ -208,7 +208,7 @@ if experiment != "Select":
         result_id_input = ""
 else:
     selected_experiment_id = None
-
+    
 if selectected_experiments:
     # Fetch full data
     data = pd.DataFrame()
@@ -223,6 +223,18 @@ if selectected_experiments:
         data = apply_filters(data)
 
     exp_data = data
+
+    sample_title_options = exp_data["sample_title"].unique().tolist()
+
+    # Use st.selectbox for single selection
+    selected_sample = st.selectbox(
+        "Select Sample Title",
+        sample_title_options
+    )
+
+    # Filter the data based on the selected sample
+    exp_data = exp_data[exp_data["sample_title"] == selected_sample]
+
 
     if experiment != "Select":
         key_stage_options = exp_data["key_stage_slug"].unique().tolist()
@@ -246,15 +258,10 @@ if selectected_experiments:
         )
 
         if output_selection:
-            sample_title_options = exp_data["sample_title"].unique().tolist()
-            selected_samples = st.multiselect(
-                "Select Sample Title",
-                sample_title_options,
-                default=sample_title_options,
-            )
+            
 
             exp_data = exp_data[
-                (exp_data["sample_title"].isin(selected_samples))
+                (exp_data["sample_title"] == selected_sample)
                 & (exp_data["prompt_output_format"] == output_selection)
             ]
 
