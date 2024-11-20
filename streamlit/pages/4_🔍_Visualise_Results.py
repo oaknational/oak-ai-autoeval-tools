@@ -172,7 +172,50 @@ def display_pie_chart(data, group_by_column, title, column):
         )
         column.plotly_chart(fig)
 
+def plot_key_stage_subject_heatmap(data, key_stage_col, subject_col, prompt_col, value_col):
+    """
+    Generates and plots a heatmap showing average scores grouped by key stage, subject, and criteria.
 
+    Parameters:
+        data (pd.DataFrame): Input DataFrame containing the data.
+        key_stage_col (str): Column name for key stage.
+        subject_col (str): Column name for subject.
+        prompt_col (str): Column name for criteria or prompt title/version.
+        value_col (str): Column name for success ratio or the value to average.
+    """
+    # Group and aggregate the data
+    grouped_data = data.groupby([key_stage_col, subject_col, prompt_col]).agg({value_col: 'mean'}).reset_index()
+
+    # Pivot the data for heatmap
+    heatmap_data = grouped_data.pivot_table(
+        index=prompt_col,
+        columns=[key_stage_col, subject_col],
+        values=value_col
+    )
+
+    # Add averages
+    heatmap_data['Average'] = heatmap_data.mean(axis=1)
+    heatmap_data.loc['Average'] = heatmap_data.mean(axis=0)
+
+    # Plot the heatmap
+    plt.figure(figsize=(18, 12))
+    sns.heatmap(
+        heatmap_data,
+        annot=True,
+        cmap="YlGnBu",
+        linewidths=0.5,
+        cbar_kws={'label': 'Average Score'},
+        fmt=".2f"
+    )
+    plt.title('Average Score per Key Stage, Subject, and Criteria')
+    plt.xlabel('Key Stage and Subject')
+    plt.ylabel('Criteria')
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+
+    # Render the plot using Streamlit
+    st.pyplot(plt)
 # Set page configuration
 st.set_page_config(page_title="Visualise Results", page_icon="🔍")
 st.title("🔍 Visualise Results")
@@ -208,7 +251,7 @@ if experiment != "Select":
         result_id_input = ""
 else:
     selected_experiment_id = None
-    
+
 if selectected_experiments:
     # Fetch full data
     data = pd.DataFrame()
@@ -497,28 +540,14 @@ if selectected_experiments:
                 )
 
                 st.plotly_chart(fig)
-                # filtered_data
-                # Group by 'key_stage', 'subject', and 'prompt_title' and calculate the average score
-                key_stage_subject_prompt_scores = filtered_data.groupby(['key_stage_slug', 'subject_slug', 'prompt_title']).agg({'result': 'mean'}).reset_index()
 
-                heatmap_data = key_stage_subject_prompt_scores.pivot_table(index='prompt_title', columns=['key_stage_slug', 'subject_slug'], values='result')
-
-                # Add averages
-                heatmap_data['Average'] = heatmap_data.mean(axis=1)
-                heatmap_data.loc['Average'] = heatmap_data.mean(axis=0)
-
-                # Plot the heatmap
-                plt.figure(figsize=(18, 12))
-                sns.heatmap(heatmap_data, annot=True, cmap="YlGnBu", linewidths=0.5, cbar_kws={'label': 'Average Score'}, fmt=".2f")
-                plt.title('Average Score per Key Stage, Subject, and Criteria')
-                plt.xlabel('Key Stage and Subject')
-                plt.ylabel('Criteria')
-                plt.xticks(rotation=45, ha='right')
-                plt.yticks(rotation=0)
-                plt.tight_layout()
-
-                # Use Streamlit to render the plot
-                st.pyplot(plt)
+                plot_key_stage_subject_heatmap(
+                    data=filtered_data,  
+                    key_stage_col='key_stage_slug',
+                    subject_col='subject_slug',
+                    prompt_col='prompt_title',
+                    value_col='success_ratio'
+                )
 
             else:
                 # Convert 'True' and 'False' strings to boolean values
@@ -573,26 +602,14 @@ if selectected_experiments:
                 )
                 st.plotly_chart(fig)
 
-                key_stage_subject_prompt_scores = count_of_results.groupby(['key_stage_slug', 'subject_slug', 'prompt_title_version']).agg({'success_ratio': 'mean'}).reset_index()
+                plot_key_stage_subject_heatmap(
+                    data=count_of_results,  
+                    key_stage_col='key_stage_slug',
+                    subject_col='subject_slug',
+                    prompt_col='prompt_title_version',
+                    value_col='success_ratio'
+                )
 
-                heatmap_data = key_stage_subject_prompt_scores.pivot_table(index='prompt_title_version', columns=['key_stage_slug', 'subject_slug'], values='success_ratio')
-
-                # Add averages
-                heatmap_data['Average'] = heatmap_data.mean(axis=1)
-                heatmap_data.loc['Average'] = heatmap_data.mean(axis=0)
-
-                # Plot the heatmap
-                plt.figure(figsize=(18, 12))
-                sns.heatmap(heatmap_data, annot=True, cmap="YlGnBu", linewidths=0.5, cbar_kws={'label': 'Average Score'}, fmt=".2f")
-                plt.title('Average Score per Key Stage, Subject, and Criteria')
-                plt.xlabel('Key Stage and Subject')
-                plt.ylabel('Criteria')
-                plt.xticks(rotation=45, ha='right')
-                plt.yticks(rotation=0)
-                plt.tight_layout()
-
-                # Use Streamlit to render the plot
-                st.pyplot(plt)
 
             # Display title and data table in the main area
             st.subheader("Experiment Data Viewer")
