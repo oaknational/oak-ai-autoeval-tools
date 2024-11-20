@@ -46,45 +46,103 @@ from utils.constants import ErrorMessages
 
 # Mappings for standardization
 KS_MAPPINGS = {
+    "key-stage-1": "key-stage-1",
+    "key-stage-2": "key-stage-2",
+    "key-stage-3": "key-stage-3",
+    "key-stage-4": "key-stage-4",
     "year 6": "key-stage-2",
     "ks1": "key-stage-1",
+    "KS1": "key-stage-1",
     "1": "key-stage-1",
     "2": "key-stage-2",
     "3": "key-stage-3",
     "4": "key-stage-4",
     "ks3": "key-stage-3",
     "ks4": "key-stage-4",
+    "KS4": "key-stage-4",
+    "KS3": "key-stage-3",
     "ks2": "key-stage-2",
+    "KS2": "key-stage-2",
     "key stage 1": "key-stage-1",
     "key stage 2": "key-stage-2",
     "key stage 3": "key-stage-3",
     "key stage 4": "key-stage-4",
-    "key stage 5": "key-stage-5",
+    "Key Stage 1": "key-stage-1",
+    "Key Stage 2": "key-stage-2",
+    "Key Stage 3": "key-stage-3",
+    "Key Stage 4": "key-stage-4",
+    "specialist": "specialist",
+    "early-years-foundation-stage": "early-years-foundation-stage",
+
 }
 
 SUBJECT_MAPPINGS = {
+    "maths":"maths",
+    "Maths":"maths",
+    "English":"english",
+    "Science":"science",
+    "science":"science",
+    "psed":"psed",
+    "physical-education":"physical-education",
+    "computing":"computing",
+    "Computing":"computing",
+    "biology":"biology",
+    "chemistry":"chemistry",
+    "Chemistry":"chemistry",
+    "physics":"physics",
+    "Physics":"physics",
+    "citizenship":"citizenship",
+    "literacy":"literacy",
+    "art":"art",
+    "Art":"art",
+    "PSHE":"pshe",
+    "communication-and-language":"communication-and-language",
+    "spanish":"spanish",
+    "french":"french",
+    "music":"music",
+    "Music":"music",
+    "Health and Social Care":"health-and-social-care",
+    "combined-science":"combined-science",
+    "independent-living":"independent-living",
+    "religious-education":"religious-education",
+    "Religious Education":"religious-education",
+    "design-technology":"design-technology",
+    "Design Technology":"design-technology",
+    "creative-arts":"creative-arts",
+    "english-grammar":"english",
+    "rshe-pshe":"rshe-pshe",
     "maths": "mathematics",
+    "Mathematics": "mathematics",
     "english": "english",
-    "science": "science",
+    "English Language": "english",
+    "English Literature": "english",
+    "english-spelling": "english",
+    "english-reading-for-pleasure": "english",
     "history": "history",
+    "History": "history",
     "geography": "geography",
-    "psed": "personal, social and emotional development",
-    "rshe-pshe": "personal, social, health and economic education",
+    "Geography": "geography",
+    "drama": "drama",
+    "business studies": "business-studies",
+    "Business": "business-studies",
+    "business": "business-studies",
+    "Physical Education": "physical-education",
+
 }
 
 def standardize_key_stage(ks):
     """Standardizes Key Stage labels."""
     if isinstance(ks, str):
         ks = ks.strip().lower()
-        return KS_MAPPINGS.get(ks, ks)
-    return ks  # Return as is if not a string
+        return KS_MAPPINGS.get(ks, "Other")
+    return "Other"  # Return as is if not a string
 
 def standardize_subject(subj):
     """Standardizes subject labels."""
     if isinstance(subj, str):
         subj = subj.strip().lower()
-        return SUBJECT_MAPPINGS.get(subj, subj)
-    return subj  # Return as is if not a string
+        return SUBJECT_MAPPINGS.get(subj, "Other")
+    return "Other"  # Return as is if not a string
 
 def convert_to_json(text):
     """

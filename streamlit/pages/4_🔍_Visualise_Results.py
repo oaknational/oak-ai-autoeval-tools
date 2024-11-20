@@ -14,6 +14,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from utils.formatting import standardize_key_stage, standardize_subject, json_to_html
 from utils.common_utils import clear_all_caches
@@ -170,7 +172,50 @@ def display_pie_chart(data, group_by_column, title, column):
         )
         column.plotly_chart(fig)
 
+def plot_key_stage_subject_heatmap(data, key_stage_col, subject_col, prompt_col, value_col):
+    """
+    Generates and plots a heatmap showing average scores grouped by key stage, subject, and criteria.
 
+    Parameters:
+        data (pd.DataFrame): Input DataFrame containing the data.
+        key_stage_col (str): Column name for key stage.
+        subject_col (str): Column name for subject.
+        prompt_col (str): Column name for criteria or prompt title/version.
+        value_col (str): Column name for success ratio or the value to average.
+    """
+    # Group and aggregate the data
+    grouped_data = data.groupby([key_stage_col, subject_col, prompt_col]).agg({value_col: 'mean'}).reset_index()
+
+    # Pivot the data for heatmap
+    heatmap_data = grouped_data.pivot_table(
+        index=prompt_col,
+        columns=[key_stage_col, subject_col],
+        values=value_col
+    )
+
+    # Add averages
+    heatmap_data['Average'] = heatmap_data.mean(axis=1)
+    heatmap_data.loc['Average'] = heatmap_data.mean(axis=0)
+
+    # Plot the heatmap
+    plt.figure(figsize=(18, 12))
+    sns.heatmap(
+        heatmap_data,
+        annot=True,
+        cmap="YlGnBu",
+        linewidths=0.5,
+        cbar_kws={'label': 'Average Score'},
+        fmt=".2f"
+    )
+    plt.title('Average Score per Key Stage, Subject, and Criteria')
+    plt.xlabel('Key Stage and Subject')
+    plt.ylabel('Criteria')
+    plt.xticks(rotation=45, ha='right')
+    plt.yticks(rotation=0)
+    plt.tight_layout()
+
+    # Render the plot using Streamlit
+    st.pyplot(plt)
 # Set page configuration
 st.set_page_config(page_title="Visualise Results", page_icon="🔍")
 st.title("🔍 Visualise Results")
@@ -222,6 +267,18 @@ if selectected_experiments:
 
     exp_data = data
 
+    sample_title_options = exp_data["sample_title"].unique().tolist()
+
+    # Use st.selectbox for single selection
+    selected_sample = st.selectbox(
+        "Select Sample Title",
+        sample_title_options
+    )
+
+    # Filter the data based on the selected sample
+    exp_data = exp_data[exp_data["sample_title"] == selected_sample]
+
+
     if experiment != "Select":
         key_stage_options = exp_data["key_stage_slug"].unique().tolist()
         subject_options = exp_data["subject_slug"].unique().tolist()
@@ -244,15 +301,10 @@ if selectected_experiments:
         )
 
         if output_selection:
-            sample_title_options = exp_data["sample_title"].unique().tolist()
-            selected_samples = st.multiselect(
-                "Select Sample Title",
-                sample_title_options,
-                default=sample_title_options,
-            )
+            
 
             exp_data = exp_data[
-                (exp_data["sample_title"].isin(selected_samples))
+                (exp_data["sample_title"] == selected_sample)
                 & (exp_data["prompt_output_format"] == output_selection)
             ]
 
@@ -489,18 +541,27 @@ if selectected_experiments:
 
                 st.plotly_chart(fig)
 
+                plot_key_stage_subject_heatmap(
+                    data=filtered_data,  
+                    key_stage_col='key_stage_slug',
+                    subject_col='subject_slug',
+                    prompt_col='prompt_title',
+                    value_col='success_ratio'
+                )
+
             else:
                 # Convert 'True' and 'False' strings to boolean values
                 # in the 'result' column
                 filtered_data["success"] = filtered_data["result"].map(
                     {"True": True, "False": False}
                 )
+                
 
                 # Calculate the count of successful results compared
                 # to the total number of results per prompt title and
                 # sample title
                 count_of_results = (
-                    filtered_data.groupby(["prompt_title_version", "sample_title"])[
+                    filtered_data.groupby(["prompt_title_version", 'key_stage_slug', 'subject_slug',"sample_title"])[
                         "success"
                     ]
                     .value_counts()
@@ -540,6 +601,15 @@ if selectected_experiments:
                     xaxis_title="Sample Title", yaxis_title="Success Ratio (%)"
                 )
                 st.plotly_chart(fig)
+
+                plot_key_stage_subject_heatmap(
+                    data=count_of_results,  
+                    key_stage_col='key_stage_slug',
+                    subject_col='subject_slug',
+                    prompt_col='prompt_title_version',
+                    value_col='success_ratio'
+                )
+
 
             # Display title and data table in the main area
             st.subheader("Experiment Data Viewer")
