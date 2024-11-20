@@ -228,6 +228,8 @@ for selected_prompt_title in selected_prompt_titles:
         selected_prompts_info.append(
             {
                 "Prompt": f"{current_prompt['prompt_title']} v{current_prompt['version']}",
+                "Output Format": current_prompt["output_format"],
+                "Lesson Plan Params": current_prompt["lesson_plan_params"],
                 "Description": current_prompt["experiment_description"],
             }
         )

@@ -92,6 +92,25 @@ def get_db_connection():
         log_message("error", f"Error connecting to the database: {e}")
         return None
     
+def get_prod_db_connection():
+    """ Establish a connection to the PostgreSQL database.
+
+    Returns:
+        conn: connection object to interact with the database.
+    """
+    try:
+        conn = psycopg2.connect(
+            dbname=get_env_variable("PROD_DB_NAME"),
+            user=get_env_variable("PROD_DB_USER"),
+            password=get_env_variable("PROD_DB_PASSWORD"),
+            host=get_env_variable("PROD_DB_HOST"),
+            port=get_env_variable("PROD_DB_PORT")
+        )
+        return conn
+    except psycopg2.Error as e:
+        log_message("error", f"Error connecting to the database: {e}")
+        return None
+    
 
 def execute_single_query(query, params=None, return_dataframe=False):
     """ Execute a given SQL query using a PostgreSQL database connection.
