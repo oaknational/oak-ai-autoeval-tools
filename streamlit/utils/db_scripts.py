@@ -630,6 +630,7 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
     Returns:
         None
     """
+
     try:
         if score is not None and score != "":
             try:
@@ -643,6 +644,9 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
         else:
             log_message("error", f"Invalid score: {score}")
             return
+        if justification:
+            justification = justification.replace("\\", "\\\\")  # Escape backslashes
+            justification = justification.replace("'", "''")    # Escape single quotes for SQL
 
         insert_query = """
             INSERT INTO m_results (
