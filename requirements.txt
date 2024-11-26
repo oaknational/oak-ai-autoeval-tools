@@ -16,3 +16,4 @@ pyvis
 ipycytoscape
 langchain
 langchain-community
+seaborn

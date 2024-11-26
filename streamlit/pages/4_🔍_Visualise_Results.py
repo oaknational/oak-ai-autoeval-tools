@@ -172,7 +172,7 @@ def display_pie_chart(data, group_by_column, title, column):
         )
         column.plotly_chart(fig)
 
-def plot_key_stage_subject_heatmap(data, key_stage_col, subject_col, prompt_col, value_col):
+def plot_key_stage_subject_heatmap(data, key_stage_col, subject_col, prompt_col, value_col, group_by="both"):
     """
     Generates and plots a heatmap showing average scores grouped by key stage, subject, and criteria.
 
@@ -182,14 +182,33 @@ def plot_key_stage_subject_heatmap(data, key_stage_col, subject_col, prompt_col,
         subject_col (str): Column name for subject.
         prompt_col (str): Column name for criteria or prompt title/version.
         value_col (str): Column name for success ratio or the value to average.
+        group_by (str): Grouping level for the heatmap. Options are:
+                        "both" (default) - Group by key stage and subject.
+                        "key_stage" - Group by key stage only.
+                        "subject" - Group by subject only.
     """
+    # Validate group_by parameter
+    if group_by not in ["both", "key_stage", "subject"]:
+        raise ValueError("Invalid group_by value. Choose from 'both', 'key_stage', or 'subject'.")
+    
+    # Determine the grouping columns based on group_by
+    if group_by == "both":
+        group_cols = [key_stage_col, subject_col]
+        pivot_columns = [key_stage_col, subject_col]
+    elif group_by == "key_stage":
+        group_cols = [key_stage_col]
+        pivot_columns = key_stage_col
+    elif group_by == "subject":
+        group_cols = [subject_col]
+        pivot_columns = subject_col
+
     # Group and aggregate the data
-    grouped_data = data.groupby([key_stage_col, subject_col, prompt_col]).agg({value_col: 'mean'}).reset_index()
+    grouped_data = data.groupby(group_cols + [prompt_col]).agg({value_col: 'mean'}).reset_index()
 
     # Pivot the data for heatmap
     heatmap_data = grouped_data.pivot_table(
         index=prompt_col,
-        columns=[key_stage_col, subject_col],
+        columns=pivot_columns,
         values=value_col
     )
 
@@ -207,8 +226,8 @@ def plot_key_stage_subject_heatmap(data, key_stage_col, subject_col, prompt_col,
         cbar_kws={'label': 'Average Score'},
         fmt=".2f"
     )
-    plt.title('Average Score per Key Stage, Subject, and Criteria')
-    plt.xlabel('Key Stage and Subject')
+    plt.title(f'Average Score per {group_by.capitalize()} and Criteria')
+    plt.xlabel(group_by.capitalize() if group_by != "both" else 'Key Stage and Subject')
     plt.ylabel('Criteria')
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0)
@@ -441,6 +460,7 @@ if selectected_experiments:
             # Assuming the ideal score is 5
             if output_selection == "Score":
                 IDEAL_SCORE = 5
+                
                 # Calculate the percentage success for each result
                 filtered_data["result_percent"] = (
                     filtered_data["result_numeric"] / IDEAL_SCORE
@@ -546,8 +566,12 @@ if selectected_experiments:
                     key_stage_col='key_stage_slug',
                     subject_col='subject_slug',
                     prompt_col='prompt_title',
-                    value_col='success_ratio'
+                    value_col='result_numeric'
                 )
+                plot_key_stage_subject_heatmap(filtered_data, "key_stage_slug", "subject_slug", "prompt_title", "result_numeric", group_by="key_stage")
+                plot_key_stage_subject_heatmap(filtered_data, "key_stage_slug", "subject_slug", "prompt_title", "result_numeric", group_by="subject")
+
+                
 
             else:
                 # Convert 'True' and 'False' strings to boolean values
@@ -608,6 +632,22 @@ if selectected_experiments:
                     subject_col='subject_slug',
                     prompt_col='prompt_title_version',
                     value_col='success_ratio'
+                )
+                plot_key_stage_subject_heatmap(
+                    data=count_of_results,  
+                    key_stage_col='key_stage_slug',
+                    subject_col='subject_slug',
+                    prompt_col='prompt_title_version',
+                    value_col='success_ratio',
+                    group_by="key_stage"
+                )
+                plot_key_stage_subject_heatmap(
+                    data=count_of_results,  
+                    key_stage_col='key_stage_slug',
+                    subject_col='subject_slug',
+                    prompt_col='prompt_title_version',
+                    value_col='success_ratio'
+                    , group_by="subject"
                 )
 
 
