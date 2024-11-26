@@ -46,8 +46,40 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
             },
             "status": "ABORTED",
         }
-
+        
     prompt_details = get_prompt(prompt_id)
+    if prompt_details['objective_title'] == "AILA Moderation":
+        from utils.moderation_utils import (
+                generate_moderation_prompt,
+                moderate_lesson_plan,
+                moderation_category_groups,
+                moderation_schema,
+            )
+        # Generate the moderation prompt
+        prompt = generate_moderation_prompt(moderation_category_groups, lesson_plan)
+
+        try:
+            result = moderate_lesson_plan(lesson_plan, moderation_category_groups, moderation_schema, llm_model,llm_model_temp)
+            
+            scores = result.scores.model_dump_json()  # Extract scores as a dictionary
+            justification = result.justification
+            categories = result.categories
+            return {
+                "response": {
+                    "result": scores,
+                    "justification": justification + " categories_detected:" + ", ".join(categories),
+                },
+                "status": "SUCCESS",
+            }
+        except Exception as e:
+            log_message("error", f"Unexpected Error occurred with moderation Prompt: {e}")
+            return {
+                    "response": {
+                        "result": None,
+                        "justification": f"An error occurred: {e}",
+                    },
+                    "status": "FAILURE",
+                }
     if not prompt_details:
         return {
             "response": {
