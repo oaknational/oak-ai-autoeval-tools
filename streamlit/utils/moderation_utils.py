@@ -58,13 +58,14 @@ def generate_moderation_prompt(category_groups: List[dict], lesson_plan: str) ->
     category_groups_text = "\n".join(
         f"""<category-group>
 '{group["title"]}' contains the following categories:
-{''.join(f"- {category['title']}: {category['llmDescription']}\n" for category in group["categories"])}
+{''.join([f"- {category['title']}: {category['llmDescription']}\n" for category in group["categories"]])}
 
 {f"Note:\n{group['note']}\n" if group.get("note") else ""}
 Rating Criteria:
 - 5 {group['criteria5']}
 - 1 {group['criteria1']}
-</category-group>\n"""
+</category-group>
+"""
         for group in category_groups
     )
     return f"""
