@@ -90,6 +90,7 @@ Provide concise justifications for scores. Detailed explanations are crucial for
 """
 
 
+
 def correct_schema(schema: dict) -> dict:
     """Fix schema issues incompatible with OpenAI."""
     if "minimum" in schema:
