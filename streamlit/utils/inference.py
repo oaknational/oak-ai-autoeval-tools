@@ -37,15 +37,6 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         dict: Inference result or error response.
     """
     from utils.db_scripts import get_prompt
-    required_keys = ["title", "topic", "subject", "keyStage"]
-    if set(lesson_plan.keys()) == set(required_keys):
-        return {
-            "response": {
-                "result": None, 
-                "justification": "Lesson data is missing for this check."
-            },
-            "status": "ABORTED",
-        }
         
     prompt_details = get_prompt(prompt_id)
     if prompt_details['objective_title'] == "AILA Moderation":
