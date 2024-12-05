@@ -16,6 +16,7 @@ from openai import OpenAI
 import requests
 import json
 import time
+import traceback
 
 # from db_scripts import add_results, get_prompt, get_lesson_plans_by_id
 from utils.formatting import clean_response, process_prompt, decode_lesson_json
@@ -199,7 +200,9 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
         output = run_inference(
             content, prompt_id, llm_model, llm_model_temp,top_p, timeout=timeout
         )
-        
+        if not isinstance(output, dict) or "response" not in output:
+            log_message("error", f"Invalid output structure: {output}")
+            return None
         response = output.get("response")
 
         if "status" not in output:
@@ -220,10 +223,15 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
         else:
             result = response.get("result")
             justification = response.get("justification", "").replace("'", "")
-            add_results(
-                experiment_id, prompt_id, lesson_plan_id, result, 
-                justification, output["status"]
-            )
+            try:
+                add_results(
+                    experiment_id, prompt_id, lesson_plan_id, result, 
+                    justification, output["status"]
+                )
+            except Exception as db_error:
+                log_message("error", f"Database error: {db_error}")
+                log_message("error", f"Data: {experiment_id}, {prompt_id}, {lesson_plan_id}, {result}, {justification}, {output['status']}")
+                return None
         return output
 
     except KeyError as e:
@@ -233,6 +241,7 @@ def handle_inference(content, prompt_id, llm_model, llm_model_temp, timeout,
 
     except Exception as e:
         log_message("error", f"Unexpected error when adding results: {e}")
+        log_message("error", traceback.format_exc())
         log_message(
             "error",
             f"""

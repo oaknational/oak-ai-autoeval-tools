@@ -55,17 +55,15 @@ class ModerationResponse(BaseModel):
 
 
 def generate_moderation_prompt(category_groups: List[dict], lesson_plan: str) -> str:
-    category_groups_text = "\n".join(
-        f"""<category-group>
-'{group["title"]}' contains the following categories:
-{''.join(f"- {category['title']}: {category['llmDescription']}\n" for category in group["categories"])}
-
-{f"Note:\n{group['note']}\n" if group.get("note") else ""}
-Rating Criteria:
-- 5 {group['criteria5']}
-- 1 {group['criteria1']}
-</category-group>\n"""
-        for group in category_groups
+    # Format all category groups
+    category_groups_text = "\n".join( 
+        "<category-group>\n" 
+        f"'{group.get('title', '')}' contains the following categories:\n" 
+        + "".join(f"- {category.get('title', '')}: {category.get('llmDescription', '')}\n" for category in group.get('categories', [])) 
+        + (f"Note:\n{group.get('note', '')}\n" if group.get('note') else "") 
+        + f"Rating Criteria:\n- 5 {group.get('criteria5', '')}\n- 1 {group.get('criteria1', '')}\n"
+        "</category-group>" 
+        for group in category_groups 
     )
     return f"""
 OBJECTIVE:
@@ -88,6 +86,8 @@ INSTRUCTION:
 
 Provide concise justifications for scores. Detailed explanations are crucial for any score.
 """
+
+
 
 
 def correct_schema(schema: dict) -> dict:
