@@ -1,0 +1,278 @@
+{# ====== Section: Macros ====== #}
+{# Macro to check if a key in the lesson and display its value or 'Missing data' if the key is absent #}
+{%-macro check_and_display(lesson, key, display_name) -%}
+{{ display_name }}:
+{% if lesson[key] -%}
+{{ lesson[key] }}
+{% else -%}
+Missing data
+{%- endif %}
+(End of {{ display_name }})
+{%- endmacro -%}
+{# Macro to format an entire cycle with all of the available parts e.g. title, duration, explanation, etc. #}
+{%- macro format_cycle(cycle) -%}
+Title: {{ cycle.title | default('No title available') }}
+Duration: {{ cycle.durationInMinutes | default('No duration specified') }} minutes
+Explanation:
+    {% if cycle.explanation is mapping %}
+    {% for exp_key, exp_value in cycle.explanation.items() -%}
+        {{ exp_key }}: 
+        {% if exp_value is iterable and exp_value is not string %}
+        {% for item in exp_value %}
+        - {{ item }}
+        {% endfor %}
+        {% else %}
+        {{ exp_value }}
+        {% endif %}
+    {% endfor %}
+    {% else %}
+        {{ cycle.explanation | default('No explanation available') }}
+    {% endif %}
+Check for Understanding: {{ cycle.checkForUnderstanding | default('No check available') }}
+Practice: {{ cycle.practice | default('No practice information available') }}
+Script: {{ cycle.script | default('No script information available') }}
+Feedback: {{ cycle.feedback | default('No feedback available') }}
+{%- endmacro -%}
+{# Macro to get all lesson cycles and format them #}
+{%- macro get_cycles(lesson) -%}
+{% set output = namespace(found=false) %}
+{% for cycle_key, cycle_value in lesson.items() -%}
+{% if cycle_key.startswith('cycle') -%}
+{% set is_valid = cycle_value.title or cycle_value.feedback or cycle_value.practice or cycle_value.explanation or cycle_value.durationInMinutes or cycle_value.checkForUnderstanding %}
+{% if is_valid -%}
+{% set output.found = true %}
+{{ cycle_key }}:
+
+{{ format_cycle(cycle_value) }}
+-----
+{% endif -%}
+{% endif -%}
+{% endfor -%}
+{% if not output.found -%}
+Missing data
+{% endif -%}
+{%- endmacro -%}
+{# Macro to list specific attributes of each lesson cycle e.g. all the cycle feedback or all the cycle explanations #}
+{%- macro list_cycle_attributes(lesson, attribute) -%}
+{% set output = namespace(found=false) %}
+{% for cycle, details in lesson.items() -%}
+{% if details is not none and attribute in details %}
+{% set output.found = true %}
+{{ cycle }}:
+{% if details[attribute] is mapping -%}
+{% for key, value in details[attribute].items() %}
+    {{ key }}: {{ value }}
+{% endfor -%}
+{% else %}
+    {{ details[attribute] }}
+{% endif -%}
+{% endif -%}
+{% endfor %}
+{% if not output.found %}
+Missing data
+{% endif -%}
+{%- endmacro -%}
+{# Macro to list specific keys within the explanation of each lesson cycle #}
+{%- macro list_cycle_attributes_by_key(lesson, attribute_key) -%}
+{% set output = namespace(found=false, all_missing=true) %}
+{% for cycle_key, cycle_value in lesson.items() -%}
+    {% if cycle_key.startswith('cycle') and cycle_value.explanation and attribute_key in cycle_value.explanation -%}
+        {% set output.found = true %}
+        {% if cycle_value.explanation[attribute_key] -%}
+            {% set output.all_missing = false %}
+            {{ cycle_key }}:
+            {{ cycle_value.explanation[attribute_key] }}
+        {% endif -%}
+    {% endif -%}
+{% endfor -%}
+{% if not output.found or output.all_missing -%}
+Missing data
+{% endif -%}
+{%- endmacro -%}
+{# ====== End Section ====== #}
+{# Section to display the prompt objective and lesson plan components based on the lesson plan parameters provided #}
+{% if "lesson" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan document. Your task is to evaluate the lesson plan document across various categories.
+
+LESSON PLAN:
+{{lesson}}
+(End of Lesson Plan)
+{% endif -%}
+{% if "title" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan title. Your task is to evaluate the title across various categories.
+
+{{ check_and_display(lesson, 'title', 'TITLE') }}
+{% endif -%}
+{% if "topic" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan topic. Your task is to evaluate the topic across various categories.
+
+{{ check_and_display(lesson, 'topic', 'TOPIC') }}
+{% endif -%}
+{% if "subject" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan subject. Your task is to evaluate the subject across various categories.
+
+{{ check_and_display(lesson, 'subject', 'SUBJECT') }}
+{% endif -%}
+{% if "cycles" in selected_lesson_plan_param %}
+Cycles:
+{{ get_cycles(lesson) }}
+(End of Cycles)
+{% endif -%}
+{% if "cycle_titles" in selected_lesson_plan_param %}
+Titles:
+{{ list_cycle_attributes(lesson, 'title') }}
+(End of Titles)
+{% endif -%}
+{% if "cycle_feedback" in selected_lesson_plan_param %}
+Feedback:
+{{ list_cycle_attributes(lesson, 'feedback') }}
+(End of Feedback)
+{% endif -%}
+{% if "cycle_practice" in selected_lesson_plan_param %}
+Practice Tasks:
+{{ list_cycle_attributes(lesson, 'practice') }}
+(End of Practice Tasks)
+{% endif -%}
+{% if "cycle_explanations" in selected_lesson_plan_param %}
+Explanations:
+{{ list_cycle_attributes(lesson, 'explanation') }}
+(End of Explanations)
+{% endif -%}
+{% if "cycle_spokenexplanations" in selected_lesson_plan_param %}
+Spoken Explanations:
+{{ list_cycle_attributes_by_key(lesson, 'spokenExplanation') }}
+(End of Spoken Explanations)
+{% endif -%}
+{% if "cycle_accompanyingslidedetails" in selected_lesson_plan_param %}
+Accompanying Slide Details:
+{{ list_cycle_attributes_by_key(lesson, 'accompanyingSlideDetails') }}
+(End of Accompanying Slide Details)
+{% endif -%}
+{% if "cycle_imageprompts" in selected_lesson_plan_param %}
+Image Prompts:
+{{ list_cycle_attributes_by_key(lesson, 'imagePrompt') }}
+(End of Image Prompts)
+{% endif -%}
+{% if "cycle_slidetext" in selected_lesson_plan_param %}
+Slide Text:
+{{ list_cycle_attributes_by_key(lesson, 'slideText') }}
+(End of Slide Text)
+{% endif -%}
+{% if "cycle_durationinmins" in selected_lesson_plan_param %}
+Duration in Minutes:
+{{ list_cycle_attributes(lesson, 'durationInMinutes') }}
+(End of Duration in Minutes)
+{% endif -%}
+{% if "cycle_checkforunderstandings" in selected_lesson_plan_param %}
+Check for Understandings:
+{{ list_cycle_attributes(lesson, 'checkForUnderstanding') }}
+(End of Check for Understandings)
+{% endif -%}
+{% if "cycle_scripts" in selected_lesson_plan_param %}
+Scripts:
+{{ list_cycle_attributes(lesson, 'script') }}
+(End of Scripts)
+{% endif -%}
+{% if "exitQuiz" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan exit quiz. Your task is to evaluate the exit quiz across various categories.
+
+{{ check_and_display(lesson, 'exitQuiz', 'EXIT QUIZ') }}
+{% endif -%}
+{% if "keyStage" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan key stage. Your task is to evaluate the key stage across various categories.
+
+{{ check_and_display(lesson, "keyStage", 'KEY STAGE') }}
+{% endif -%}
+{% if "keywords" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining keywords in a lesson plan. Your task is to evaluate the keywords across various categories.
+
+{{ check_and_display(lesson, "keywords", 'KEYWORDS') }}
+{% endif -%}
+{% if "starterQuiz" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan starter quiz. Your task is to evaluate the starter quiz across various categories.
+
+{{ check_and_display(lesson, 'starterQuiz', 'STARTER QUIZ') }}
+{% endif -%}
+{% if "learningCycles" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan learning cycles. Your task is to evaluate the learning cycles across various categories.
+
+{{ check_and_display(lesson, 'learningCycles', 'LEARNING CYCLES') }}
+{% endif -%}
+{% if "misconceptions" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan misconceptions. Your task is to evaluate the misconceptions across various categories.
+
+{{ check_and_display(lesson, 'misconceptions', 'MISCONCEPTIONS') }}
+{% endif -%}
+{% if "priorKnowledge" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining the prior knowledge needed for a lesson. Your task is to evaluate the prior knowledge across various categories.
+
+{{ check_and_display(lesson, 'priorKnowledge', 'PRIOR KNOWLEDGE') }}
+{% endif -%}
+{% if "learningOutcome" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining a lesson plan learning outcome. Your task is to evaluate the learning outcome across various categories.
+
+{{ check_and_display(lesson, 'learningOutcome', 'LEARNING OUTCOME') }}
+{% endif -%}
+{% if "keyLearningPoints" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining lesson plan key learning points. Your task is to evaluate the key learning points across various categories.
+
+{{ check_and_display(lesson, 'keyLearningPoints', 'KEY LEARNING POINTS') }}
+{% endif -%}
+{% if "additionalMaterials" in selected_lesson_plan_param %}
+OBJECTIVE:
+You are an educational expert examining lesson plan additional materials. Your task is to evaluate the additional materials across various categories.
+
+{{ check_and_display(lesson, 'additionalMaterials', 'ADDITIONAL MATERIALS') }}
+{% endif -%}
+
+CATEGORY GROUPS:
+
+{% for prompt, details in prompt_details.items() %}
+    {{ details[prompt_objective] }}
+
+    {% for key in details["lesson_plan_params"] %}
+        {% if key not in selected_lesson_plan_parts %}
+            Additional lesson plan parts needed for your evaluation:
+            {{ lesson[key] }}  {# Grab lesson[key] here #}
+        {% endif %}
+    {% endfor %}
+
+{% if details[output_format] == 'Boolean' %}
+{# Section for Boolean output format - uses 'Evaluation' #}
+Evaluation Criteria:
+{% for criterion, description in details[rating_criteria].items() %}
+{{ criterion }}: {{ description }}
+{% endfor %}
+{{ details[general_criteria_note] }}
+
+Provide Your Evaluation:
+{{ details[rating_instruction] }}
+Your justification should be concise, precise, and directly support your rating.
+
+{% elif details[output_format] == 'Score' %}
+{# Section for Score output format - uses 'Rating' #}
+Rating Criteria:
+{% for criterion, description in details[rating_criteria].items() %}
+{{ criterion }}: {{ description }}
+{% endfor %}
+{{ details[general_criteria_note]}}
+
+Provide Your Rating:
+{{ details[rating_instruction] }}
+Your justification should be concise, precise, and directly support your rating.
+
+{%- endif %}
+{%- endfor %}
