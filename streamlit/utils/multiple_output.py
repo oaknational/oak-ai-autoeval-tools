@@ -142,11 +142,8 @@ def merged_eval_lesson_plan(lesson_plan: str, merged_eval_category_groups: List[
         raise RuntimeError(f"OpenAI API call failed: {e}")
 
     raw_response = response.choices[0].message.content
-    # print("Raw Response:", raw_response)
     merged_eval_response = MergedEvalResponse.model_validate_json(raw_response)
-    # parsed_response = json.loads(raw_response)
-    # if "categories" not in parsed_response:
-    #     raise ValueError("Categories field is missing in the response.")
+  
 
     return response, merged_eval_response
 
@@ -161,50 +158,3 @@ def generate_custom_scores_model(merged_eval_category_groups: List[Dict]) -> Typ
     CustomScores = create_model("CustomScores", **fields)
     return CustomScores
 
-# # Example usage
-# if __name__ == "__main__":
-#     # Define input parameters
-#     custom_category_groups = [
-#         {
-#             "title": "Gender Bias",
-#             "categories": [
-#                 {"title": "Gender Assumptions", "llmDescription": "Evaluate whether the lesson content includes assumptions about gender roles in professions, family structures, and socio-cultural expectations."},
-#                 {"title": "Representation of Women", "llmDescription": "Assess whether the lesson acknowledges the contributions of women in history and modern society."}
-#             ]
-#         },
-#         {
-#             "title": "Cultural Bias",
-#             "categories": [
-#                 {"title": "Lack of Diversity", "llmDescription": "Evaluate if the lesson content provides diverse examples representing different races, religions, genders, and cultures."},
-#                 {"title": "Content Bias", "llmDescription": "Identify if the lesson includes biases or stereotypes against specific races, religions, or genders."}
-#             ]
-#         },
-#         {
-#             "title": "Americanism",
-#             "categories": [
-#                 {"title": "American-centric Content", "llmDescription": "Assess if the lesson plan focuses excessively on American history, culture, or values."},
-#                 {"title": "Global Perspective", "llmDescription": "Evaluate whether the lesson plan incorporates a global perspective and acknowledges diverse cultures."}
-#             ]
-         
-#         },
-#         {
-#             "title": "Age Appropriateness",
-#             "categories": [
-#                 {"title": "Content Relevance", "llmDescription": "Evaluate if the lesson content is age-appropriate and engaging for the target audience."},
-#                 {"title": "Complexity Level", "llmDescription": "Assess whether the lesson plan matches the cognitive abilities and interests of the students."}
-#             ]
-            
-#         }
-#     ]
-#     CustomScores = generate_custom_scores_model(custom_category_groups)
-
-#     print(CustomScores.model_json_schema())
-
-#     # Run moderation
-#     result = moderate_lesson_plan(
-#         lesson_plan="Sample lesson content...",
-#         moderation_category_groups=custom_category_groups,
-#         ModerationScores=CustomScores
-#     )
-    
-#     print(result)
