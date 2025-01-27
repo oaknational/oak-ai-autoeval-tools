@@ -38,6 +38,15 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
         dict: Inference result or error response.
     """
     from utils.db_scripts import get_prompt
+    required_keys = ["title", "topic", "subject", "keyStage"]
+    if set(lesson_plan.keys()) == set(required_keys):
+        return {
+            "response": {
+                "result": None, 
+                "justification": "Lesson data is missing for this check."
+            },
+            "status": "ABORTED",
+        }
         
     prompt_details = get_prompt(prompt_id)
     if prompt_details['objective_title'] == "AILA Moderation":
@@ -72,6 +81,45 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
                     },
                     "status": "FAILURE",
                 }
+    elif prompt_details['objective_title'] == "Merged Evals":
+        from utils.multiple_output import (
+                
+                get_custom_category_groups,
+                generate_custom_scores_model,
+                merged_eval_lesson_plan,
+                generate_merged_eval_prompt,
+                
+            )
+        custom_category_groups=get_custom_category_groups()
+        CustomScores = generate_custom_scores_model(custom_category_groups)
+        # Generate the merged evals prompt
+        prompt = generate_merged_eval_prompt(custom_category_groups, lesson_plan)
+
+        try:
+
+            raw_response, result = merged_eval_lesson_plan(lesson_plan, custom_category_groups, CustomScores, llm_model,llm_model_temp)
+
+            print(result)
+            scores = result.scores.model_dump_json()  # Extract scores as a dictionary
+            justification = result.justification
+            categories = result.categories
+            return {
+                "response": {
+                    "result": scores,
+                    "justification": justification + " categories_detected:" + ", ".join(categories),
+                },
+                "status": "SUCCESS",
+            }
+        except Exception as e:
+            log_message("error", f"Unexpected Error occurred with merged evals Prompt: {e}")
+            return {
+                    "response": {
+                        "result": None,
+                        "justification": f"An error occurred: {e}",
+                    },
+                    "status": "FAILURE",
+                }
+
     if not prompt_details:
         return {
             "response": {
@@ -329,7 +377,10 @@ def run_agent_openai_inference(prompt, llm_model, llm_model_temp, timeout=150):
             message = response.choices[0].message.content
             # print(message)
             end_time = time.time()
-
+            prompt_tokens = response.usage.prompt_tokens
+            completion_tokens = response.usage.completion_tokens
+            total_tokens = response.usage.total_tokens
+            print(f"Prompt tokens: {prompt_tokens}, Completion tokens: {completion_tokens}, Total tokens: {total_tokens}")
             # Calculate the duration
             duration = end_time - start_time
             cleaned_content, status = clean_response(message)
