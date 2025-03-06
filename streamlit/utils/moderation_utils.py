@@ -2,7 +2,7 @@
 import openai
 from openai import OpenAI
 from typing import List, Literal, Annotated
-from pydantic import BaseModel, Field, conint, ValidationError
+from pydantic import BaseModel, Field, conint, ValidationError, ConfigDict
 from utils.common_utils import get_env_variable
 
 
@@ -40,6 +40,7 @@ LikertScale = Annotated[int, conint(ge=1, le=5)]
 
 # Define moderation scores schema
 class ModerationScores(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     l: LikertScale = Field(..., description="Language and discrimination score")
     v: LikertScale = Field(..., description="Violence and crime score")
     u: LikertScale = Field(..., description="Upsetting, disturbing, and sensitive score")
@@ -49,6 +50,7 @@ class ModerationScores(BaseModel):
 
 
 class ModerationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     scores: ModerationScores
     justification: str
     categories: List[moderation_categories]
@@ -180,6 +182,8 @@ def correct_schema(schema: dict) -> dict:
         correct_schema(value)
     return schema
 
+
+
 # Function to moderate a lesson plan using OpenAI
 def moderate_lesson_plan(
         lesson_plan: str, 
@@ -191,15 +195,13 @@ def moderate_lesson_plan(
     openai.api_key = get_env_variable("OPENAI_API_KEY")
     prompt = generate_moderation_prompt(category_groups)
     client = OpenAI()
-    
-    
 
     try:
         response = client.chat.completions.create(
             model=llm,
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": lesson_plan},
+                {"role": "user", "content": lesson_plan}
             ],
             temperature=temp,
             response_format={

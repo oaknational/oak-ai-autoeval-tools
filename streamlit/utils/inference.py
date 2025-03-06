@@ -48,10 +48,10 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
                 moderation_schema,
             )
         # Generate the moderation prompt
-        prompt = generate_moderation_prompt(moderation_category_groups, lesson_plan)
+        prompt = generate_moderation_prompt(moderation_category_groups)
 
         try:
-            result = moderate_lesson_plan(lesson_plan, moderation_category_groups, moderation_schema, llm_model,llm_model_temp)
+            result = moderate_lesson_plan(str(lesson_plan), moderation_category_groups, moderation_schema, llm_model, llm_model_temp)
             
             scores = result.scores.model_dump_json()  # Extract scores as a dictionary
             justification = result.justification
