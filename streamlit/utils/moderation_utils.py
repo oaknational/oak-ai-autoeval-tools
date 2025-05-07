@@ -1,8 +1,4 @@
-import openai
-from openai import OpenAI
-from typing import List, Literal, Annotated
-from pydantic import BaseModel, Field, conint, ValidationError, ConfigDict
-from utils.common_utils import get_env_variable
+
 import openai
 from openai import OpenAI # Ensure this is openai v1.0+
 from typing import List, Literal, Annotated # Keep other imports as they are
