@@ -18,6 +18,8 @@ import json
 import time
 import traceback
 
+
+
 # from db_scripts import add_results, get_prompt, get_lesson_plans_by_id
 from utils.formatting import clean_response, process_prompt, decode_lesson_json
 
@@ -28,7 +30,8 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     """ Run inference using a lesson plan and a prompt ID.
 
     Args:
-        lesson_plan (dict): Dictionary containing lesson plan details.
+        lesson_plan (dict or str): Dictionary containing lesson plan details or pre-formatted string.
+                                  Ensure str(lesson_plan) produces a suitable document for the LLM.
         prompt_id (str): ID of the prompt to use.
         llm_model (str): Name of the LLM model.
         llm_model_temp (float): Temperature parameter for the LLM.
@@ -40,20 +43,35 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     from utils.db_scripts import get_prompt
         
     prompt_details = get_prompt(prompt_id)
+    
+    if not prompt_details or 'objective_title' not in prompt_details:
+        log_message("error", f"Prompt details not found or malformed for prompt_id: {prompt_id}")
+        return {
+            "response": {
+                "result": None,
+                "justification": f"Prompt details not found or malformed for prompt ID: {prompt_id}."
+            },
+            "status": "ABORTED", # Or "FAILURE"
+        }
+    
     if prompt_details['objective_title'] == "AILA Moderation":
         from utils.moderation_utils import (
-                generate_moderation_prompt,
-                moderate_lesson_plan,
+                moderate_lesson_plan, # Only need this and moderation_category_groups
                 moderation_category_groups,
-                moderation_schema,
             )
-        # Generate the moderation prompt
-        prompt = generate_moderation_prompt(moderation_category_groups)
-
+        
         try:
-            result = moderate_lesson_plan(str(lesson_plan), moderation_category_groups, moderation_schema, llm_model, llm_model_temp)
+            # Ensure llm_model_temp is float before calling
+            current_temp = float(llm_model_temp) 
             
-            scores = result.scores.model_dump_json()  # Extract scores as a dictionary
+            result = moderate_lesson_plan(
+                lesson_plan=str(lesson_plan), # Ensure lesson_plan is string
+                current_category_groups=moderation_category_groups,
+                llm=llm_model, # llm_model should be a string like "gpt-4o"
+                temp=current_temp # Pass the correctly typed temperature
+            )
+            
+            scores = result.scores.model_dump_json()
             justification = result.justification
             categories = result.categories
             return {
@@ -63,15 +81,25 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
                 },
                 "status": "SUCCESS",
             }
-        except Exception as e:
-            log_message("error", f"Unexpected Error occurred with moderation Prompt: {e}")
+        except RuntimeError as e: # Catch RuntimeError specifically from moderate_lesson_plan
+            log_message("error", f"Moderation Prompt processing error: {e}")
             return {
                     "response": {
                         "result": None,
-                        "justification": f"An error occurred: {e}",
+                        "justification": f"An error occurred during moderation: {e}", # More specific
                     },
                     "status": "FAILURE",
                 }
+        except Exception as e: # Fallback for other unexpected errors
+            log_message("error", f"Unexpected Error occurred with moderation Prompt logic: {e}") # traceback.format_exc() could be useful here
+            return {
+                    "response": {
+                        "result": None,
+                        "justification": f"An unexpected error occurred: {e}",
+                    },
+                    "status": "FAILURE",
+                }
+                
     if not prompt_details:
         return {
             "response": {
