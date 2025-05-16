@@ -17,3 +17,4 @@ ipycytoscape
 langchain
 langchain-community
 seaborn
+google-generativeai

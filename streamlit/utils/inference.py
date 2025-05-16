@@ -56,42 +56,66 @@ def run_inference(lesson_plan, prompt_id, llm_model, llm_model_temp,
     
     if prompt_details['objective_title'] == "AILA Moderation":
         from utils.moderation_utils import (
-                moderate_lesson_plan, # Only need this and moderation_category_groups
-                moderation_category_groups,
+                moderate_lesson_plan,
+                moderation_category_groups, 
             )
-        
+        import json # Ensure json is imported
+
         try:
-            # Ensure llm_model_temp is float before calling
-            current_temp = float(llm_model_temp) 
+            current_temp = float(llm_model_temp)
             
-            result = moderate_lesson_plan(
-                lesson_plan=str(lesson_plan), # Ensure lesson_plan is string
+            moderation_result = moderate_lesson_plan(
+                lesson_plan=str(lesson_plan),
                 current_category_groups=moderation_category_groups,
-                llm=llm_model, # llm_model should be a string like "gpt-4o"
-                temp=current_temp # Pass the correctly typed temperature
+                llm=llm_model,
+                temp=current_temp
             )
             
-            scores = result.scores.model_dump_json()
-            justification = result.justification
-            categories = result.categories
+            scores_json_str = moderation_result.scores.model_dump_json()
+            
+            structured_sub_category_justifications_dict = moderation_result.justifications # This is Dict[str, str]
+            triggered_sub_categories_list = moderation_result.categories
+            
+            # Create a summary for the 'justification' field,
+            # which handle_inference currently uses.
+            summary_justification_parts = []
+            if structured_sub_category_justifications_dict:
+                summary_justification_parts.append("Flagged sub-category details:")
+                for sub_cat_code, justification_text in structured_sub_category_justifications_dict.items():
+                    summary_justification_parts.append(f"- {sub_cat_code}: {justification_text}")
+            else:
+                summary_justification_parts.append("No specific sub-categories required detailed justification based on scores or no justifications provided by LLM.")
+
+            if triggered_sub_categories_list:
+                summary_justification_parts.append(f"All triggered sub-category codes: {', '.join(triggered_sub_categories_list)}")
+            else:
+                summary_justification_parts.append("No sub-categories were explicitly triggered.")
+            
+            final_summary_justification_for_db = "\n".join(summary_justification_parts)
+
             return {
                 "response": {
-                    "result": scores,
-                    "justification": justification + " categories_detected:" + ", ".join(categories),
+                    "result": scores_json_str,
+                    "justification": final_summary_justification_for_db, # The summary string
+                    "detailed_justifications": structured_sub_category_justifications_dict, # The Python dictionary
+                    "triggered_categories": triggered_sub_categories_list
                 },
                 "status": "SUCCESS",
             }
-        except RuntimeError as e: # Catch RuntimeError specifically from moderate_lesson_plan
+        # ... (rest of the error handling remains the same) ...
+        except RuntimeError as e: 
             log_message("error", f"Moderation Prompt processing error: {e}")
             return {
                     "response": {
                         "result": None,
-                        "justification": f"An error occurred during moderation: {e}", # More specific
+                        "justification": f"An error occurred during moderation: {e}",
                     },
                     "status": "FAILURE",
                 }
-        except Exception as e: # Fallback for other unexpected errors
-            log_message("error", f"Unexpected Error occurred with moderation Prompt logic: {e}") # traceback.format_exc() could be useful here
+        except Exception as e: 
+            log_message("error", f"Unexpected Error occurred with moderation Prompt logic: {e}")
+            import traceback
+            log_message("error", traceback.format_exc())
             return {
                     "response": {
                         "result": None,

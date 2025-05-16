@@ -1,11 +1,13 @@
 
 import openai
-from openai import OpenAI # Ensure this is openai v1.0+
-from typing import List, Literal, Annotated # Keep other imports as they are
+from openai import OpenAI
+from typing import List, Literal, Annotated
 from pydantic import BaseModel, Field, conint, ValidationError, ConfigDict
 from utils.common_utils import get_env_variable
-# Define new moderation_category_groups data
-# This data is directly transcribed from the new JSON structure provided
+import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
+from typing import Dict # Add Dict import
+
 new_moderation_category_groups_data = [
     {
         "title": "Language and discrimination",
@@ -215,55 +217,94 @@ class ModerationScores(BaseModel):
     n: LikertScale = Field(..., description="Not to be planned by Aila (Highly sensitive) score")
     t: LikertScale = Field(..., description="Toxic score")
 
+# NEW: Define a model for per-category justifications
+class JustificationDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid") # Forbid extra fields unless you want flexibility
+    l: str = Field(..., description="Justification for Language and discrimination score")
+    u: str = Field(..., description="Justification for Upsetting, disturbing and sensitive score")
+    s: str = Field(..., description="Justification for Nudity and sex score")
+    p: str = Field(..., description="Justification for Physical activity and equipment requiring safe use score")
+    e: str = Field(..., description="Justification for RSHE content score")
+    r: str = Field(..., description="Justification for New or Recent Content score")
+    n: str = Field(..., description="Justification for Not to be planned by Aila (Highly sensitive) score")
+    t: str = Field(..., description="Justification for Toxic score")
 
 class ModerationResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     scores: ModerationScores
-    justification: str
-    categories: List[moderation_categories]
+    # CHANGED: 'justifications' is now a dictionary where keys are *flagged sub-category codes*
+    # (e.g., "u/violence-or-suffering") and values are their specific justifications.
+    justifications: Dict[str, str] = Field(
+        ..., 
+        description="A dictionary where keys are the full codes of flagged sub-categories "
+                    "(e.g., 'u/violence-or-suffering') and values are their specific justifications. "
+                    "Only include entries for sub-categories that contributed to a main category score "
+                    "being less than 5, or if a sub-category needs specific mention despite a score of 5."
+    )
+    # 'categories' will list all triggered sub-category codes.
+    # The 'justifications' dict will explain *why* those specific ones were issues.
+    categories: List[moderation_categories] = Field(
+        ...,
+        description="A list of strings, where each string is the full 'Code' "
+                    "(e.g., 'l/discriminatory-language') of ALL individual sub-categories "
+                    "that were triggered and influenced a main category score."
+    )
+
+# Update the global schema
+moderation_schema = ModerationResponse.model_json_schema()
 
 
-moderation_schema = ModerationResponse.model_json_schema()  # Generate JSON schema from Pydantic
-
-
-def generate_moderation_prompt(category_groups_list: List[dict]) -> str: # Renamed arg for clarity
-    # Format all category groups
-    # This logic remains the same, but will now operate on the new category_groups_list structure
-    category_groups_text = "\n\n".join( 
-        "<category-group>\n" 
-        f"'{group.get('title', '')}' (Score Code: {group.get('codePrefix', '')}) contains the following categories:\n" # Added Score Code for clarity to LLM
-        + "".join(f"- {category.get('title', '')} (Code: {category.get('code', '')}): {category.get('llmDescription', '')}\n" for category in group.get('categories', [])) 
-        + (f"\nNote:\n{group.get('note', '')}\n\n" if group.get('note') else "") 
-        + f"Rating Criteria for '{group.get('title', '')}':\n- 5 {group.get('criteria5', '')}\n- 1 {group.get('criteria1', '')}\n"
-        "</category-group>" 
+def generate_moderation_prompt(category_groups_list: List[dict]) -> str:
+    category_groups_text = "\n\n".join(
+        "<category-group>\n"
+        f"'{group.get('title', '')}' (Score Code: {group.get('codePrefix', '')}) contains the following sub-categories:\n" # Changed "categories" to "sub-categories" for clarity
+        + "".join(f"- Sub-category Title: '{category.get('title', '')}', Sub-category Code: '{category.get('code', '')}', Description: {category.get('llmDescription', '')}\n" 
+                  for category in group.get('categories', []))
+        + (f"\nNote for group '{group.get('title', '')}':\n{group.get('note', '')}\n\n" if group.get('note') else "")
+        + f"Rating Criteria for group '{group.get('title', '')}':\n- 5 {group.get('criteria5', '')}\n- 1 {group.get('criteria1', '')}\n"
+        "</category-group>"
         for group in category_groups_list
-    ) 
+    )
     return f"""
 OBJECTIVE:
 
-You are a content moderation supervisor examining a lesson plan document which has been generated by a user through interactions with Oak National Academy's lesson planning assistant. Your job is to assess and moderate the lesson plan across a variety of categories.
+You are a content moderation supervisor examining a lesson plan document. Your job is to:
+1.  Assess the lesson plan against several main category groups, providing a 1-5 Likert score for each.
+2.  Identify specific sub-categories within those groups that are triggered or relevant.
+3.  Provide justifications specifically for why those sub-categories were flagged or are noteworthy.
 
-For each category group, you must determine the degree to which the lesson plan is compliant with the guidelines, providing a single rating on a 1-5 Likert scale for that group. The score code for each group is indicated (e.g., Score Code: l). Use these score codes as keys in your 'scores' JSON object.
-
-Additionally, for any specific categories triggered within these groups, list their full codes (e.g., l/discriminatory-language) in the 'categories' array.
-
-CATEGORY GROUPS:
+CATEGORY GROUPS AND THEIR SUB-CATEGORIES:
 
 {category_groups_text}
 
 NOTE:
 
-Your objective is to provide content guidance to ensure that certain content can be flagged appropriately. Regardless of the educational context, the score must be adjusted to reflect the presence of such content, even if the content is presented in a careful, considerate manner. The specific notes for each category group are paramount. Please also consider the age group of the pupils when scoring the content, as this may affect the sensitivity of the material.
+Your objective is to provide content guidance. Regardless of the educational context, the main category group score must reflect the presence of relevant content within its sub-categories, even if presented carefully. The specific notes for each category group are paramount.
 
 INSTRUCTION:
 
-Use the above to classify the lesson provided.
-Provide a JSON response with:
-1. `scores`: An object where keys are the 'Score Code' (l, u, s, p, e, r, n, t) for each category group, and values are the 1-5 Likert scale rating.
-2. `justification`: A single string providing a concise, precise justification for ALL your scores. A detailed justification is crucial, even for a score of 5 for all groups.
-3. `categories`: A list of strings, where each string is the full 'Code' (e.g., 'l/discriminatory-language', 'u/violence-or-suffering') of individual categories that were triggered. If no specific categories are triggered for a group that still receives a score other than 5 (or even 5 if nuance exists), explain in justification. If a group is rated 5 (fully compliant/not involved), its sub-categories typically shouldn't be listed unless there's a specific reason (explain in justification).
+Your response MUST be a valid JSON object.
+Use the above definitions to classify the provided lesson plan.
+Provide a JSON response with the following top-level keys:
 
-For each group other than 'Toxic' (t) and 'Not to be planned by Aila' (n), consider the key-stage (therefore age group) when scoring the content, alongside the specific guidelines for that group. For 'Toxic' (t) and 'Not to be planned by Aila' (n), the scoring should be strictly based on their definitions, as they represent content that is either illegitimate or must not be planned by Aila.
+1.  `scores`: An object.
+    *   Keys: The 'Score Code' (l, u, s, p, e, r, n, t) for each main category group.
+    *   Values: The 1-5 Likert scale rating for that main group, reflecting the content found in its sub-categories.
+
+2.  `categories`: A list of strings.
+    *   Each string must be the full 'Sub-category Code' (e.g., 'l/discriminatory-language', 'u/violence-or-suffering') of ALL individual sub-categories that were triggered and influenced a main category score (typically meaning the main category score is < 5, or if a sub-category is noteworthy even with a score of 5).
+    *   If a main category group scores 5 (fully compliant/not involved), none of its sub-categories should typically be listed here unless there's a very specific, minor point you will justify.
+
+3.  `justifications`: An object (dictionary).
+    *   Keys: The full 'Sub-category Code' (e.g., 'u/violence-or-suffering') of a sub-category listed in the `categories` field.
+    *   Values: A string containing a concise, precise justification explaining WHY that specific sub-category was flagged or is noteworthy, and how it contributed to the main category's score.
+    *   Only include entries in this `justifications` object for sub-categories that are listed in the `categories` field.
+    *   A detailed justification is crucial for each flagged sub-category.
+
+CONSIDERATIONS:
+*   For each main category group (and its sub-categories) other than 'Toxic' (t) and 'Not to be planned by Aila' (n), consider the key-stage (therefore age group) when scoring and justifying.
+*   For 'Toxic' (t) and 'Not to be planned by Aila' (n), scoring and justification should be strictly based on their definitions.
+*   The scores for the main category groups should be holistic, taking into account any flagged sub-categories within them. The justifications for sub-categories should explain their impact.
 """
 
 
@@ -286,107 +327,152 @@ def correct_schema(schema: dict) -> dict:
 def moderate_lesson_plan(
         lesson_plan: str,
         current_category_groups: List[dict],
-        llm: str = "gpt-4o-2024-08-06", # Default model
-        temp: float = 0.7 # Default temperature
+        llm: str = "gpt-4o-2024-08-06",
+        temp: float = 0.7
         ) -> ModerationResponse:
 
-    # 1. Remove legacy API key setting (for openai library v1.0+)
-    # openai.api_key = get_env_variable("OPENAI_API_KEY") # REMOVE THIS LINE
+    # 1. Prepare common variables
+    system_prompt_text = generate_moderation_prompt(current_category_groups)
+    user_lesson_plan_text = str(lesson_plan if lesson_plan is not None else "")
 
-    # 2. Generate prompt
-    prompt = generate_moderation_prompt(current_category_groups)
-
-    # 3. Initialize OpenAI client (relies on OPENAI_API_KEY env var or pass api_key explicitly)
     try:
-        # Ensure API key is available. If OPENAI_API_KEY env var is not set,
-        # this will raise an error or you can pass it explicitly:
-        # api_key_value = get_env_variable("OPENAI_API_KEY")
-        # if not api_key_value:
-        #     raise ValueError("OPENAI_API_KEY environment variable not set.")
-        # client = OpenAI(api_key=api_key_value)
-        client = OpenAI() # Assumes OPENAI_API_KEY is set in the environment
-    except Exception as e:
-        raise RuntimeError(f"Failed to initialize OpenAI client: {e}")
+        current_llm_str_lower = str(llm).lower()
+        current_temp_float = float(temp)
+    except ValueError as ve:
+        raise RuntimeError(f"Type conversion error for LLM parameters: {ve}")
 
-    # 4. Debug prints for parameters going into the API call
-    print(f"DEBUG: Calling OpenAI with model='{llm}' (type: {type(llm)})")
-    print(f"DEBUG: Temperature: {temp} (type: {type(temp)})")
-    print(f"DEBUG: Lesson plan length: {len(lesson_plan) if lesson_plan else 'None'}")
-    print(f"DEBUG: Prompt length: {len(prompt) if prompt else 'None'}")
+    print(f"DEBUG: Calling LLM: '{llm}' (normalized: '{current_llm_str_lower}') with temp: {current_temp_float}")
+    print(f"DEBUG: System prompt length: {len(system_prompt_text)}")
+    print(f"DEBUG: Lesson plan length: {len(user_lesson_plan_text)}")
 
-    # Ensure all inputs to the API are of the correct type
-    try:
-        llm_str = str(llm)
-        temp_float = float(temp) # Ensure temperature is a float
+    moderation_data_content: str | None = None
+
+    # 2. LLM-specific logic
+    if "gemini-2.5-pro-preview-05-06" in current_llm_str_lower:
+        if genai is None or GenerationConfig is None:
+            raise RuntimeError("Google Generative AI SDK (google-generativeai) is not installed or failed to import. Cannot use Gemini models.")
         
-        # Ensure messages content are strings
-        system_content_str = str(prompt if prompt is not None else "")
-        user_content_str = str(lesson_plan if lesson_plan is not None else "")
+        print(f"DEBUG: Attempting to use Gemini model: {llm}")
+        try:
+            gemini_api_key = get_env_variable("GEMINI_API_KEY")
+            if not gemini_api_key:
+                raise ValueError("GEMINI_API_KEY environment variable not set for Gemini.")
+            genai.configure(api_key=gemini_api_key)
+
+            # Use the original `llm` string as the model ID, assuming it's correct for the API
+            gemini_model_id = str(llm)
+            model = genai.GenerativeModel(gemini_model_id)
+
+            gemini_generation_config = GenerationConfig(
+                temperature=current_temp_float,
+                response_mime_type="application/json"
+            )
+            
+            # Combine system prompt and user lesson plan for Gemini's generate_content
+            # The prompt already asks for JSON. The mime_type enforces it.
+            # We are sending the main instructions (system_prompt_text) and then the content to analyze.
+            # For simple cases, a list of strings is fine.
+            # For more complex chat-like interactions, you might use `Part.from_text` or specific roles.
+            # Here, the system_prompt_text contains all instructions, and then we provide the lesson plan.
+            # Let's try a structured approach if simple concatenation doesn't work well,
+            # but usually, a clear prompt with the content is sufficient for `generate_content`.
+
+            # Simple concatenation as one block of text for the model:
+            full_gemini_prompt = f"{system_prompt_text}\n\nLesson Plan to Moderate:\n```\n{user_lesson_plan_text}\n```"
+            
+            print(f"DEBUG: Sending to Gemini. Combined prompt length for Gemini: {len(full_gemini_prompt)}")
+
+            # Make the API call
+            gemini_response = model.generate_content(
+                full_gemini_prompt, # Send as a single content block
+                generation_config=gemini_generation_config,
+                # request_options={"timeout": 120} # Optional: longer timeout for complex tasks
+            )
+
+            # Check for blocks or empty responses
+            if not gemini_response.candidates:
+                block_reason = "Unknown"
+                finish_reason_val = "Unknown"
+                safety_ratings_val = "N/A"
+                if gemini_response.prompt_feedback:
+                    block_reason = gemini_response.prompt_feedback.block_reason.name if gemini_response.prompt_feedback.block_reason else "Not Blocked"
+                    safety_ratings_val = str(gemini_response.prompt_feedback.safety_ratings)
+
+                # Try to get finish_reason from the first candidate if it exists, even if parts are empty
+                if hasattr(gemini_response, 'parts') and gemini_response.parts and hasattr(gemini_response.parts[0], 'finish_reason'):
+                     finish_reason_val = gemini_response.parts[0].finish_reason.name
+
+                error_detail = (f"Gemini response was blocked or empty. "
+                                f"Block Reason: {block_reason}. "
+                                f"Finish Reason: {finish_reason_val}. "
+                                f"Safety Ratings: {safety_ratings_val}. ")
+                print(f"ERROR: {error_detail}")
+                # print(f"DEBUG: Full Gemini Response Object (on block/empty): {gemini_response}") # Be careful with logging full PII
+                raise RuntimeError(error_detail)
+            
+            # Ensure text is present (it should be if candidates[0] exists and not blocked for content)
+            if not hasattr(gemini_response, 'text') or gemini_response.text is None:
+                 raise RuntimeError(f"Gemini response has candidates but no 'text' attribute or text is null. Finish reason: {gemini_response.candidates[0].finish_reason.name if gemini_response.candidates else 'N/A'}. Content: {gemini_response.candidates[0].content if gemini_response.candidates else 'N/A'}")
+
+            moderation_data_content = gemini_response.text
+            print("DEBUG: Received content from Gemini.")
+
+        except Exception as e:
+            # Catches errors from genai.configure, GenerativeModel, generate_content, or custom ValueErrors
+            # if hasattr(e, 'grpc_status_code'): # Example for gRPC specific errors
+            #     print(f"Gemini gRPC error: {e.grpc_status_code}")
+            error_msg = f"Gemini API call or setup failed: {type(e).__name__} - {e}"
+            print(f"ERROR: {error_msg}")
+            raise RuntimeError(error_msg)
+
+    else: # Default to OpenAI if not "gemini-2.5"
+        print(f"DEBUG: Using OpenAI model: {llm}")
+        try:
+            client = OpenAI() # Assumes OPENAI_API_KEY is set in environment
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize OpenAI client: {e}")
 
         messages_payload = [
-            {"role": "system", "content": system_content_str},
-            {"role": "user", "content": user_content_str}
+            {"role": "system", "content": system_prompt_text},
+            {"role": "user", "content": user_lesson_plan_text}
         ]
 
-    except ValueError as ve:
-        raise RuntimeError(f"Type conversion error for API parameters: {ve}")
+        try:
+            response = client.chat.completions.create(
+                model=str(llm), # Original llm string (e.g. "gpt-4o")
+                messages=messages_payload,
+                temperature=current_temp_float,
+                response_format={"type": "json_object"},
+            )
+            moderation_data_content = response.choices[0].message.content
+            print("DEBUG: Received content from OpenAI.")
+        except openai.APIConnectionError as e:
+            raise RuntimeError(f"Network error connecting to OpenAI: {e}")
+        except openai.RateLimitError as e:
+            raise RuntimeError(f"OpenAI rate limit exceeded: {e}")
+        except openai.APIStatusError as e:
+            error_message = f"OpenAI API Error (Status {e.status_code}): {e.message}"
+            if e.response and hasattr(e.response, 'text') and e.response.text:
+                error_message += f" | Response: {e.response.text}"
+            elif e.body:
+                 error_message += f" | Body: {e.body}"
+            raise RuntimeError(error_message)
+        except Exception as e:
+            raise RuntimeError(f"Unexpected error making OpenAI API call: {e}")
 
+    # 3. Common response processing and Pydantic validation
+    if moderation_data_content is None:
+        # This should ideally be caught earlier if an API call fails to produce content
+        raise RuntimeError("LLM response content is null after API call. This indicates a problem with the LLM response generation or an unhandled error.")
 
-    # 5. Make the API call with robust error handling
     try:
-        response = client.chat.completions.create(
-            model=llm_str,
-            messages=messages_payload,
-            temperature=temp_float,
-            response_format={"type": "json_object"},
-        )
-    except openai.APIConnectionError as e:
-        # Handles network issues
-        print(f"OpenAI API Connection Error: {e}")
-        raise RuntimeError(f"Network error connecting to OpenAI: {e}")
-    except openai.RateLimitError as e:
-        # Handles rate limit errors (429)
-        print(f"OpenAI Rate Limit Error: {e}")
-        raise RuntimeError(f"OpenAI rate limit exceeded: {e}")
-    except openai.APIStatusError as e:
-        # Handles other API errors (4xx, 5xx)
-        # This is where your 400 error would typically be caught more specifically.
-        error_message = f"OpenAI API Error (Status {e.status_code}): {e.message}"
-        if e.response and hasattr(e.response, 'text') and e.response.text:
-            error_message += f" | Response: {e.response.text}"
-        elif e.body: # Sometimes the body might contain the error details
-             error_message += f" | Body: {e.body}"
-        print(error_message) # Log the detailed error
-        raise RuntimeError(error_message)
-    except Exception as e:
-        # Fallback for any other unexpected errors during the API call
-        print(f"Unexpected error during OpenAI API call: {type(e).__name__} - {e}")
-        # Potentially log parts of the payload if it's a very strange error
-        # print(f"DEBUG: llm_str='{llm_str}', temp_float={temp_float}")
-        # print(f"DEBUG: system_content_str (first 100 chars): {system_content_str[:100]}")
-        # print(f"DEBUG: user_content_str (first 100 chars): {user_content_str[:100]}")
-        raise RuntimeError(f"Unexpected error making OpenAI API call: {e}")
-
-    # 6. Process the response
-    try:
-        moderation_data_content = response.choices[0].message.content
-        if moderation_data_content is None:
-            # This can happen if the model's response is empty or generation fails.
-            # It might indicate an issue with the prompt or model behavior.
-            print("OpenAI response content is null. Choice finish reason:", response.choices[0].finish_reason)
-            raise RuntimeError("OpenAI response content is null. The model may have failed to generate a valid response.")
-        
         moderation_response = ModerationResponse.model_validate_json(moderation_data_content)
         return moderation_response
     except ValidationError as e:
         print(f"Pydantic Validation error: {e.errors()}")
-        print(f"Problematic OpenAI response content: {moderation_data_content}")
-        raise RuntimeError(f"Invalid JSON structure or type from OpenAI: {moderation_data_content}")
-    except AttributeError as e: # If response.choices[0].message.content is not found
-        print(f"Error accessing response data: {e}. Full response object: {response}")
-        raise RuntimeError(f"Could not access content from OpenAI response: {e}")
+        print(f"Problematic LLM response content that failed validation: {moderation_data_content}")
+        raise RuntimeError(f"Invalid JSON structure or type from LLM: {moderation_data_content}")
     except Exception as e:
-        print(f"Error processing OpenAI response: {type(e).__name__} - {e}")
-        # moderation_data_content might not be defined if the error is before its assignment
-        # print(f"Problematic OpenAI response (if available): {response.choices[0].message.content if response and response.choices else 'N/A'}")
-        raise RuntimeError(f"Could not process response from OpenAI: {e}")
+        print(f"Error processing LLM response: {type(e).__name__} - {e}")
+        print(f"Problematic LLM response content: {moderation_data_content}")
+        raise RuntimeError(f"Could not process response from LLM: {e}")
