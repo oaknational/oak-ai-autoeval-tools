@@ -402,7 +402,7 @@ with st.form(key="experiment_form"):
             st.session_state.experiment_run = True
         else:
             st.error(
-                "Experiment failed to complete. " "Please check the logs for details."
+                "Experiment failed to complete. Please check the logs for details."
             )
 
 if st.session_state.experiment_run:

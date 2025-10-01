@@ -45,7 +45,8 @@ def _create_error_response(justification: str, status: str) -> Dict[str, Any]:
 def _handle_moderation_inference(
     lesson_plan: Union[Dict[str, Any], str], 
     llm_model: str, 
-    llm_model_temp: float
+    llm_model_temp: float,
+    selected_categories: Optional[Dict[str, bool]] = None
 ) -> Dict[str, Any]:
     """Handle AILA Moderation inference.
     
@@ -53,6 +54,7 @@ def _handle_moderation_inference(
         lesson_plan: Lesson plan content to moderate
         llm_model: Model to use for moderation
         llm_model_temp: Temperature setting for the model
+        selected_categories: Optional dict of category abbreviations to include
         
     Returns:
         Moderation result or error response
@@ -62,11 +64,12 @@ def _handle_moderation_inference(
     try:
         current_temp = float(llm_model_temp)
         
-        # Call the moderation function
+        # Call the moderation function with selected categories
         moderation_result = moderate_lesson_plan(
             lesson_plan=str(lesson_plan),
             llm=llm_model,
-            temp=current_temp
+            temp=current_temp,
+            selected_categories=selected_categories
         )
         
         # Extract results from moderation response

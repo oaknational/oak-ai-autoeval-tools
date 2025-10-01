@@ -113,55 +113,7 @@ def get_env_variable(var_name):
         raise RuntimeError(f"Environment variable '{var_name}' not found")
     
 
-def run_agent_llama_inference(prompt, llm_model, llm_model_temp):
 
-        try:
-            # Define the headers for the request
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {credential}"
-            }
-
-            # Create the payload with the data you want to send to the model
-            data = {
-                "messages": [
-                    {"role": "user", "content": prompt},   # Adjust this structure based on API requirements
-                ],
-                "temperature": llm_model_temp,
-                # 'temperature': llm_model_temp,
-            }
-
-            # Make the POST request to the model endpoint
-            response = requests.post(endpoint, headers=headers, data=json.dumps(data))
-            
-
-            # Check the response status and content
-            if response.status_code == 200:
-                response_data = response.json()
-                message = response_data['choices'][0]['message']['content']
-                cleaned_content, status = clean_response(message)
-                return {
-                    "response": cleaned_content  # Add the elapsed time to the return value
-                }
-            else:
-                log_message("error", f"Failed with status code {response.status_code}: {response.text}")
-                return {
-                    "response": {
-                        "result": None,
-                        "justification": f"Failed with status code {response.status_code}: {response.text}",
-                    },
-                    "status": "FAILURE" 
-                }
-
-        except Exception as e:
-            log_message("error", f"Unexpected error during inference: {e}")
-            return {
-                "response": {
-                    "result": None,
-                    "justification": f"An error occurred: {e}",
-                },
-                "status": "FAILURE" # Include elapsed time even in case of failure
-            }
         
 def run_agent_openai_inference(prompt, llm_model, llm_model_temp,top_p=1, timeout=150):
     client = OpenAI( api_key= os.environ.get("OPENAI_API_KEY"), timeout=timeout)
@@ -220,7 +172,7 @@ if 'llm_model_temp' not in st.session_state:
     st.session_state.llm_model_temp = 0.1
 
 
-llm_model_options = ['llama','o1-preview-2024-09-12','o1-mini-2024-09-12','gpt-4o-mini-2024-07-18', "gpt-4o",
+llm_model_options = ['o1-preview-2024-09-12','o1-mini-2024-09-12','gpt-4o-mini-2024-07-18', "gpt-4o",
     "gpt-4o-mini",'gpt-4o-2024-05-13','gpt-4o-2024-08-06','chatgpt-4o-latest',
                      'gpt-4-turbo-2024-04-09','gpt-4-0125-preview','gpt-4-1106-preview']
 
@@ -300,10 +252,9 @@ with st.form(key='generation_form'):
                 prompt = prompt.replace("{{subject}}", row['subject'])
                 prompt = prompt.replace("{{lesson_title}}", row['lesson_title'])
 
-                if llm_model != 'llama':
-                    response = run_agent_openai_inference(prompt, llm_model, llm_model_temp,st.session_state.top_p)
-                else:
-                    response = run_agent_llama_inference(prompt, llm_model, llm_model_temp)
+                
+                response = run_agent_openai_inference(prompt, llm_model, llm_model_temp,st.session_state.top_p)
+                
 
                 st.write(f"Response for {row['key_stage']} - {row['subject']} - {row['lesson_title']} with model {llm_model}:")
                 
