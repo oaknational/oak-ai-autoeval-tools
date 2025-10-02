@@ -307,6 +307,7 @@ st.session_state.limit = st.number_input(
 llm_model_options = [
     'o1-preview-2024-09-12','o1-mini-2024-09-12',
     "gpt-4o-mini-2024-07-18",
+    'gemini-2.5-pro-preview-05-06',
     "gpt-4o-2024-05-13",
     "gpt-4o-2024-08-06",
     "chatgpt-4o-latest",
@@ -401,7 +402,7 @@ with st.form(key="experiment_form"):
             st.session_state.experiment_run = True
         else:
             st.error(
-                "Experiment failed to complete. " "Please check the logs for details."
+                "Experiment failed to complete. Please check the logs for details."
             )
 
 if st.session_state.experiment_run:
