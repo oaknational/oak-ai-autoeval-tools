@@ -301,9 +301,9 @@ placeholder_name, placeholder_description = generate_experiment_placeholders(
     st.session_state.created_by,
 )
 
-# Modify placeholders for moderation
-placeholder_name = placeholder_name.replace("Evaluation", "Moderation")
-placeholder_description = placeholder_description.replace("evaluation", "moderation")
+# Modify placeholders for moderation - ensure "moderation" is in the name
+placeholder_name = f"Moderation-{placeholder_name}"
+placeholder_description = placeholder_description.replace("Evaluating", "Moderating")
 
 # Category Selection Section
 st.subheader("🛡️ Moderation Categories")
@@ -384,7 +384,7 @@ try:
                 from utils.moderation_utils import generate_new_moderation_prompt_with_abbr
                 preview_prompt = generate_new_moderation_prompt_with_abbr(selected_categories_data)
                 
-                st.write(f"**Prompt that will be sent to LLM:**")
+                st.write("**Prompt that will be sent to LLM:**")
                 st.write(f"*Length: {len(preview_prompt)} characters*")
                 st.write(f"*Categories included: {len(selected_categories_data)}*")
                 
@@ -597,7 +597,10 @@ def run_moderation_on_dataset(sample_id: str, limit: int, llm_model: str, llm_mo
 with st.form(key="moderation_form"):
     st.subheader("Moderation Information")
     experiment_name = st.text_input(
-        "Enter experiment name:", value=placeholder_name, placeholder=placeholder_name
+        "Enter experiment name:", 
+        value=placeholder_name, 
+        placeholder=placeholder_name,
+        help="⚠️ The experiment name must contain 'moderation' to be found by the visualization page."
     )
     exp_description = st.text_input(
         "Enter experiment description:",
@@ -612,6 +615,8 @@ with st.form(key="moderation_form"):
             st.error("Please select who is running the moderation.")
         elif not st.session_state.selected_categories or not any(st.session_state.selected_categories.values()):
             st.error("Please select at least one moderation category to run.")
+        elif "moderation" not in experiment_name.lower():
+            st.error("Experiment name must contain 'moderation' to be found by the visualization page.")
         else:
             st.warning("Please do not close the page until the moderation is complete.")
             
