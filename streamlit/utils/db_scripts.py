@@ -642,7 +642,7 @@ def add_results(experiment_id, prompt_id, lesson_plan_id, score,
                 elif score_lower == "false":
                     score = 0.0
         else:
-            log_message("error", f"Invalid score: {score}")
+            log_message("error", f"Invalid score: {score}. Justification: {justification[:200] if justification else 'None'}. Status: {status}")
             return
         if justification:
             justification = justification.replace("\\", "\\\\")  # Escape backslashes

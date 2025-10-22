@@ -261,6 +261,7 @@ llm_model_options = [
     "gpt-4-0125-preview",
     "gpt-4-1106-preview",
     "gemini-2.5-pro-preview-05-06",
+    "azure-openai",
 ]
 
 st.session_state.llm_model = st.selectbox(

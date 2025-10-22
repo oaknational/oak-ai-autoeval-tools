@@ -310,6 +310,8 @@ def clean_response(response_text):
             decoded JSON object or an error message in case of failure, 
             and a status string ("SUCCESS" or "FAILURE").
     """
+    from utils.common_utils import log_message
+
     try:
         raw_content = response_text.strip()
         if raw_content.startswith("```json"):
@@ -323,11 +325,18 @@ def clean_response(response_text):
         start_snippet = max(0, error_position - 40)
         end_snippet = min(len(response_text), error_position + 40)
         snippet = response_text[start_snippet:end_snippet]
+
+        # Log the full raw response for debugging
+        log_message("error", f"JSON Decode Error: {e}")
+        log_message("error", f"Raw LLM Response (first 500 chars): {response_text[:500]}")
+        log_message("error", f"Problematic snippet at position {error_position}: {repr(snippet)}")
+
         return {
             "result": None,
             "justification": (
                 f"{ErrorMessages.UNEXPECTED_ERROR}: {e}. "
-                f"Problematic snippet: {repr(snippet)}"
+                f"Problematic snippet: {repr(snippet)}. "
+                f"Raw response preview: {response_text[:200]}"
             )
         }, "FAILURE"
 

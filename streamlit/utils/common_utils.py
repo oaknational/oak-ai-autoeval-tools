@@ -90,6 +90,14 @@ def render_prompt(lesson_plan, prompt_details):
             cannot be loaded.
     """
     jinja_path = get_env_variable('JINJA_TEMPLATE_PATH')
+    # Handle relative path - make it absolute based on this file's location
+    if not os.path.isabs(jinja_path):
+        # Get the directory where this script is located (utils/)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Go up one level to streamlit/ directory
+        streamlit_dir = os.path.dirname(current_dir)
+        # Construct absolute path to templates
+        jinja_path = os.path.join(streamlit_dir, jinja_path)
     jinja_env = Environment(
         loader=FileSystemLoader(jinja_path),
         autoescape=select_autoescape(["html", "xml"]),

@@ -316,6 +316,7 @@ llm_model_options = [
     "gpt-4-1106-preview",
     "gpt-4o",
     "gpt-4o-mini",
+    "azure-openai",
     "llama",
 ]
 

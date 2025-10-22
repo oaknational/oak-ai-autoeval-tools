@@ -17,7 +17,7 @@ from typing import Dict, Any, Optional, Union, List, Tuple
 
 import requests
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 
 from utils.common_utils import log_message, get_env_variable, render_prompt
 from utils.formatting import clean_response, process_prompt, decode_lesson_json
@@ -211,6 +211,80 @@ def _run_llama_inference(
         log_message("error", f"Unexpected error during Llama inference: {e}")
         return _create_error_response(f"An error occurred: {e}", "FAILURE")
 
+
+def _run_azure_openai_inference(
+    prompt: str,
+    llm_model: str,
+    llm_model_temp: float,
+    top_p: float,
+    timeout: int
+) -> Dict[str, Any]:
+    """Run inference using Azure OpenAI API.
+
+    Args:
+        prompt: The prompt to send to the model
+        llm_model: Model deployment name to use
+        llm_model_temp: Temperature setting
+        top_p: Top-p parameter
+        timeout: Request timeout in seconds
+
+    Returns:
+        Inference result or error response
+    """
+    try:
+        api_key = get_env_variable("AZURE_OPENAI_API_KEY")
+        endpoint = get_env_variable("AZURE_OPENAI_ENDPOINT")
+        api_version = get_env_variable("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        deployment_name = get_env_variable("AZURE_OPENAI_DEPLOYMENT_NAME")
+
+        # Use deployment name if llm_model starts with "azure-"
+        # Otherwise use the deployment from env variable
+        if llm_model.startswith("azure-"):
+            deployment = deployment_name
+        else:
+            deployment = deployment_name
+
+        client = AzureOpenAI(
+            api_key=api_key,
+            api_version=api_version,
+            azure_endpoint=endpoint
+        )
+
+        log_message("info", f"Sending request to Azure OpenAI deployment: {deployment}")
+        log_message("info", f"Endpoint: {endpoint}")
+        log_message("info", f"Prompt length: {len(prompt)} characters")
+        log_message("info", f"Temperature: {llm_model_temp}, Top-p: {top_p}")
+
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=llm_model_temp,
+            timeout=timeout,
+            top_p=top_p,
+            frequency_penalty=0,
+            presence_penalty=0,
+        )
+
+        raw_response = response.choices[0].message.content
+        log_message("info", f"Received response from Azure OpenAI (length: {len(raw_response)} chars)")
+        log_message("info", f"Response preview : {raw_response[:]}")
+
+        cleaned_content, status = clean_response(raw_response)
+
+        if status == "FAILURE":
+            log_message("error", f"Failed to parse Azure OpenAI response as JSON")
+            log_message("error", f"Full raw response: {raw_response}")
+
+        return {
+            "response": cleaned_content,
+            "status": status,
+        }
+
+    except Exception as e:
+        log_message("error", f"Unexpected error during Azure OpenAI inference: {e}")
+        return _create_error_response(f"An error occurred: {e}", "FAILURE")
+
+
 def run_inference(
     lesson_plan: Union[Dict[str, Any], str], 
     prompt_id: str, 
@@ -272,17 +346,42 @@ def run_inference(
             "ABORTED"
         )
 
-    if "Prompt details are missing" in prompt or "Missing data" in prompt:
+     # Log the rendered prompt for debugging (first 1000 chars)
+    if "Prompt details are missing" in prompt:
         return _create_error_response(
-            "Lesson data missing for this check.", 
+            "Prompt details are missing for this check.",
+            "ABORTED"
+        )
+
+    # Check if ALL selected fields are missing (not just some)
+    # Count how many "Missing data" occurrences there are
+    missing_data_count = prompt.count("Missing data")
+
+    # Handle lesson_plan_params as either list or string
+    lesson_params = prompt_details.get("lesson_plan_params", [])
+    if isinstance(lesson_params, str):
+        total_fields_requested = len(lesson_params.split(",")) if lesson_params else 0
+    elif isinstance(lesson_params, list):
+        total_fields_requested = len(lesson_params)
+    else:
+        total_fields_requested = 0
+
+    # Only abort if MORE THAN 80% of fields are missing
+    if total_fields_requested > 0 and missing_data_count > (total_fields_requested * 0.8):
+        log_message("warning", f"Too many missing fields: {missing_data_count}/{total_fields_requested}")
+        log_message("warning", f"Prompt preview: {prompt[:500]}")
+        return _create_error_response(
+            f"Lesson data missing for this check. {missing_data_count} fields missing.",
             "ABORTED"
         )
 
     # Route to appropriate inference method based on model type
-    if llm_model != "llama":
-        return _run_openai_inference(prompt, llm_model, llm_model_temp, top_p, timeout)
-    else:
+    if llm_model == "llama":
         return _run_llama_inference(prompt, llm_model_temp, timeout)
+    elif llm_model.startswith("azure-") or llm_model.lower() == "azure":
+        return _run_azure_openai_inference(prompt, llm_model, llm_model_temp, top_p, timeout)
+    else:
+        return _run_openai_inference(prompt, llm_model, llm_model_temp, top_p, timeout)
         
 def handle_inference(
     content: Union[Dict[str, Any], str], 
@@ -380,7 +479,8 @@ def _save_cycle_results(
     try:
         result = cycle_data.get("result")
         justification = cycle_data.get("justification", "").replace("'", "")
-        
+        if result is None:
+            log_message("warning", f"Result is None. Full cycle_data: {cycle_data}")
         add_results(
             experiment_id, prompt_id, lesson_plan_id, result, 
             justification, status

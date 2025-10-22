@@ -16,7 +16,7 @@ from typing import Dict, List, Literal, Annotated, Optional, Any
 
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 from pydantic import BaseModel, Field, conint, ValidationError, ConfigDict
 
 from utils.common_utils import get_env_variable
@@ -429,12 +429,31 @@ def moderate_lesson_plan(
             error_msg = f"Gemini API call or setup failed: {type(e).__name__} - {e}"
             print(f"ERROR: {error_msg}")
             raise RuntimeError(error_msg)
-    else: # Default to OpenAI
-        print(f"DEBUG: Using OpenAI model: {llm}")
-        try:
-            client = OpenAI() 
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize OpenAI client: {e}")
+    else: # Default to OpenAI or Azure OpenAI
+        # Check if Azure OpenAI should be used
+        if "azure" in current_llm_str_lower:
+            print(f"DEBUG: Using Azure OpenAI model: {llm}")
+            try:
+                api_key = get_env_variable("AZURE_OPENAI_API_KEY")
+                endpoint = get_env_variable("AZURE_OPENAI_ENDPOINT")
+                api_version = get_env_variable("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+                deployment_name = get_env_variable("AZURE_OPENAI_DEPLOYMENT_NAME")
+
+                client = AzureOpenAI(
+                    api_key=api_key,
+                    api_version=api_version,
+                    azure_endpoint=endpoint
+                )
+                model_to_use = deployment_name
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize Azure OpenAI client: {e}")
+        else:
+            print(f"DEBUG: Using OpenAI model: {llm}")
+            try:
+                client = OpenAI()
+                model_to_use = str(llm)
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize OpenAI client: {e}")
 
         messages_payload = [
             {"role": "system", "content": system_prompt_text},
@@ -442,7 +461,7 @@ def moderate_lesson_plan(
         ]
         try:
             response = client.chat.completions.create(
-                model=str(llm),
+                model=model_to_use,
                 messages=messages_payload, # type: ignore
                 temperature=current_temp_float,
                 response_format={"type": "json_object"},
