@@ -223,7 +223,7 @@ def _run_azure_openai_inference(
 
     Args:
         prompt: The prompt to send to the model
-        llm_model: Model deployment name to use
+        llm_model: Model name (used for logging only; deployment from env is used)
         llm_model_temp: Temperature setting
         top_p: Top-p parameter
         timeout: Request timeout in seconds
@@ -235,14 +235,9 @@ def _run_azure_openai_inference(
         api_key = get_env_variable("AZURE_OPENAI_API_KEY")
         endpoint = get_env_variable("AZURE_OPENAI_ENDPOINT")
         api_version = get_env_variable("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
-        deployment_name = get_env_variable("AZURE_OPENAI_DEPLOYMENT_NAME")
+        deployment = get_env_variable("AZURE_OPENAI_DEPLOYMENT_NAME")
 
-        # Use deployment name if llm_model starts with "azure-"
-        # Otherwise use the deployment from env variable
-        if llm_model.startswith("azure-"):
-            deployment = deployment_name
-        else:
-            deployment = deployment_name
+        log_message("info", f"Using Azure OpenAI - Model selected: {llm_model}, Deployment: {deployment}")
 
         client = AzureOpenAI(
             api_key=api_key,
