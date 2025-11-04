@@ -388,6 +388,7 @@ def calculate_detection_metrics(row: pd.Series) -> Dict[str, Any]:
         - "N2" -> "n2" (Human_expected format)
         - "n4" -> "n4" (flagged category abbreviation)
         - "n/current-conflicts" -> "n" (if code format, extract prefix)
+        - "n2/current-conflicts" -> "n2" (extract full prefix before slash)
         - "u1" -> "u1" (preserve full code)
         - "u" -> "u" (already just a letter)
         """
