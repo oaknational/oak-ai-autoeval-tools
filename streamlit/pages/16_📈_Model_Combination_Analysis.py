@@ -44,6 +44,70 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def read_csv_with_encoding(file_path_or_buffer, **kwargs) -> pd.DataFrame:
+    """
+    Read CSV file with automatic encoding detection and fallback.
+    Tries multiple encodings to handle different file formats.
+    """
+    # Try to detect encoding using chardet if available
+    detected_encoding = None
+    if hasattr(file_path_or_buffer, 'read'):
+        # For file-like objects (uploaded files), we can't detect encoding easily
+        # Just try common encodings
+        encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
+    else:
+        # For file paths, try to detect encoding
+        try:
+            import chardet
+            with open(file_path_or_buffer, 'rb') as f:
+                raw_data = f.read()
+                result = chardet.detect(raw_data)
+                if result and result['encoding']:
+                    detected_encoding = result['encoding']
+        except ImportError:
+            pass
+        except Exception:
+            pass
+        
+        # Try multiple encodings to handle different file formats
+        encodings = []
+        if detected_encoding:
+            encodings.append(detected_encoding)
+        encodings.extend(['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252', 'utf-16', 'utf-16-le', 'utf-16-be'])
+    
+    # Try each encoding
+    last_error = None
+    for encoding in encodings:
+        try:
+            if hasattr(file_path_or_buffer, 'read'):
+                # For uploaded files, reset the buffer position
+                file_path_or_buffer.seek(0)
+                df = pd.read_csv(file_path_or_buffer, encoding=encoding, **kwargs)
+            else:
+                df = pd.read_csv(file_path_or_buffer, encoding=encoding, **kwargs)
+            return df
+        except (UnicodeDecodeError, UnicodeError) as e:
+            last_error = e
+            continue
+        except Exception as e:
+            # For other errors, try with error handling
+            try:
+                if hasattr(file_path_or_buffer, 'read'):
+                    file_path_or_buffer.seek(0)
+                    df = pd.read_csv(file_path_or_buffer, encoding=encoding, errors='replace', **kwargs)
+                else:
+                    df = pd.read_csv(file_path_or_buffer, encoding=encoding, errors='replace', **kwargs)
+                return df
+            except Exception:
+                last_error = e
+                continue
+    
+    # If all encodings failed, raise the last error
+    if hasattr(file_path_or_buffer, 'read'):
+        raise Exception(f"Could not read file with any of the attempted encodings: {encodings}. Last error: {last_error}")
+    else:
+        raise Exception(f"Could not read file {file_path_or_buffer} with any of the attempted encodings: {encodings}. Last error: {last_error}")
+
 def load_results_file(file_path: Optional[str] = None) -> pd.DataFrame:
     """Load the model combination results CSV file."""
     if file_path is None:
@@ -66,7 +130,7 @@ def load_results_file(file_path: Optional[str] = None) -> pd.DataFrame:
             return None
     
     try:
-        df = pd.read_csv(file_path)
+        df = read_csv_with_encoding(file_path)
         st.success(f"✅ Loaded {len(df)} rows from {file_path}")
         return df
     except Exception as e:
@@ -732,7 +796,7 @@ def main():
         
         if uploaded_file is not None:
             try:
-                df = pd.read_csv(uploaded_file)
+                df = read_csv_with_encoding(uploaded_file)
                 st.success(f"✅ Loaded {len(df)} rows from uploaded file")
             except Exception as e:
                 st.error(f"Error loading uploaded file: {e}")
