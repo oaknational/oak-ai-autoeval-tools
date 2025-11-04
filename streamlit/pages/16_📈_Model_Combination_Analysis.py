@@ -395,8 +395,8 @@ def calculate_detection_metrics(row: pd.Series) -> Dict[str, Any]:
         cat = str(cat).lower().strip()
         # If it's a code format (letter/name), extract just the prefix
         if '/' in cat:
-            # Extract only the first letter before the slash (e.g., "n/current-conflicts" -> "n")
-            return cat.split('/')[0][0]
+            # Extract the full prefix before the slash (e.g., "n2/current-conflicts" -> "n2")
+            return cat.split('/')[0]
         # If it's an abbreviation format (letter + number/letter), preserve full code
         # e.g., "n2" -> "n2", "n4" -> "n4", "t3" -> "t3", "u1" -> "u1"
         # Only extract letter if it's a single letter (e.g., "n" -> "n")
