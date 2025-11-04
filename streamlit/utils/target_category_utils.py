@@ -95,6 +95,7 @@ def is_target_category_met(row: pd.Series) -> Tuple[bool, Optional[str], List[st
         return False, None, []
     
     # Get flagged categories from either comprehensive or moderation columns
+    # Priority: comprehensive_flagged_categories takes precedence (more detailed stage)
     flagged_categories = []
     
     if 'comprehensive_flagged_categories' in row.index and pd.notna(row['comprehensive_flagged_categories']):
@@ -104,8 +105,8 @@ def is_target_category_met(row: pd.Series) -> Tuple[bool, Optional[str], List[st
                 flagged_categories = [normalize_flagged_category(cat) for cat in flagged if cat]
         except (json.JSONDecodeError, ValueError):
             pass
-    
-    if 'moderation_flagged_categories' in row.index and pd.notna(row['moderation_flagged_categories']):
+    elif 'moderation_flagged_categories' in row.index and pd.notna(row['moderation_flagged_categories']):
+        # Fallback to moderation_flagged_categories if comprehensive is not available
         try:
             flagged = json.loads(row['moderation_flagged_categories'])
             if isinstance(flagged, list):
@@ -166,10 +167,11 @@ def calculate_target_category_stats(df: pd.DataFrame) -> Dict[str, Any]:
             else:
                 stats['target_missed'] += 1
                 stats['target_category_distribution'][target_code]['missed'] += 1
-                
-                # Count false positives (flagged categories that don't match target)
-                if flagged_codes:
-                    stats['false_positives'] += 1
+            
+            # Count false positives (flagged categories that don't match target)
+            # Count each incorrectly flagged category, not just the number of lessons
+            false_positive_count = sum(1 for code in flagged_codes if code != target_code)
+            stats['false_positives'] += false_positive_count
     
     # Calculate metrics
     if stats['lessons_with_target'] > 0:

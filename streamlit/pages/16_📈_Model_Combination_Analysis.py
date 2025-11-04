@@ -83,15 +83,42 @@ def clean_run_name(run_name: str) -> str:
     if pd.isna(run_name):
         return "Unknown"
     run_name = str(run_name)
+    
+    # Limit input length to prevent DoS
+    if len(run_name) > 1000:
+        run_name = run_name[:1000]
+    
     # Replace underscores with spaces and capitalize
     run_name = run_name.replace('_', ' ').replace('gemini 2 5', 'gemini-2.5').replace('gpt 4 1', 'gpt-4.1').replace('gpt 4o', 'gpt-4o').replace('gpt 5', 'gpt-5')
-    # Split by 'comprehensive' if present
-    if 'comprehensive' in run_name.lower():
-        parts = re.split(r'\s+comprehensive\s+', run_name, flags=re.IGNORECASE)
-        if len(parts) == 2:
-            skimmed = parts[0].replace('skimmed ', '').strip()
-            comprehensive = parts[1].strip()
-            return f"{skimmed} → {comprehensive}"
+    
+    # Split by 'comprehensive' if present - use string methods instead of regex to avoid backtracking
+    run_name_lower = run_name.lower()
+    comprehensive_word = 'comprehensive'
+    
+    if comprehensive_word in run_name_lower:
+        # Find the position of 'comprehensive' (case-insensitive)
+        idx = run_name_lower.find(comprehensive_word)
+        if idx != -1:
+            # Find word boundaries: start by skipping leading whitespace before 'comprehensive'
+            word_start = idx
+            while word_start > 0 and run_name[word_start - 1].isspace():
+                word_start -= 1
+            
+            # Find end: after 'comprehensive' and skip trailing whitespace
+            word_end = idx + len(comprehensive_word)
+            while word_end < len(run_name) and run_name[word_end].isspace():
+                word_end += 1
+            
+            # Split at the word boundaries
+            before = run_name[:word_start].strip()
+            after = run_name[word_end:].strip()
+            
+            # Only format if both parts exist
+            if before and after:
+                skimmed = before.replace('skimmed ', '').strip()
+                comprehensive = after.strip()
+                return f"{skimmed} → {comprehensive}"
+    
     return run_name.title()
 
 def calculate_average_scores(df: pd.DataFrame, score_columns: List[str]) -> pd.DataFrame:
