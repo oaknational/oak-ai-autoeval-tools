@@ -137,6 +137,73 @@ def load_results_file(file_path: Optional[str] = None) -> pd.DataFrame:
         st.error(f"Error loading file: {e}")
         return None
 
+def extract_scores_from_comprehensive(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Extract scores from comprehensive_scores JSON column and create score_ columns.
+    This handles runs that don't have score_ columns but have comprehensive_scores.
+    """
+    df = df.copy()
+    
+    if 'comprehensive_scores' not in df.columns:
+        return df
+    
+    # Find all unique score keys from comprehensive_scores JSON
+    all_score_keys = set()
+    for idx, row in df.iterrows():
+        comprehensive_scores = row.get('comprehensive_scores', '')
+        if pd.notna(comprehensive_scores) and comprehensive_scores:
+            try:
+                if isinstance(comprehensive_scores, str):
+                    scores_dict = json.loads(comprehensive_scores)
+                else:
+                    scores_dict = comprehensive_scores
+                
+                if isinstance(scores_dict, dict):
+                    # Extract keys that look like score keys (e.g., "n2", "t3", "u1")
+                    for key in scores_dict.keys():
+                        if isinstance(key, str) and len(key) > 0:
+                            all_score_keys.add(key.lower())
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                continue
+    
+    # Create score_ columns for keys that don't already exist
+    for score_key in all_score_keys:
+        score_col = f'score_{score_key}'
+        if score_col not in df.columns:
+            df[score_col] = None
+    
+    # Populate score_ columns from comprehensive_scores
+    for idx, row in df.iterrows():
+        comprehensive_scores = row.get('comprehensive_scores', '')
+        if pd.notna(comprehensive_scores) and comprehensive_scores:
+            try:
+                if isinstance(comprehensive_scores, str):
+                    scores_dict = json.loads(comprehensive_scores)
+                else:
+                    scores_dict = comprehensive_scores
+                
+                if isinstance(scores_dict, dict):
+                    for key, value in scores_dict.items():
+                        score_key = key.lower()
+                        score_col = f'score_{score_key}'
+                        if score_col in df.columns:
+                            # Only set if current value is NaN/None
+                            if pd.isna(df.at[idx, score_col]):
+                                # Extract numeric score if value is a dict with 'score' key, otherwise use value directly
+                                if isinstance(value, dict) and 'score' in value:
+                                    df.at[idx, score_col] = value['score']
+                                elif isinstance(value, (int, float)):
+                                    df.at[idx, score_col] = value
+                                elif isinstance(value, str):
+                                    try:
+                                        df.at[idx, score_col] = float(value)
+                                    except (ValueError, TypeError):
+                                        pass
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                continue
+    
+    return df
+
 def extract_score_columns(df: pd.DataFrame) -> List[str]:
     """Extract all score column names from the dataframe."""
     score_columns = [col for col in df.columns if col.startswith('score_')]
@@ -374,6 +441,11 @@ def parse_human_expected(expected_str: Any) -> Tuple[List[str], List[str]]:
     - Categories that should be detected (positive expectations)
     - Categories that should NOT be detected (negative expectations, 'no X' format)
     
+    Handles multiple formats:
+    - List format: ['U1', 'U2', 'U3', 'U4'] or ["U1", "U2"]
+    - Comma-separated: "U1, U2, U3, U4"
+    - JSON list string: '["U1", "U2", "U3"]'
+    
     Returns: (positive_categories, negative_categories)
     """
     if pd.isna(expected_str) or expected_str == "" or expected_str is None:
@@ -383,6 +455,59 @@ def parse_human_expected(expected_str: Any) -> Tuple[List[str], List[str]]:
     positive_categories = []
     negative_categories = []
     
+    # Try to parse as JSON/list format first (e.g., ['U1', 'U2'] or '["U1", "U2"]')
+    try:
+        # Check if it looks like a list format (starts with [ and ends with ])
+        if expected_str.startswith('[') and expected_str.endswith(']'):
+            # First try to parse as JSON (requires double quotes)
+            try:
+                parsed_list = json.loads(expected_str)
+            except (json.JSONDecodeError, ValueError):
+                # If JSON parsing fails, it might be Python list format with single quotes
+                # Convert single quotes to double quotes for JSON parsing
+                try:
+                    # Replace single quotes with double quotes, but be careful with quotes inside strings
+                    json_str = expected_str.replace("'", '"')
+                    parsed_list = json.loads(json_str)
+                except (json.JSONDecodeError, ValueError):
+                    # If that also fails, try using ast.literal_eval for Python literal evaluation
+                    try:
+                        import ast
+                        parsed_list = ast.literal_eval(expected_str)
+                    except (ValueError, SyntaxError):
+                        # If all parsing fails, fall through to comma-separated parsing
+                        parsed_list = None
+            
+            if parsed_list is not None and isinstance(parsed_list, list):
+                # Process each item in the list
+                for item in parsed_list:
+                    if pd.isna(item) or item == "":
+                        continue
+                    item_str = str(item).strip()
+                    if not item_str:
+                        continue
+                    
+                    # Remove quotes if present
+                    item_str = item_str.strip('\'"')
+                    
+                    # Check for negative expectations
+                    if item_str.lower().startswith('no '):
+                        category = item_str[3:].strip()
+                        if category:
+                            category = category.upper()
+                            # Preserve full code for negative expectations too
+                            negative_categories.append(category.lower())
+                    else:
+                        # Positive expectation: preserve full code
+                        category = item_str.strip().upper()
+                        if category:
+                            positive_categories.append(category.lower())
+                return positive_categories, negative_categories
+    except (json.JSONDecodeError, ValueError, TypeError, SyntaxError):
+        # Not a valid list format, fall through to comma-separated parsing
+        pass
+    
+    # Fall back to comma-separated format
     # Handle multiple categories (comma-separated)
     parts = [p.strip() for p in expected_str.split(',')]
     
@@ -391,15 +516,17 @@ def parse_human_expected(expected_str: Any) -> Tuple[List[str], List[str]]:
         if not part:
             continue
         
+        # Remove brackets and quotes if present (leftover from list format)
+        part = part.strip('[]\'"')
+        if not part:
+            continue
+        
         # Check for negative expectations (e.g., "no R", "no T", "no N", "No R")
         if part.lower().startswith('no '):
             category = part[3:].strip()
             if category:
-                # Extract the category letter(s) - could be "R", "T", "N" or "T3" etc.
                 category = category.upper()
-                # Take first letter if multiple (e.g., "T3" -> "T")
-                if len(category) > 1 and category[0].isalpha():
-                    category = category[0]
+                # Preserve full code for negative expectations too
                 negative_categories.append(category.lower())
         else:
             # Positive expectation: normalize to lowercase and preserve full code
@@ -772,18 +899,20 @@ def create_run_summary(df: pd.DataFrame, comparison_df: Optional[pd.DataFrame] =
             'Successful': successful,
             'Failed': failed,
             'Success Rate %': (successful / total_lessons * 100) if total_lessons > 0 else 0,
-            'Avg Score': avg_score,
-            'Avg Score (%)': avg_score_pct,
-            'Avg Skimmed Time (s)': avg_skimmed_time,
-            'Avg Comprehensive Time (s)': avg_comprehensive_time,
-            'Total Avg Time (s)': total_time,
-            'Total Input Tokens': total_input_tokens,
-            'Total Output Tokens': total_output_tokens,
-            'Total Tokens': total_tokens,
+            'Avg Score': avg_score if avg_score is not None else np.nan,
+            'Avg Score (%)': avg_score_pct if avg_score_pct is not None else np.nan,
+            'Avg Skimmed Time (s)': avg_skimmed_time if avg_skimmed_time is not None else np.nan,
+            'Avg Comprehensive Time (s)': avg_comprehensive_time if avg_comprehensive_time is not None else np.nan,
+            'Total Avg Time (s)': total_time if total_time is not None else np.nan,
+            'Total Input Tokens': total_input_tokens if total_input_tokens is not None else np.nan,
+            'Total Output Tokens': total_output_tokens if total_output_tokens is not None else np.nan,
+            'Total Tokens': total_tokens if total_tokens is not None else np.nan,
             **human_expected_metrics
         })
     
-    return pd.DataFrame(summary_data)
+    summary_df = pd.DataFrame(summary_data)
+    # Replace NaN with None for better display (will show as blank)
+    return summary_df.replace({np.nan: None})
 
 def main():
     st.title("📈 Model Combination Analysis")
@@ -808,11 +937,14 @@ def main():
         st.warning("No data loaded. Please upload a file or ensure small_dataset_results_all_combinations.csv exists.")
         return
     
-    # Extract score columns
+    # Extract scores from comprehensive_scores JSON if score_ columns don't exist
+    df = extract_scores_from_comprehensive(df)
+    
+    # Extract score columns (now includes scores from comprehensive_scores)
     score_columns = extract_score_columns(df)
     
     if len(score_columns) == 0:
-        st.error("No score columns found in the dataset!")
+        st.error("No score columns found in the dataset! Make sure you have either score_ columns or comprehensive_scores column.")
         return
     
     st.success(f"Found {len(score_columns)} score categories and {len(df['run_name'].unique())} unique runs")
@@ -1954,10 +2086,10 @@ def main():
                             title=f"{selected_metric} Heatmap by Category and Run<br><sub>Values show {selected_metric} (%) and sample size (n)</sub>",
                             xaxis_title="Model Combinations",
                             yaxis_title="Categories",
-                            height=max(800, len(category_names_display) * 30 + 200),
+                            height=max(1000, len(category_names_display) * 50 + 300),
                             xaxis=dict(tickangle=-45),
                             yaxis=dict(autorange="reversed"),
-                            margin=dict(l=120, r=50, t=120, b=200)
+                            margin=dict(l=120, r=50, t=120, b=250)
                         )
                         
                         st.plotly_chart(fig_heatmap_metrics, use_container_width=True)
@@ -2290,6 +2422,14 @@ def main():
                         elif 'moderation_flagged_categories' in df.columns:
                             flagged_cats = original_row.get('moderation_flagged_categories', '')
                             display_df.at[idx, 'comprehensive_flagged_categories'] = flagged_cats
+                        
+                        # Get comprehensive_justifications from original df
+                        if 'comprehensive_justifications' in df.columns:
+                            justifications = original_row.get('comprehensive_justifications', '')
+                            display_df.at[idx, 'comprehensive_justifications'] = justifications
+                        elif 'moderation_justifications' in df.columns:
+                            justifications = original_row.get('moderation_justifications', '')
+                            display_df.at[idx, 'comprehensive_justifications'] = justifications
             
             display_df['run_name_display'] = display_df['run_name'].apply(clean_run_name)
             display_df = display_df.drop('run_name', axis=1)
@@ -2311,6 +2451,43 @@ def main():
                         return str(x)
                 return str(x)
             
+            # Format justifications for display
+            def format_justifications(x):
+                if pd.isna(x) or x == '' or x is None:
+                    return ''
+                if isinstance(x, dict):
+                    # If it's a dict, format it nicely
+                    formatted = []
+                    for key, value in x.items():
+                        if isinstance(value, (list, dict)):
+                            formatted.append(f"{key}: {json.dumps(value, ensure_ascii=False)}")
+                        else:
+                            formatted.append(f"{key}: {value}")
+                    return ' | '.join(formatted)
+                if isinstance(x, list):
+                    return ' | '.join([str(item) for item in x])
+                if isinstance(x, str):
+                    try:
+                        # Try to parse as JSON
+                        parsed = json.loads(x)
+                        if isinstance(parsed, dict):
+                            formatted = []
+                            for key, value in parsed.items():
+                                if isinstance(value, (list, dict)):
+                                    formatted.append(f"{key}: {json.dumps(value, ensure_ascii=False)}")
+                                else:
+                                    formatted.append(f"{key}: {value}")
+                            return ' | '.join(formatted)
+                        elif isinstance(parsed, list):
+                            return ' | '.join([str(item) for item in parsed])
+                        return str(parsed)
+                    except (json.JSONDecodeError, ValueError, TypeError):
+                        # If it's a long string, truncate it
+                        if len(x) > 200:
+                            return x[:200] + "..."
+                        return str(x)
+                return str(x)
+            
             # Use comprehensive_flagged_categories if available, otherwise use flagged_categories
             if 'comprehensive_flagged_categories' in display_df.columns:
                 display_df['detected_categories'] = display_df['comprehensive_flagged_categories'].apply(format_flagged_categories)
@@ -2318,6 +2495,11 @@ def main():
             elif 'flagged_categories' in display_df.columns:
                 display_df['detected_categories'] = display_df['flagged_categories'].apply(format_flagged_categories)
                 display_df = display_df.drop('flagged_categories', axis=1)
+            
+            # Format justifications if available
+            if 'comprehensive_justifications' in display_df.columns:
+                display_df['justifications'] = display_df['comprehensive_justifications'].apply(format_justifications)
+                display_df = display_df.drop('comprehensive_justifications', axis=1)
             
             # Sort by selected column
             sort_mapping = {
@@ -2351,6 +2533,8 @@ def main():
             base_cols.extend(['human_expected'])
             if 'detected_categories' in display_df.columns:
                 base_cols.append('detected_categories')
+            if 'justifications' in display_df.columns:
+                base_cols.append('justifications')
             
             # Add lesson_plan if it exists
             if 'lesson_plan' in display_df.columns:
@@ -2375,6 +2559,7 @@ def main():
                 'Topic': 'Topic',
                 'human_expected': 'Human Expected',
                 'detected_categories': 'Detected Categories',
+                'justifications': 'Justifications',
                 'lesson_plan': 'Lesson Plan',
                 'match_status': 'Match Status',
                 'precision': 'Precision',
@@ -2440,8 +2625,16 @@ def main():
                         original_row = df.iloc[original_row_idx]
                         # Parse negative expectations from original row
                         _, negative_expected = parse_human_expected(original_row.get('Human_expected', ''))
+                        
+                        # Get justifications from original row
+                        justifications = None
+                        if 'comprehensive_justifications' in df.columns:
+                            justifications = original_row.get('comprehensive_justifications', '')
+                        elif 'moderation_justifications' in df.columns:
+                            justifications = original_row.get('moderation_justifications', '')
                     else:
                         _, negative_expected = [], []
+                        justifications = None
                     
                     col1, col2 = st.columns(2)
                     
@@ -2451,6 +2644,30 @@ def main():
                         st.write(f"- Negative (should NOT detect): {[f'no {cat.upper()}' for cat in negative_expected] if negative_expected else 'None'}")
                         st.write("**Flagged Categories:**")
                         st.write(row_data['flagged_categories'] if row_data['flagged_categories'] else 'None')
+                        
+                        # Display justifications if available
+                        if justifications:
+                            st.write("**Justifications:**")
+                            try:
+                                if isinstance(justifications, str):
+                                    parsed_just = json.loads(justifications)
+                                else:
+                                    parsed_just = justifications
+                                
+                                if isinstance(parsed_just, dict):
+                                    for key, value in parsed_just.items():
+                                        st.write(f"- **{key}**: {value}")
+                                elif isinstance(parsed_just, list):
+                                    for item in parsed_just:
+                                        st.write(f"- {item}")
+                                else:
+                                    st.write(str(parsed_just))
+                            except (json.JSONDecodeError, ValueError, TypeError):
+                                # If parsing fails, display as string
+                                if len(str(justifications)) > 500:
+                                    st.write(str(justifications)[:500] + "...")
+                                else:
+                                    st.write(str(justifications))
                     
                     with col2:
                         st.write("**Metrics:**")
@@ -2744,13 +2961,25 @@ def main():
             # Create comparison metrics map for quick lookup
             comparison_metrics_map = {}
             if comparison_df is not None:
+                # Determine lesson ID column (id or fallback to row index)
+                lesson_id_col = 'id' if 'id' in df.columns else None
+                if not lesson_id_col:
+                    possible_id_cols = [c for c in df.columns if 'id' in c.lower()]
+                    if possible_id_cols:
+                        lesson_id_col = possible_id_cols[0]
+                
                 for comp_idx, comp_row in comparison_df.iterrows():
                     original_row_idx = comp_row.get('row_index')
                     if original_row_idx is not None and original_row_idx < len(df):
                         original_row = df.iloc[original_row_idx]
-                        lesson_id = original_row.get('id')
+                        # Get lesson ID using available column or fallback to row index
+                        if lesson_id_col and lesson_id_col in original_row.index:
+                            lesson_id = original_row.get(lesson_id_col)
+                        else:
+                            # Fallback: use row index as ID
+                            lesson_id = original_row_idx
                         run_name = comp_row.get('run_name')
-                        if lesson_id and run_name:
+                        if lesson_id is not None and run_name:
                             key = (lesson_id, run_name)
                             comparison_metrics_map[key] = {
                                 'match_status': comp_row.get('match_status', 'Unknown'),
@@ -2763,11 +2992,36 @@ def main():
             # Build pivot table
             pivot_data = []
             
+            # Determine lesson ID column for filtering
+            lesson_id_col = 'id' if 'id' in df.columns else None
+            if not lesson_id_col:
+                possible_id_cols = [c for c in df.columns if 'id' in c.lower()]
+                if possible_id_cols:
+                    lesson_id_col = possible_id_cols[0]
+            
             for lesson_idx, lesson_row in filtered_lesson_df.iterrows():
                 lesson_id = lesson_row['lesson_id']
                 
                 # Get all runs for this lesson plan
-                lesson_runs_df = df[df['id'] == lesson_id] if 'id' in df.columns else pd.DataFrame()
+                if lesson_id_col and lesson_id_col in df.columns:
+                    lesson_runs_df = df[df[lesson_id_col] == lesson_id].copy()
+                else:
+                    # Fallback: use lesson_id from lesson_performance_df (which might be row index or temp_id)
+                    # Try to match by creating a grouping key
+                    if 'lesson_plan' in df.columns:
+                        # Try to match by lesson_plan content
+                        lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
+                        lesson_runs_df = df[lesson_plan_match].copy()
+                    else:
+                        # Last resort: use row index if lesson_id is numeric
+                        try:
+                            idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
+                            if idx is not None and idx < len(df):
+                                lesson_runs_df = df.iloc[[idx]].copy()
+                            else:
+                                lesson_runs_df = pd.DataFrame()
+                        except (ValueError, TypeError):
+                            lesson_runs_df = pd.DataFrame()
                 
                 if lesson_runs_df.empty:
                     continue
@@ -2836,6 +3090,42 @@ def main():
                         
                         expected_detected = bool([cat for cat in positive_expected_norm if cat in flagged_norm])
                         
+                        # Get justifications
+                        justifications_str = ''
+                        if 'comprehensive_justifications' in run_row.index:
+                            justifications = run_row.get('comprehensive_justifications', '')
+                        elif 'moderation_justifications' in run_row.index:
+                            justifications = run_row.get('moderation_justifications', '')
+                        else:
+                            justifications = ''
+                        
+                        # Format justifications for display (compact)
+                        if justifications:
+                            try:
+                                if isinstance(justifications, str):
+                                    parsed_just = json.loads(justifications)
+                                else:
+                                    parsed_just = justifications
+                                
+                                if isinstance(parsed_just, dict):
+                                    # Format as compact key-value pairs
+                                    just_parts = [f"{k}: {str(v)[:50]}" for k, v in list(parsed_just.items())[:3]]
+                                    justifications_str = ' | '.join(just_parts)
+                                    if len(parsed_just) > 3:
+                                        justifications_str += "..."
+                                elif isinstance(parsed_just, list):
+                                    justifications_str = ' | '.join([str(item)[:50] for item in parsed_just[:3]])
+                                    if len(parsed_just) > 3:
+                                        justifications_str += "..."
+                                else:
+                                    justifications_str = str(parsed_just)[:100]
+                                    if len(str(parsed_just)) > 100:
+                                        justifications_str += "..."
+                            except (json.JSONDecodeError, ValueError, TypeError):
+                                justifications_str = str(justifications)[:100]
+                                if len(str(justifications)) > 100:
+                                    justifications_str += "..."
+                        
                         # Add run-specific columns
                         row_data[f'{run_clean_name} - Flagged Categories'] = ', '.join(flagged_categories) if flagged_categories else 'None'
                         row_data[f'{run_clean_name} - Expected Detected'] = '✅' if expected_detected else '❌'
@@ -2844,6 +3134,7 @@ def main():
                         row_data[f'{run_clean_name} - Precision'] = f"{metrics.get('precision', 0):.3f}" if metrics.get('precision') is not None else "N/A"
                         row_data[f'{run_clean_name} - Recall'] = f"{metrics.get('recall', 0):.3f}" if metrics.get('recall') is not None else "N/A"
                         row_data[f'{run_clean_name} - Status'] = run_row.get('final_status', 'Unknown')
+                        row_data[f'{run_clean_name} - Justifications'] = justifications_str if justifications_str else 'N/A'
                     else:
                         # Run not found for this lesson plan
                         row_data[f'{run_clean_name} - Flagged Categories'] = 'N/A'
@@ -2853,6 +3144,7 @@ def main():
                         row_data[f'{run_clean_name} - Precision'] = 'N/A'
                         row_data[f'{run_clean_name} - Recall'] = 'N/A'
                         row_data[f'{run_clean_name} - Status'] = 'N/A'
+                        row_data[f'{run_clean_name} - Justifications'] = 'N/A'
                 
                 pivot_data.append(row_data)
             
@@ -2921,9 +3213,33 @@ def main():
                 heatmap_lesson_ids = []
                 heatmap_topics = []
                 
+                # Determine lesson ID column for filtering
+                lesson_id_col = 'id' if 'id' in df.columns else None
+                if not lesson_id_col:
+                    possible_id_cols = [c for c in df.columns if 'id' in c.lower()]
+                    if possible_id_cols:
+                        lesson_id_col = possible_id_cols[0]
+                
                 for lesson_idx, lesson_row in filtered_lesson_df.iterrows():
                     lesson_id = lesson_row['lesson_id']
-                    lesson_runs_df = df[df['id'] == lesson_id] if 'id' in df.columns else pd.DataFrame()
+                    
+                    # Get all runs for this lesson plan
+                    if lesson_id_col and lesson_id_col in df.columns:
+                        lesson_runs_df = df[df[lesson_id_col] == lesson_id].copy()
+                    else:
+                        # Fallback: use lesson_id from lesson_performance_df
+                        if 'lesson_plan' in df.columns:
+                            lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
+                            lesson_runs_df = df[lesson_plan_match].copy()
+                        else:
+                            try:
+                                idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
+                                if idx is not None and idx < len(df):
+                                    lesson_runs_df = df.iloc[[idx]].copy()
+                                else:
+                                    lesson_runs_df = pd.DataFrame()
+                            except (ValueError, TypeError):
+                                lesson_runs_df = pd.DataFrame()
                     
                     if lesson_runs_df.empty:
                         continue
@@ -2996,9 +3312,33 @@ def main():
                 # Group by expected category type
                 category_summary = {}
                 
+                # Determine lesson ID column for filtering
+                lesson_id_col = 'id' if 'id' in df.columns else None
+                if not lesson_id_col:
+                    possible_id_cols = [c for c in df.columns if 'id' in c.lower()]
+                    if possible_id_cols:
+                        lesson_id_col = possible_id_cols[0]
+                
                 for lesson_idx, lesson_row in filtered_lesson_df.iterrows():
                     lesson_id = lesson_row['lesson_id']
-                    lesson_runs_df = df[df['id'] == lesson_id] if 'id' in df.columns else pd.DataFrame()
+                    
+                    # Get all runs for this lesson plan
+                    if lesson_id_col and lesson_id_col in df.columns:
+                        lesson_runs_df = df[df[lesson_id_col] == lesson_id].copy()
+                    else:
+                        # Fallback: use lesson_id from lesson_performance_df
+                        if 'lesson_plan' in df.columns:
+                            lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
+                            lesson_runs_df = df[lesson_plan_match].copy()
+                        else:
+                            try:
+                                idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
+                                if idx is not None and idx < len(df):
+                                    lesson_runs_df = df.iloc[[idx]].copy()
+                                else:
+                                    lesson_runs_df = pd.DataFrame()
+                            except (ValueError, TypeError):
+                                lesson_runs_df = pd.DataFrame()
                     
                     if lesson_runs_df.empty:
                         continue
