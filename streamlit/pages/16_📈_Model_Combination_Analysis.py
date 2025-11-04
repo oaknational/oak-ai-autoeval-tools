@@ -207,21 +207,34 @@ def create_heatmap(df: pd.DataFrame, score_columns: List[str], title: str = "Ave
     # Extract category names (remove 'score_' prefix)
     category_names = [col.replace('score_', '').upper() for col in score_columns]
     
-    # Create heatmap
-    fig = go.Figure(data=go.Heatmap(
+    # Create heatmap trace with minimal parameters first
+    # Add colorbar and text after to avoid validation issues
+    heatmap_trace = go.Heatmap(
         z=heatmap_data,
         x=avg_df['run_name_display'].values,
         y=category_names,
         colorscale='RdYlGn',
         reversescale=True,  # Lower scores (red) are worse, higher (green) are better
-        colorbar=dict(title=colorbar_title, titleside="right"),
-        text=text_data,
-        texttemplate='%{text}',
-        textfont={"size": 14},  # Increased font size for better visibility
         customdata=sample_size_data,
         hoverongaps=False,
         hovertemplate=hovertemplate
-    ))
+    )
+    
+    fig = go.Figure(data=heatmap_trace)
+    
+    # Add text and colorbar via update_traces to avoid validation issues
+    update_dict = {
+        "text": text_data,
+        "texttemplate": "%{text}",
+        "textfont": {"size": 14}  # Increased font size for better visibility
+    }
+    
+    # Only add colorbar if title is provided
+    # Use title as dict with text key for compatibility with all Plotly versions
+    if colorbar_title:
+        update_dict["colorbar"] = dict(title=dict(text=str(colorbar_title)))
+    
+    fig.update_traces(**update_dict)
     
     fig.update_layout(
         title=title,
