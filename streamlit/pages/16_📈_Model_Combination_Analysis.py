@@ -1867,20 +1867,27 @@ def main():
                             text_data.append(text_row)
                         
                         # Create heatmap with increased font size
-                        fig_heatmap_metrics = go.Figure(data=go.Heatmap(
+                        # Create heatmap without colorbar initially to avoid validation issues
+                        heatmap_trace = go.Heatmap(
                             z=heatmap_matrix,
                             x=[clean_run_name(run_name) for run_name in all_runs_sorted],
                             y=category_names_display,
                             colorscale='RdYlGn',
                             reversescale=False,  # Higher is better (green)
-                            colorbar=dict(title=f"{selected_metric} (%)", titleside="right"),
                             text=text_data,
                             texttemplate='%{text}',
                             textfont={"size": 14},  # Increased font size from 8 to 14
                             customdata=sample_size_matrix,
                             hoverongaps=False,
                             hovertemplate=f'<b>%{{y}}</b><br>%{{x}}<br>{selected_metric}: %{{z:.1f}}%<br>Sample Size: %{{customdata}}<extra></extra>'
-                        ))
+                        )
+                        
+                        fig_heatmap_metrics = go.Figure(data=heatmap_trace)
+                        
+                        # Set colorbar title via update_traces to avoid validation issues
+                        fig_heatmap_metrics.update_traces(
+                            colorbar=dict(title=dict(text=f"{selected_metric} (%)"))
+                        )
                         
                         fig_heatmap_metrics.update_layout(
                             title=f"{selected_metric} Heatmap by Category and Run<br><sub>Values show {selected_metric} (%) and sample size (n)</sub>",
