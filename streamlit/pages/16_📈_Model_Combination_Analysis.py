@@ -400,8 +400,6 @@ def calculate_detection_metrics(row: pd.Series) -> Dict[str, Any]:
         # If it's an abbreviation format (letter + number/letter), preserve full code
         # e.g., "n2" -> "n2", "n4" -> "n4", "t3" -> "t3", "u1" -> "u1"
         # Only extract letter if it's a single letter (e.g., "n" -> "n")
-        if len(cat) == 1 and cat.isalpha():
-            return cat
         # Preserve full code for abbreviations (e.g., "n2", "u1", "t3")
         # This ensures "n2" != "n4" and "u1" != "u2"
         return cat
