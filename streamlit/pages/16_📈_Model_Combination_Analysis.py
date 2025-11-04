@@ -338,12 +338,11 @@ def parse_human_expected(expected_str: Any) -> Tuple[List[str], List[str]]:
                     category = category[0]
                 negative_categories.append(category.lower())
         else:
-            # Positive expectation: normalize to lowercase and extract main category
+            # Positive expectation: normalize to lowercase and preserve full code
             category = part.strip().upper()
             if category:
-                # Extract main category letter (e.g., "N7" -> "N", "T3" -> "T", "L1" -> "L")
-                if len(category) > 1 and category[0].isalpha():
-                    category = category[0]
+                # Preserve full category code (e.g., "N2" -> "n2", "N7" -> "n7", "T3" -> "t3")
+                # This ensures "N2" != "N4" and "T3" != "T7" for accurate comparison
                 positive_categories.append(category.lower())
     
     return positive_categories, negative_categories
@@ -381,30 +380,28 @@ def calculate_detection_metrics(row: pd.Series) -> Dict[str, Any]:
     positive_expected, negative_expected = parse_human_expected(human_expected_str)
     flagged_categories = parse_flagged_categories(flagged_str)
     
-    # Normalize category abbreviations - extract main category letter for comparison
+    # Normalize category abbreviations - preserve full code for accurate comparison
     def normalize_category(cat: str) -> str:
         """
-        Normalize category for comparison - extract main category letter.
+        Normalize category for comparison - preserve full code including numbers.
         Examples:
-        - "N7" -> "n" (Human_expected format)
-        - "n7" -> "n" (flagged category abbreviation)
-        - "n/current-conflicts" -> "n" (if code format)
+        - "N2" -> "n2" (Human_expected format)
+        - "n4" -> "n4" (flagged category abbreviation)
+        - "n/current-conflicts" -> "n" (if code format, extract prefix)
+        - "u1" -> "u1" (preserve full code)
         - "u" -> "u" (already just a letter)
         """
         cat = str(cat).lower().strip()
         # If it's a code format (letter/name), extract just the prefix
         if '/' in cat:
             return cat.split('/')[0]
-        # If it's an abbreviation format (letter + number), extract just the letter
-        # e.g., "n7" -> "n", "t3" -> "t", "u1" -> "u"
-        if len(cat) > 1 and cat[0].isalpha() and (cat[1].isdigit() or cat[1].isalpha()):
-            return cat[0]
-        # If it's just a letter, keep as is
+        # If it's an abbreviation format (letter + number/letter), preserve full code
+        # e.g., "n2" -> "n2", "n4" -> "n4", "t3" -> "t3", "u1" -> "u1"
+        # Only extract letter if it's a single letter (e.g., "n" -> "n")
         if len(cat) == 1 and cat.isalpha():
             return cat
-        # If it's all letters (like "no" from "no R"), return first letter
-        if cat.isalpha():
-            return cat[0] if cat else cat
+        # Preserve full code for abbreviations (e.g., "n2", "u1", "t3")
+        # This ensures "n2" != "n4" and "u1" != "u2"
         return cat
     
     positive_expected_normalized = [normalize_category(cat) for cat in positive_expected]
