@@ -20,6 +20,14 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from collections import Counter
 import re
+import ast
+
+# Optional imports with fallback
+try:
+    import chardet
+    HAS_CHARDET = True
+except ImportError:
+    HAS_CHARDET = False
 
 # Page configuration
 st.set_page_config(
@@ -57,17 +65,15 @@ def read_csv_with_encoding(file_path_or_buffer, **kwargs) -> pd.DataFrame:
         encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252', 'windows-1252']
     else:
         # For file paths, try to detect encoding
-        try:
-            import chardet
-            with open(file_path_or_buffer, 'rb') as f:
-                raw_data = f.read()
-                result = chardet.detect(raw_data)
-                if result and result['encoding']:
-                    detected_encoding = result['encoding']
-        except ImportError:
-            pass
-        except Exception:
-            pass
+        if HAS_CHARDET:
+            try:
+                with open(file_path_or_buffer, 'rb') as f:
+                    raw_data = f.read()
+                    result = chardet.detect(raw_data)
+                    if result and result['encoding']:
+                        detected_encoding = result['encoding']
+            except Exception:
+                pass
         
         # Try multiple encodings to handle different file formats
         encodings = []
@@ -208,6 +214,50 @@ def extract_score_columns(df: pd.DataFrame) -> List[str]:
     """Extract all score column names from the dataframe."""
     score_columns = [col for col in df.columns if col.startswith('score_')]
     return sorted(score_columns)
+
+def get_lesson_runs_by_id(df: pd.DataFrame, lesson_id: Any, lesson_id_col: Optional[str] = None) -> pd.DataFrame:
+    """
+    Get all runs for a lesson plan by lesson ID.
+    
+    This function handles multiple scenarios:
+    1. If lesson_id_col exists, uses it to filter
+    2. If lesson_id_col doesn't exist but 'lesson_plan' column exists, matches by lesson_plan content
+    3. If neither exists, tries to use lesson_id as row index if numeric
+    
+    Args:
+        df: DataFrame containing lesson plan runs
+        lesson_id: The lesson ID to search for
+        lesson_id_col: Optional column name containing lesson IDs (auto-detected if None)
+    
+    Returns:
+        DataFrame containing rows matching the lesson_id, or empty DataFrame if not found
+    """
+    # Auto-detect lesson ID column if not provided
+    if lesson_id_col is None:
+        lesson_id_col = 'id' if 'id' in df.columns else None
+        if not lesson_id_col:
+            possible_id_cols = [c for c in df.columns if 'id' in c.lower()]
+            if possible_id_cols:
+                lesson_id_col = possible_id_cols[0]
+    
+    # Primary method: use lesson_id_col if available
+    if lesson_id_col and lesson_id_col in df.columns:
+        return df[df[lesson_id_col] == lesson_id].copy()
+    
+    # Fallback method 1: match by lesson_plan content
+    if 'lesson_plan' in df.columns:
+        lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
+        return df[lesson_plan_match].copy()
+    
+    # Fallback method 2: use lesson_id as row index if numeric
+    try:
+        idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
+        if idx is not None and idx < len(df):
+            return df.iloc[[idx]].copy()
+        else:
+            return pd.DataFrame()
+    except (ValueError, TypeError):
+        return pd.DataFrame()
 
 def clean_run_name(run_name: str) -> str:
     """Clean run name for better display."""
@@ -462,17 +512,16 @@ def parse_human_expected(expected_str: Any) -> Tuple[List[str], List[str]]:
             # First try to parse as JSON (requires double quotes)
             try:
                 parsed_list = json.loads(expected_str)
-            except (json.JSONDecodeError, ValueError):
+            except json.JSONDecodeError:
                 # If JSON parsing fails, it might be Python list format with single quotes
                 # Convert single quotes to double quotes for JSON parsing
                 try:
                     # Replace single quotes with double quotes, but be careful with quotes inside strings
                     json_str = expected_str.replace("'", '"')
                     parsed_list = json.loads(json_str)
-                except (json.JSONDecodeError, ValueError):
+                except json.JSONDecodeError:
                     # If that also fails, try using ast.literal_eval for Python literal evaluation
                     try:
-                        import ast
                         parsed_list = ast.literal_eval(expected_str)
                     except (ValueError, SyntaxError):
                         # If all parsing fails, fall through to comma-separated parsing
@@ -3002,26 +3051,8 @@ def main():
             for lesson_idx, lesson_row in filtered_lesson_df.iterrows():
                 lesson_id = lesson_row['lesson_id']
                 
-                # Get all runs for this lesson plan
-                if lesson_id_col and lesson_id_col in df.columns:
-                    lesson_runs_df = df[df[lesson_id_col] == lesson_id].copy()
-                else:
-                    # Fallback: use lesson_id from lesson_performance_df (which might be row index or temp_id)
-                    # Try to match by creating a grouping key
-                    if 'lesson_plan' in df.columns:
-                        # Try to match by lesson_plan content
-                        lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
-                        lesson_runs_df = df[lesson_plan_match].copy()
-                    else:
-                        # Last resort: use row index if lesson_id is numeric
-                        try:
-                            idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
-                            if idx is not None and idx < len(df):
-                                lesson_runs_df = df.iloc[[idx]].copy()
-                            else:
-                                lesson_runs_df = pd.DataFrame()
-                        except (ValueError, TypeError):
-                            lesson_runs_df = pd.DataFrame()
+                # Get all runs for this lesson plan using helper function
+                lesson_runs_df = get_lesson_runs_by_id(df, lesson_id, lesson_id_col)
                 
                 if lesson_runs_df.empty:
                     continue
@@ -3223,23 +3254,8 @@ def main():
                 for lesson_idx, lesson_row in filtered_lesson_df.iterrows():
                     lesson_id = lesson_row['lesson_id']
                     
-                    # Get all runs for this lesson plan
-                    if lesson_id_col and lesson_id_col in df.columns:
-                        lesson_runs_df = df[df[lesson_id_col] == lesson_id].copy()
-                    else:
-                        # Fallback: use lesson_id from lesson_performance_df
-                        if 'lesson_plan' in df.columns:
-                            lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
-                            lesson_runs_df = df[lesson_plan_match].copy()
-                        else:
-                            try:
-                                idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
-                                if idx is not None and idx < len(df):
-                                    lesson_runs_df = df.iloc[[idx]].copy()
-                                else:
-                                    lesson_runs_df = pd.DataFrame()
-                            except (ValueError, TypeError):
-                                lesson_runs_df = pd.DataFrame()
+                    # Get all runs for this lesson plan using helper function
+                    lesson_runs_df = get_lesson_runs_by_id(df, lesson_id, lesson_id_col)
                     
                     if lesson_runs_df.empty:
                         continue
@@ -3322,23 +3338,8 @@ def main():
                 for lesson_idx, lesson_row in filtered_lesson_df.iterrows():
                     lesson_id = lesson_row['lesson_id']
                     
-                    # Get all runs for this lesson plan
-                    if lesson_id_col and lesson_id_col in df.columns:
-                        lesson_runs_df = df[df[lesson_id_col] == lesson_id].copy()
-                    else:
-                        # Fallback: use lesson_id from lesson_performance_df
-                        if 'lesson_plan' in df.columns:
-                            lesson_plan_match = df['lesson_plan'].astype(str).str[:50] == str(lesson_id)[:50]
-                            lesson_runs_df = df[lesson_plan_match].copy()
-                        else:
-                            try:
-                                idx = int(lesson_id) if isinstance(lesson_id, (int, float, str)) and str(lesson_id).isdigit() else None
-                                if idx is not None and idx < len(df):
-                                    lesson_runs_df = df.iloc[[idx]].copy()
-                                else:
-                                    lesson_runs_df = pd.DataFrame()
-                            except (ValueError, TypeError):
-                                lesson_runs_df = pd.DataFrame()
+                    # Get all runs for this lesson plan using helper function
+                    lesson_runs_df = get_lesson_runs_by_id(df, lesson_id, lesson_id_col)
                     
                     if lesson_runs_df.empty:
                         continue
