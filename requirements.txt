@@ -19,3 +19,5 @@ langchain-community
 seaborn
 google-generativeai
 pydantic
+aiohttp
+chardet

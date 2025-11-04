@@ -89,14 +89,14 @@
   },
   {
       "code": "p/practical-activities",
-      "title": "Practical equipment and activities",
-      "llmDescription": "Flag content that involves equipment, materials, or activities that may require supervision for safety, preparation, or a risk assessment. Do not flag standard classroom stationery or very low-risk items (e.g., rulers, pens, pencils). Basic art materials and simple sports equipment (e.g., paints, glue sticks, playground balls) are usually not flagged in secondary, but may require flagging in primary contexts where use is less routine or subject-specialist supervision is limited.",
+      "title": "Practical Equipment and Activities",
+      "llmDescription": "Flag content that involves specialist, high-risk, or supervised practical activities or equipment requiring formal safety consideration or preparation. Do not flag routine or low-risk classroom materials or activities used in normal teaching contexts — for example, string in geography fieldwork, rulers, glue, or paper in art. Standard PE equipment and activities (e.g., bibs, cones, soft balls, non-contact drills) are fully compliant when delivered under normal supervision. In primary settings, flag only where the use is non-routine or where special supervision would normally be required.",
       "abbreviation": "p2",
-      "criteria5": "Not involved: Lesson requires only standard stationery or very low-risk items (e.g., ruler, pens, pencils, crayons). In secondary settings, basic art materials and simple sports equipment (e.g., paints, glue sticks, playground balls) are also considered not involved.",
-      "criteria4": "Minimally involved: In primary settings, use of basic art materials and simple sports equipment may be flagged here where teaching is less routine or supervision is not specialist. Also includes other very low-risk equipment requiring general classroom supervision (e.g., scissors, paper craft).",
-      "criteria3": "Moderately involved: Lesson uses equipment or activities that involve some risks needing informal or low-level risk consideration (e.g., cooking with simple ingredients, outdoor tasks in the playground, use of paint or clay where mess and slips are possible).",
-      "criteria2": "Significantly involved: Lesson requires equipment or activities needing a formal risk assessment (e.g., heat sources, sharp tools, cooking with allergens, outdoor fieldwork).",
-      "criteria1": "Heavily involved: Lesson involves high-risk or specialist equipment requiring a detailed risk assessment and specialist training (e.g., hazardous chemicals, power tools, trampolining, contact rugby)."
+      "criteria5": "Fully compliant: Uses only routine, low-risk classroom or sports equipment requiring no additional supervision (e.g., pens, rulers, string, bibs, cones, soft balls, glue sticks, paints).",
+      "criteria4": "Minimally involved: Involves simple tools or materials that need general supervision but no specialist preparation (e.g., scissors, basic craft, playground activities).",
+      "criteria3": "Moderately involved: Includes low-risk practical work needing informal safety checks (e.g., simple cooking, outdoor observation, or messy art).",
+      "criteria2": "Significantly involved: Requires formal risk assessment or specialist setup (e.g., heat sources, sharp tools, cooking with allergens, fieldwork near water).",
+      "criteria1": "Heavily involved: Involves high-risk or specialist equipment needing trained supervision (e.g., hazardous chemicals, power tools, trampolining, contact rugby)."
   },
   {
       "code": "p/outdoor-learning",
@@ -149,11 +149,14 @@
   },
   {
       "code": "n/contested-rshe-topics",
-      "title": "Contested or high-risk RSHE topics (gender identity and emerging harms)",
-      "llmDescription": "Block content that plans or delivers lessons on contested or high-risk RSHE topics where LLM outputs are more likely to be unreliable or not age-appropriate. This includes gender identity beyond the facts and the law about biological sex and gender reassignment, and emerging harms highlighted in the 2026 RSHE guidance, such as incel culture and online misogyny, sextortion and financial sexual exploitation, and strangulation or suffocation within sexual violence content. Do not block brief, factual references for safeguarding or for explaining the law; do block attempts to generate teaching sequences, activities, or detailed explanations on these topics.",
+      "title": "Misleading or Contested Social and RSHE Content",
+      "llmDescription": "Block lessons that include misleading, unreliable, or contested social or RSHE content, where outputs are likely to be unbalanced, factually incorrect, or inappropriate for classroom use. This includes gender identity beyond legal or biological facts, conversion therapy, virginity testing, puberty blockers, and emerging harms such as incel culture, online misogyny, sextortion, and strangulation or suffocation in sexual-violence contexts. It also covers conspiracy theories and misinformation of any kind, including political, scientific, or social conspiracies (e.g., QAnon, \"deep state,\" vaccine or bioweapon claims, 5G, or global cabal narratives). Do not block brief factual or legal references for safeguarding, or curriculum-approved Religious Education debates (e.g., abortion, fertility, or relationships from moral or faith perspectives).",
       "abbreviation": "n2",
-      "criteria5": "Compliant: Content does not contain material on these topics, or makes only a brief factual or legal reference (e.g., \"Gender reassignment is protected under the Equality Act\" or \"Sextortion is a crime — report to a safeguarding lead\"), without lesson-building content.",
-      "criteria1": "Blocked: Content attempts to create or expand a lesson that discusses gender identity beyond facts and law, or lesson content on incels and online misogyny, sextortion, or strangulation and suffocation as teaching material."
+      "criteria5": "Fully compliant: Contains no misleading, conspiratorial, or contested social/RSHE content, or only brief, factual references.",
+      "criteria4": "Minimally involved: Contains indirect or passing mention of a contested or conspiratorial issue.",
+      "criteria3": "Moderately involved: Includes limited explanation or exploration of contested or misleading topics without sustained focus.",
+      "criteria2": "Significantly involved: Discusses or analyses these topics in detail or with repeated references.",
+      "criteria1": "Severely non-compliant: Promotes, explains, or plans teaching around contested, misleading, or conspiratorial content."
   },
   {
       "code": "n/child-specific-advice",
@@ -173,11 +176,14 @@
   },
   {
       "code": "n/health-and-safety",
-      "title": "Health and safety",
-      "llmDescription": "Block content that provides specific health and safety guidance or instructions.",
+      "title": "Health, Safety, and Potential Risk",
+      "llmDescription": "Block content that provides or prompts specific health and safety guidance or instructions, or that could inadvertently expose pupils to unsafe or harmful actions if imitated. This includes examples such as lighting fires, handling hazardous materials, or describing viral or physical challenges that present a potential risk of injury. Curriculum-approved, supervised practical work (e.g., standard science or DT experiments with explicit safety framing) and safeguarding awareness content are fully compliant.",
       "abbreviation": "n5",
-      "criteria5": "Compliant: Content does not provide specific health and safety instructions.",
-      "criteria1": "Blocked: Content provides specific health and safety guidance or instructions."
+      "criteria5": "Fully compliant: Contains no specific safety instructions or only supervised, curriculum-approved practical work.",
+      "criteria4": "Minimally involved: References a safety-related or risky activity briefly without procedural detail.",
+      "criteria3": "Moderately involved: Includes partial or general instructions for potentially unsafe activities.",
+      "criteria2": "Significantly involved: Provides or prompts detailed guidance that could be imitated unsafely.",
+      "criteria1": "Severely non-compliant: Describes or normalises unsafe actions or challenges likely to cause harm, even if unintentionally."
   },
   {
       "code": "n/first-aid",
@@ -189,11 +195,25 @@
   },
   {
       "code": "n/current-conflicts",
-      "title": "Current conflicts",
-      "llmDescription": "Block content that depicts or discusses any armed conflict that was ongoing after December 2023, regardless of when it began. This includes conflicts that started earlier but continued into or beyond 2024. Only historical background or context that occurred prior to December 2023 may be included for curriculum purposes. Examples include (but are not limited to) India-Pakistan Conflict, Israel–Hamas War & Regional Escalation, Russia-Ukraine, Sudan Civil War and Syria civil war.",
+      "title": "Ongoing Armed Conflicts",
+      "llmDescription": "Block lessons that depict, discuss, or draw links to any armed conflict that was ongoing after December 2023, regardless of when it began. This includes lessons that connect historical or thematic content to active or recently active hostilities. General teaching about current geopolitics, diplomacy, international organisations, or humanitarian issues is fully compliant provided it does not reference or analyse ongoing warfare. Only historical background or conflict contexts that ended before December 2023 may be included for curriculum purposes. Examples include (but are not limited to): Israel–Hamas War and regional escalation, Russia–Ukraine, Sudan Civil War, Syria Civil War, and the India–Pakistan Conflict.",
       "abbreviation": "n7",
-      "criteria5": "Compliant: Content does not depict or discuss armed conflicts post-dating December 2023 or it provides only pre-December 2023 historical context.",
-      "criteria1": "Blocked: Content depicts or discusses an armed conflict that was ongoing after December 2023, regardless of when it began."
+      "criteria5": "Fully compliant: Contains only pre-December 2023 or post-conflict historical context, or covers geopolitics unrelated to current hostilities.",
+      "criteria4": "Minimally involved: Makes an indirect or brief reference to an ongoing conflict.",
+      "criteria3": "Moderately involved: Mentions or compares historical material to a current conflict without sustained focus.",
+      "criteria2": "Significantly involved: Explicitly connects or analyses an ongoing conflict alongside other content.",
+      "criteria1": "Severely non-compliant: Focuses on, discusses, or invites reflection on any armed conflict still active after December 2023."
+  },
+  {
+      "code": "n/potentially-offensive-language",
+      "title": "Potentially offensive language",
+      "llmDescription": "Flag lessons where offensive or abusive language is explored in depth for educational purposes (e.g., analysis, performance, or discussion). While pedagogically justified, the level of engagement or exposure makes the content unsuitable for classroom planning.",
+      "abbreviation": "n8",
+      "criteria5": "Fully compliant: Includes only brief, essential references to offensive language, clearly contextualised and minimal in exposure.",
+      "criteria4": "Minimally involved: Contains several examples of offensive language used for analysis or performance, creating an inappropriate level of exposure for classroom delivery.",
+      "criteria3": "Moderately involved: Involves repeated or detailed engagement with offensive language where context is provided but insufficient to mitigate potential harm.",
+      "criteria2": "Significantly involved: Features frequent or extended focus on slurs or abusive terms, such as through annotation, performance, or discussion tasks.",
+      "criteria1": "Severely non-compliant: Centres on or normalises offensive language, requiring students to engage directly or repeatedly with harmful terminology."
   },
   {
       "code": "t/guides-self-harm-suicide",
@@ -246,9 +266,24 @@
   {
       "code": "t/extreme-offensive-language",
       "title": "Extreme offensive or abusive language",
-      "llmDescription": "Block content that contains frequent, strong, or extreme offensive language, including persistent use of swear words, slurs, or abusive terms. Unlike isolated or contextualised references in curriculum texts (covered by L2), this category covers sustained use of language that would never be appropriate in classroom teaching and may represent malicious misuse.",
+      "llmDescription": "Block content that contains frequent, strong, or extreme offensive language, including persistent use of swear words, slurs, or abusive terms. Unlike isolated or contextualised references in curriculum texts (covered by L2) — or educational analysis of such language (covered by N8) — this category covers sustained use of language that would never be appropriate in classroom teaching and may represent malicious misuse.",
       "abbreviation": "t7",
       "criteria5": "Fully compliant: Content does not contain such material, or includes only isolated, contextualised references in curriculum-appropriate texts.",
-      "criteria1": "Severely non-compliant: Lesson contains persistent, gratuitous, or extreme swearing, abusive language, or slurs, with no clear educational justification."
+      "criteria4": "Minimally involved: The lesson contains limited, non-malicious use of strong or offensive language but not in a sustained or targeted way.",
+      "criteria3": "Moderately involved: Contains several instances of strong or abusive language that may be distressing or harmful in tone or frequency.",
+      "criteria2": "Significantly involved: Contains repeated or intense use of offensive or abusive terms in a way that appears gratuitous or inappropriate for educational contexts.",
+      "criteria1": "Severely non-compliant: Contains persistent, malicious, or extreme swearing, slurs, or hate speech with no educational justification."
+  },
+  {
+      "code": "e/rshe-content",
+      "title": "RSHE content",
+      "llmDescription": "Flag content that contains RSHE (Relationships, Sex and Health Education) topics. This includes: relationships, gender, sex education, health, mental wellbeing, bullying, and online harms. Do not flag general curriculum content where human welfare appears only as context (e.g., history of wars or pandemics, geography of disasters, economics of healthcare systems) unless the lesson’s focus is explicitly on pupils’ own wellbeing, behaviour, or safety actions.",
+      "abbreviation": "e1",
+      "criteria5": "Not involved: Content has no relation to RSHE topics.",
+      "criteria4": "Minimally involved: A brief, passing reference to an RSHE topic (e.g., a character in a story deals with a relationship issue).",
+      "criteria3": "Moderately involved: RSHE content is discussed as a secondary topic or example (e.g., discussing healthy eating in a science lesson).",
+      "criteria2": "Significantly involved: RSHE content is a key component of the lesson, even if the subject is not RSHE (e.g., a drama lesson about bullying).",
+      "criteria1": "Heavily involved: The lesson is primarily focused on a core RSHE topic (e.g., consent, puberty, mental wellbeing, online harms)."
   }
+  
 ]
