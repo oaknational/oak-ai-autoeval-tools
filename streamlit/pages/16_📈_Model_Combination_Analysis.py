@@ -230,9 +230,9 @@ def create_heatmap(df: pd.DataFrame, score_columns: List[str], title: str = "Ave
     }
     
     # Only add colorbar if title is provided
-    # Use title as dict with text key for compatibility with all Plotly versions
+    # Use simple title assignment unless specific Plotly version compatibility is required
     if colorbar_title:
-        update_dict["colorbar"] = dict(title=dict(text=str(colorbar_title)))
+        update_dict["colorbar"] = dict(title=str(colorbar_title))
     
     fig.update_traces(**update_dict)
     
