@@ -93,7 +93,7 @@
 
                   nodeColors = {};
                   allNodes = nodes.get({ returnType: "Object" });
-                  for (nodeId in allNodes) {
+                  for (let nodeId in allNodes) {
                     nodeColors[nodeId] = allNodes[nodeId].color;
                   }
                   allEdges = edges.get({ returnType: "Object" });
